@@ -1552,6 +1552,12 @@
   }
 }
 
+@media (max-width: 600px) {
+  .home-menu-overlay__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 390px) {
   .home-hologram-scene {
     height: 100%;
