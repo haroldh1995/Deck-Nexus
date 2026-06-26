@@ -7,7 +7,20 @@
       name="description"
       content="Deck Nexus is a local-first Commander deck builder with no commerce data or required login."
     />
-    <link rel="icon" type="image/svg+xml" href="/assets/deck-nexus-mark.svg" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="%BASE_URL%assets/deck-nexus-mark.svg"
+    />
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var redirectPath = params.get("p");
+        if (redirectPath) {
+          window.history.replaceState(null, "", redirectPath);
+        }
+      })();
+    </script>
     <title>Deck Nexus</title>
   </head>
   <body>

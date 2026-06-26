@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deck Nexus</title>
+    <script>
+      (function () {
+        var basePath = "/Deck-Nexus";
+        var currentPath =
+          window.location.pathname + window.location.search + window.location.hash;
+        window.location.replace(
+          basePath + "/?p=" + encodeURIComponent(currentPath),
+        );
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
