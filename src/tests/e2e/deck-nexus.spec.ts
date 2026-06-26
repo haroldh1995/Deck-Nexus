@@ -1,4 +1,55 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function createBlankDeck(page: Page, name: string) {
+  await page.goto("/create");
+  await page.getByLabel("Deck name").fill(name);
+  await page.getByRole("button", { name: "Save Blank Commander Deck" }).click();
+  await expect(page).toHaveURL(/deck-builder/);
+  await expect(page.getByRole("heading", { name })).toBeVisible();
+}
+
+async function fillCardModal(
+  page: Page,
+  card: {
+    name: string;
+    typeLine: string;
+    colors?: string[];
+    roleTags?: string;
+    customTags?: string;
+    owned?: boolean;
+  },
+) {
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Card name").fill(card.name);
+  await dialog.getByLabel("Card type line").fill(card.typeLine);
+
+  for (const color of card.colors ?? []) {
+    await dialog.getByLabel(color, { exact: true }).check();
+  }
+
+  if (card.roleTags) {
+    await dialog.getByLabel("Role tags").fill(card.roleTags);
+  }
+
+  if (card.customTags) {
+    await dialog.getByLabel("Custom tags").fill(card.customTags);
+  }
+
+  if (card.owned === false) {
+    await dialog.getByLabel("Confirmed owned").uncheck();
+  }
+}
+
+async function addCardToSection(
+  page: Page,
+  sectionLabel: string,
+  card: Parameters<typeof fillCardModal>[1],
+) {
+  const section = page.locator(`section[aria-label="${sectionLabel}"]`).first();
+  await section.getByRole("button", { name: "Add", exact: true }).click();
+  await fillCardModal(page, card);
+  await page.getByRole("button", { name: "Save Card" }).click();
+}
 
 test.describe("Deck Nexus local-first flow", () => {
   test("navigates, creates a blank Commander deck, and shows it in the library", async ({
@@ -38,5 +89,144 @@ test.describe("Deck Nexus local-first flow", () => {
     await expect(
       page.getByRole("link", { name: /Create Deck/ }).first(),
     ).toBeVisible();
+  });
+
+  test("opens a deck from the library and edits the Deck Builder locally", async ({
+    page,
+  }) => {
+    await createBlankDeck(page, "Builder Trial");
+
+    await page.getByRole("button", { name: /Add Commander/ }).click();
+    await fillCardModal(page, {
+      name: "Tatyova, Benthic Druid",
+      typeLine: "Legendary Creature",
+      colors: ["U", "G"],
+    });
+    await page.getByRole("button", { name: "Save Card" }).click();
+    await expect(
+      page.locator(".commander-zone").getByText("Tatyova, Benthic Druid"),
+    ).toBeVisible();
+
+    await addCardToSection(page, "Creatures", {
+      name: "Etherium-Horn Scout",
+      typeLine: "Artifact Creature",
+      colors: ["U"],
+      roleTags: "synergy",
+      owned: false,
+    });
+    await addCardToSection(page, "Instants", {
+      name: "Counterspell",
+      typeLine: "Instant",
+      colors: ["U"],
+      roleTags: "interaction",
+    });
+    await addCardToSection(page, "Sorceries", {
+      name: "Cultivate",
+      typeLine: "Sorcery",
+      colors: ["G"],
+      roleTags: "ramp",
+    });
+    await addCardToSection(page, "Artifacts", {
+      name: "Local Fast Mana Relic",
+      typeLine: "Artifact",
+      roleTags: "fast mana",
+    });
+    await addCardToSection(page, "Enchantments", {
+      name: "Rancor",
+      typeLine: "Enchantment",
+      colors: ["G"],
+    });
+    await addCardToSection(page, "Other Permanents", {
+      name: "Jace, Local Adept",
+      typeLine: "Planeswalker",
+      colors: ["U"],
+    });
+    await addCardToSection(page, "Lands", {
+      name: "Command Tower",
+      typeLine: "Artifact Land",
+    });
+
+    await expect(
+      page.locator('section[aria-label="Creatures"]').getByText("Etherium-Horn Scout"),
+    ).toBeVisible();
+    await expect(
+      page.locator('section[aria-label="Lands"]').getByText("Command Tower"),
+    ).toBeVisible();
+    await expect(page.getByText("Fast mana tags: 1")).toBeVisible();
+
+    await addCardToSection(page, "Instants", {
+      name: "Red Elemental Burst",
+      typeLine: "Instant",
+      colors: ["R"],
+    });
+    await expect(
+      page.getByText(
+        "This card is outside your commander's color identity. Add anyway and mark deck illegal?",
+      ),
+    ).toBeVisible();
+    await page
+      .getByRole("dialog")
+      .last()
+      .getByRole("button", { name: "Send to Maybeboard" })
+      .click();
+    await page.getByRole("tab", { name: /Maybeboard/ }).click();
+    await expect(
+      page.locator('section[aria-label="Instants"]').getByText("Red Elemental Burst"),
+    ).toBeVisible();
+
+    await page.getByRole("tab", { name: /Main Deck/ }).click();
+    await addCardToSection(page, "Instants", {
+      name: "Counterspell",
+      typeLine: "Instant",
+      colors: ["U"],
+    });
+    await expect(
+      page.getByText("Commander singleton rule allows only one copy."),
+    ).toBeVisible();
+    await page
+      .getByRole("dialog")
+      .last()
+      .getByRole("button", { name: "Cancel" })
+      .click();
+
+    const scoutTile = page
+      .locator(".builder-card-tile")
+      .filter({ hasText: "Etherium-Horn Scout" })
+      .first();
+    await scoutTile.getByRole("button", { name: "Details" }).click();
+    await page.getByLabel("Notes").fill("Keep with artifact synergies.");
+    await page.getByLabel("Custom tags").fill("favorite");
+    await page.getByRole("button", { name: "Save Tags and Notes" }).click();
+    await page.getByRole("button", { name: "Mark Protected" }).click();
+    await page.getByRole("button", { name: "Move to Cuts" }).click();
+    await page.getByLabel("Optional cut reason").fill("Testing cuts flow");
+    await page
+      .getByRole("dialog")
+      .last()
+      .getByRole("button", { name: "Move to Cuts" })
+      .click();
+    await page.getByRole("tab", { name: /Cuts/ }).click();
+    await expect(
+      page.locator('section[aria-label="Creatures"]').getByText("Etherium-Horn Scout"),
+    ).toBeVisible();
+
+    await page.getByRole("tab", { name: /Main Deck/ }).click();
+    await page
+      .locator('section[aria-label="Lands"]')
+      .getByRole("button", { name: "Expand" })
+      .click();
+    await page.getByLabel("Search Section").fill("Command");
+    await expect(
+      page.getByRole("dialog").last().getByText("Command Tower"),
+    ).toBeVisible();
+    await page.getByRole("button", { name: /Back/ }).click();
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Builder Trial" })).toBeVisible();
+    await expect(page.getByText("Command Tower")).toBeVisible();
+
+    await page.getByRole("link", { name: /Library/ }).first().click();
+    await page.getByRole("link", { name: "Open Deck" }).click();
+    await expect(page.getByRole("heading", { name: "Builder Trial" })).toBeVisible();
   });
 });

@@ -78,6 +78,10 @@ export interface DeckCard {
   scryfallId: string;
   oracleId: string;
   name: string;
+  manaCost?: string;
+  typeLine?: string;
+  oracleText?: string;
+  colorIdentity?: CommanderColor[];
   quantity: number;
   section: DeckCardSection;
   categories: string[];
@@ -87,6 +91,8 @@ export interface DeckCard {
   protected: boolean;
   ownedQuantityAtAdd: number;
   missingQuantity: number;
+  bracketImpact?: number;
+  cutReason?: string;
   addedAt: string;
   updatedAt: string;
 }
