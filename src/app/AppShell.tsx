@@ -1,0 +1,170 @@
+import type { CSSProperties } from "react";
+import { NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { AppIcon } from "../components/AppIcon";
+import { permanentHomeRoutes } from "../data/routes";
+import { CreateDeckScreen } from "../features/decks/CreateDeckScreen";
+import { DeckBuilderScreen } from "../features/decks/DeckBuilderScreen";
+import { DeckLibraryScreen } from "../features/decks/DeckLibraryScreen";
+import { FoundationScreen } from "../features/foundation/FoundationScreen";
+import { HomeScreen } from "../features/home/HomeScreen";
+import { SettingsScreen } from "../features/settings/SettingsScreen";
+import { useSettings } from "./useSettings";
+
+export function AppShell() {
+  const { settings } = useSettings();
+  const location = useLocation();
+
+  const textScale =
+    settings.textSize === "large"
+      ? 1.08
+      : settings.textSize === "compact"
+        ? 0.94
+        : 1;
+
+  return (
+    <div
+      className="app-root"
+      data-reduced-motion={settings.reducedMotion}
+      data-static-home={settings.staticHomeScreen}
+      data-high-contrast={settings.highContrast}
+      style={
+        {
+          "--glow-strength": settings.glowIntensity,
+          "--text-scale": textScale,
+        } as CSSProperties
+      }
+    >
+      <div className="cosmic-backdrop" aria-hidden="true">
+        <span className="cosmic-backdrop__star cosmic-backdrop__star--one" />
+        <span className="cosmic-backdrop__star cosmic-backdrop__star--two" />
+        <span className="cosmic-backdrop__star cosmic-backdrop__star--three" />
+      </div>
+
+      <header className="app-topbar">
+        <NavLink className="brand-mark" to="/" aria-label="Deck Nexus home">
+          <span className="brand-mark__crystal" aria-hidden="true" />
+          <span>
+            <strong>Deck Nexus</strong>
+            <small>Commander Hub</small>
+          </span>
+        </NavLink>
+      </header>
+
+      <main className="route-surface" key={location.pathname}>
+        <Routes>
+          <Route path="/" element={<HomeScreen />} />
+          <Route path="/create" element={<CreateDeckScreen />} />
+          <Route path="/library" element={<DeckLibraryScreen />} />
+          <Route
+            path="/search"
+            element={
+              <FoundationScreen
+                title="Card Search"
+                status="Coming later"
+                summary="Manual card search will be added with Commander-focused filters and no commerce data."
+              />
+            }
+          />
+          <Route
+            path="/scan"
+            element={
+              <FoundationScreen
+                title="Scan Cards"
+                status="Coming later"
+                summary="Scanner batches and scan records are already modeled for local persistence."
+              />
+            }
+          />
+          <Route
+            path="/owned"
+            element={
+              <FoundationScreen
+                title="Owned Cards"
+                status="Coming later"
+                summary="Owned card and printing stores are ready for local collection tracking."
+              />
+            }
+          />
+          <Route
+            path="/import"
+            element={
+              <FoundationScreen
+                title="Import Deck"
+                status="Coming later"
+                summary="Deck import results and unresolved card records are part of the local schema."
+              />
+            }
+          />
+          <Route
+            path="/analyzer"
+            element={
+              <FoundationScreen
+                title="Analyzer"
+                status="Coming later"
+                summary="Deck and bracket analysis snapshots are prepared for Commander checks."
+              />
+            }
+          />
+          <Route
+            path="/groups"
+            element={
+              <FoundationScreen
+                title="Deck Groups"
+                status="Coming later"
+                summary="Local deck groups are modeled for organizing Commander decks."
+              />
+            }
+          />
+          <Route
+            path="/tags"
+            element={
+              <FoundationScreen
+                title="Tags"
+                status="Coming later"
+                summary="Tags and categories are ready for decks, cards, owned cards, and analysis."
+              />
+            }
+          />
+          <Route
+            path="/test"
+            element={
+              <FoundationScreen
+                title="Test Deck"
+                status="Coming later"
+                summary="Goldfish and test-play tools will be added after the Deck Builder is complete."
+              />
+            }
+          />
+          <Route
+            path="/export"
+            element={
+              <FoundationScreen
+                title="Export"
+                status="Coming later"
+                summary="Export history and default export format settings are already local-first."
+              />
+            }
+          />
+          <Route path="/settings" element={<SettingsScreen />} />
+          <Route path="/deck-builder" element={<DeckBuilderScreen />} />
+          <Route path="/deck-builder/:deckId" element={<DeckBuilderScreen />} />
+        </Routes>
+      </main>
+
+      <nav className="bottom-command-bar" aria-label="Primary navigation">
+        {permanentHomeRoutes.map((route) => (
+          <NavLink
+            className={({ isActive }) =>
+              `bottom-command-bar__item${isActive ? " is-active" : ""}`
+            }
+            key={route.id}
+            to={route.path}
+          >
+            <AppIcon name={route.icon} />
+            <span>{route.shortLabel}</span>
+          </NavLink>
+        ))}
+      </nav>
+    </div>
+  );
+}
