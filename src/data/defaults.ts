@@ -15,6 +15,8 @@ export const defaultAppSettings: AppSettings = {
   id: "app",
   reducedMotion: false,
   staticHomeScreen: false,
+  homePerformanceMode: "balanced",
+  deviceTiltParallax: false,
   glowIntensity: 1,
   highContrast: false,
   textSize: "normal",

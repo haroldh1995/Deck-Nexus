@@ -360,10 +360,14 @@ export interface AppMigration {
 
 export type TextSize = "compact" | "normal" | "large";
 
+export type HomePerformanceMode = "full" | "balanced" | "performance";
+
 export interface AppSettings {
   id: "app";
   reducedMotion: boolean;
   staticHomeScreen: boolean;
+  homePerformanceMode: HomePerformanceMode;
+  deviceTiltParallax: boolean;
   glowIntensity: number;
   highContrast: boolean;
   textSize: TextSize;

@@ -1,5 +1,20 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const homeRouteChecks = [
+  ["create-deck", "/create"],
+  ["deck-library", "/library"],
+  ["card-search", "/search"],
+  ["scan-cards", "/scan"],
+  ["owned-cards", "/owned"],
+  ["import-deck", "/import"],
+  ["analyzer", "/analyzer"],
+  ["deck-groups", "/groups"],
+  ["tags", "/tags"],
+  ["test-deck", "/test"],
+  ["export", "/export"],
+  ["settings", "/settings"],
+] as const;
+
 async function createBlankDeck(page: Page, name: string) {
   await page.goto("/create");
   await page.getByLabel("Deck name").fill(name);
@@ -52,6 +67,77 @@ async function addCardToSection(
 }
 
 test.describe("Deck Nexus local-first flow", () => {
+  test("opens every permanent Home command route from the holographic orbit keyboard controls", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    for (const [id, route] of homeRouteChecks) {
+      await page.goto("/");
+      const scene = page.getByTestId("home-hologram-scene");
+      await expect(scene).toBeVisible();
+      await expect(page.getByTestId(`orbit-card-${id}`)).toBeAttached();
+      await scene.focus();
+
+      const targetIndex = homeRouteChecks.findIndex(([cardId]) => cardId === id);
+      for (let index = 0; index < targetIndex; index += 1) {
+        await page.keyboard.press("ArrowRight");
+      }
+
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(new RegExp(`${route.replace("/", "\\/")}$`));
+    }
+  });
+
+  test("returns Home without replaying the full intro and opens dynamic favorites", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.getByTestId("home-hologram-scene").focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/create$/);
+
+    await page.goBack();
+    await expect(page.getByTestId("home-hologram-scene")).toHaveAttribute(
+      "data-intro",
+      /return|reduced/,
+    );
+
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open("deck-nexus-local");
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction("favorites", "readwrite");
+          transaction.objectStore("favorites").put({
+            id: "favorite-e2e",
+            type: "deck",
+            targetId: "deck-e2e",
+            title: "E2E Favorite Deck",
+            subtitle: "Stored locally",
+            route: "/deck-builder/deck-e2e",
+            order: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          transaction.oncomplete = () => {
+            database.close();
+            window.dispatchEvent(new Event("deck-nexus:favorites-updated"));
+            resolve();
+          };
+          transaction.onerror = () => reject(transaction.error);
+        };
+      });
+    });
+
+    await expect(
+      page.getByTestId("fallback-card-favorite:favorite-e2e"),
+    ).toBeVisible();
+    await page.getByTestId("fallback-card-favorite:favorite-e2e").click();
+    await expect(page).toHaveURL(/deck-builder\/deck-e2e$/);
+  });
+
   test("navigates, creates a blank Commander deck, and shows it in the library", async ({
     page,
   }) => {
@@ -89,11 +175,16 @@ test.describe("Deck Nexus local-first flow", () => {
     await expect(
       page.getByRole("link", { name: /Create Deck/ }).first(),
     ).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator(".nexus-orbit--static")).toBeVisible();
   });
 
   test("opens a deck from the library and edits the Deck Builder locally", async ({
     page,
   }) => {
+    test.setTimeout(120_000);
+
     await createBlankDeck(page, "Builder Trial");
 
     await page.getByRole("button", { name: /Add Commander/ }).click();

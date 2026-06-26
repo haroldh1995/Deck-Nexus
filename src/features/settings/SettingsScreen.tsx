@@ -6,6 +6,7 @@ import type {
   Bracket,
   BracketLock,
   ExportFormat,
+  HomePerformanceMode,
   OwnershipPreference,
   TextSize,
 } from "../../types/domain";
@@ -76,6 +77,18 @@ export function SettingsScreen() {
               />
               <span>High contrast</span>
             </label>
+            <label className="toggle-row">
+              <input
+                checked={settings.deviceTiltParallax}
+                onChange={(event) =>
+                  void updateSettings({
+                    deviceTiltParallax: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              <span>Device tilt parallax</span>
+            </label>
             <label>
               Glow intensity
               <input
@@ -90,6 +103,22 @@ export function SettingsScreen() {
                 type="range"
                 value={settings.glowIntensity}
               />
+            </label>
+            <label>
+              Home performance mode
+              <select
+                onChange={(event) =>
+                  void updateSettings({
+                    homePerformanceMode: event.target
+                      .value as HomePerformanceMode,
+                  })
+                }
+                value={settings.homePerformanceMode}
+              >
+                <option value="full">Full arcane</option>
+                <option value="balanced">Balanced arcane</option>
+                <option value="performance">Performance mode</option>
+              </select>
             </label>
             <label>
               Text size
