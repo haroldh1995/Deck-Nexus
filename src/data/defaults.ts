@@ -26,5 +26,6 @@ export const defaultAppSettings: AppSettings = {
   defaultOwnershipPreference: "owned_first",
   scannerBatchPersistence: true,
   homeOrbitOrder: [],
+  homeOrbitHiddenIds: [],
   updatedAt: new Date(0).toISOString(),
 };

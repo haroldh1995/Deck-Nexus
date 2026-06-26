@@ -625,41 +625,6 @@ a {
   outline: none;
 }
 
-.orbit-order-panel {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 0.45rem;
-  align-items: center;
-  margin-top: 0.75rem;
-  padding: 0.55rem;
-  border: 1px solid rgba(55, 234, 255, 0.22);
-  border-radius: var(--radius);
-  background: rgba(7, 17, 42, 0.74);
-  box-shadow: var(--shadow-violet);
-}
-
-.orbit-order-panel label {
-  color: var(--cyan);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.orbit-order-panel button {
-  display: grid;
-  width: 2.35rem;
-  height: 2.35rem;
-  place-items: center;
-  border: 1px solid rgba(55, 234, 255, 0.36);
-  border-radius: var(--radius);
-  color: var(--cyan);
-  background: rgba(55, 234, 255, 0.08);
-  cursor: pointer;
-}
-
-.orbit-order-panel button svg {
-  width: 1.1rem;
-}
-
 .nexus-orbit--static {
   min-height: auto;
   padding: 1rem;
@@ -2181,14 +2146,6 @@ input[type="range"] {
 
   .deck-list-card__meta {
     justify-content: flex-start;
-  }
-
-  .orbit-order-panel {
-    grid-template-columns: 1fr auto auto;
-  }
-
-  .orbit-order-panel label {
-    grid-column: 1 / -1;
   }
 
   .deck-builder-stage {

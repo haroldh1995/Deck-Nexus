@@ -1,6 +1,8 @@
-import { type CSSProperties, useEffect, useMemo } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { AppIcon } from "../../../components/AppIcon";
+import type { HomeOrbitItem } from "../../../types/navigation";
 import {
   calculateOrbitTransforms,
   getCardOverlapIntensity,
@@ -20,7 +22,7 @@ import {
   UpperProjectionAssembly,
 } from "./ArcaneRings";
 import { HologramParticlesCanvas } from "./HologramParticlesCanvas";
-import { HomeSceneFallbackNav } from "./HomeSceneFallbackNav";
+import { HomeMenuCustomizationOverlay } from "./HomeMenuCustomizationOverlay";
 import { OrbitCard } from "./OrbitCard";
 import { useHomeIntro } from "./useHomeIntro";
 import { useOrbitPhysics } from "./useOrbitPhysics";
@@ -31,19 +33,30 @@ import { useSceneVisibility } from "./useSceneVisibility";
 export function HomeHologramScene({
   cards,
   deckState,
+  hiddenItemIds,
+  menuItems,
   settings,
   onMoveCard,
+  onSaveMenuOrder,
 }: {
   cards: readonly HomeHologramCard[];
   deckState: HomeSceneDeckState;
+  hiddenItemIds: readonly string[];
+  menuItems: readonly HomeOrbitItem[];
   settings: HomeSceneSettings;
   onMoveCard: (cardId: string, direction: -1 | 1) => void;
+  onSaveMenuOrder: (
+    nextOrderIds: string[],
+    nextHiddenIds: string[],
+  ) => Promise<void>;
 }) {
   const navigate = useNavigate();
+  const gearButtonRef = useRef<HTMLButtonElement>(null);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
   const sceneScale = useResponsiveSceneScale();
   const visible = useSceneVisibility();
   const staticHome = settings.staticHomeScreen || settings.reducedMotion;
-  const introMode = useHomeIntro(settings.reducedMotion);
+  const { introMode, markIntroPlayed } = useHomeIntro(settings.reducedMotion);
   const parallax = useSceneParallax({
     deviceTiltEnabled: settings.deviceTiltParallax,
     enabled: !settings.reducedMotion && !settings.staticHomeScreen,
@@ -55,6 +68,7 @@ export function HomeHologramScene({
     visible,
   });
   const statusCopy = getHomeStatusCopy(deckState);
+  const controlsPortal = typeof document === "undefined" ? null : document.body;
   const {
     clearDistortion,
     dragging,
@@ -106,6 +120,7 @@ export function HomeHologramScene({
 
   function openCard(card: HomeHologramCard) {
     orbit.setQuickActionCardId(null);
+    markIntroPlayed();
     navigate(card.route);
   }
 
@@ -122,6 +137,21 @@ export function HomeHologramScene({
     orbit.focusIndex(index);
   }
 
+  function closeCustomizer() {
+    setCustomizerOpen(false);
+    window.requestAnimationFrame(() => {
+      gearButtonRef.current?.focus();
+    });
+  }
+
+  async function saveMenuOrder(
+    nextOrderIds: string[],
+    nextHiddenIds: string[],
+  ) {
+    await onSaveMenuOrder(nextOrderIds, nextHiddenIds);
+    closeCustomizer();
+  }
+
   const sceneClassName = [
     "home-hologram-scene",
     staticHome ? "nexus-orbit--static home-hologram-scene--static" : "",
@@ -134,6 +164,33 @@ export function HomeHologramScene({
 
   return (
     <div className="home-screen home-screen--hologram">
+      {controlsPortal
+        ? createPortal(
+            <>
+              <button
+                aria-label="Customize Home menu"
+                className="home-menu-gear"
+                onClick={() => setCustomizerOpen(true)}
+                ref={gearButtonRef}
+                title="Customize Home menu"
+                type="button"
+              >
+                <AppIcon name="settings" />
+              </button>
+
+              {customizerOpen ? (
+                <HomeMenuCustomizationOverlay
+                  hiddenItemIds={hiddenItemIds}
+                  items={menuItems}
+                  onCancel={closeCustomizer}
+                  onSave={saveMenuOrder}
+                />
+              ) : null}
+            </>,
+            controlsPortal,
+          )
+        : null}
+
       <section
         aria-label="Deck Nexus holographic command hub"
         className={sceneClassName}
@@ -227,11 +284,11 @@ export function HomeHologramScene({
           <small>{statusCopy.status}</small>
           {!deckState.hasDecks ? (
             <div className="home-core-status__actions">
-              <Link to="/create">
+              <Link onClick={markIntroPlayed} to="/create">
                 <AppIcon name="sparkles" />
                 Create Deck
               </Link>
-              <Link to="/import">
+              <Link onClick={markIntroPlayed} to="/import">
                 <AppIcon name="import" />
                 Import Deck
               </Link>
@@ -302,22 +359,22 @@ export function HomeHologramScene({
         </div>
       </section>
 
-      <HomeSceneFallbackNav
-        cards={cards}
-        onMoveSelected={(direction) => {
-          if (focusedCard) {
-            onMoveCard(focusedCard.id, direction);
-          }
-        }}
-        onSelect={(id) => {
-          const index = cards.findIndex((card) => card.id === id);
-          if (index >= 0) {
-            orbit.focusIndex(index);
-          }
-        }}
-        selectedId={focusedCard?.id ?? cards[0]?.id ?? ""}
-        staticHomeScreen={staticHome}
-      />
+      <nav
+        aria-label="Home command destinations"
+        className="home-screen-reader-nav"
+      >
+        {cards.map((card) => (
+          <Link
+            aria-label={card.actionLabel}
+            data-testid={`screen-reader-card-${card.id}`}
+            key={card.id}
+            to={card.route}
+          >
+            {card.label}
+          </Link>
+        ))}
+      </nav>
+
     </div>
   );
 }

@@ -47,6 +47,29 @@ describe("home orbit architecture", () => {
     expect(items).toHaveLength(13);
   });
 
+  it("hides dynamic favorite cards without removing permanent destinations", () => {
+    const favorite: FavoriteItem = {
+      id: "fav-one",
+      type: "saved_search",
+      targetId: "search-one",
+      title: "Hidden Favorite",
+      route: "/search?saved=search-one",
+      order: 1,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+
+    const items = buildHomeOrbitItems(
+      [favorite],
+      ["favorite:fav-one", "create-deck"],
+      ["favorite:fav-one", "create-deck"],
+    );
+
+    expect(items.map((item) => item.id)).not.toContain("favorite:fav-one");
+    expect(items.map((item) => item.id)).toContain("create-deck");
+    expect(items).toHaveLength(12);
+  });
+
   it("moves and reorders orbit items without removing locked cards", () => {
     const items = buildHomeOrbitItems([], []);
     const moved = moveHomeOrbitItem(items, "deck-library", -1);

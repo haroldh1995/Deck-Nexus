@@ -377,5 +377,6 @@ export interface AppSettings {
   defaultOwnershipPreference: OwnershipPreference;
   scannerBatchPersistence: boolean;
   homeOrbitOrder: string[];
+  homeOrbitHiddenIds: string[];
   updatedAt: string;
 }

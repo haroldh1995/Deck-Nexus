@@ -13,6 +13,7 @@ import { useSettings } from "./useSettings";
 export function AppShell() {
   const { settings } = useSettings();
   const location = useLocation();
+  const isHomeRoute = location.pathname === "/";
 
   const textScale =
     settings.textSize === "large"
@@ -23,7 +24,7 @@ export function AppShell() {
 
   return (
     <div
-      className="app-root"
+      className={`app-root${isHomeRoute ? " app-root--home" : ""}`}
       data-reduced-motion={settings.reducedMotion}
       data-static-home={settings.staticHomeScreen}
       data-high-contrast={settings.highContrast}
@@ -151,20 +152,22 @@ export function AppShell() {
         </Routes>
       </main>
 
-      <nav className="bottom-command-bar" aria-label="Primary navigation">
-        {permanentHomeRoutes.map((route) => (
-          <NavLink
-            className={({ isActive }) =>
-              `bottom-command-bar__item${isActive ? " is-active" : ""}`
-            }
-            key={route.id}
-            to={route.path}
-          >
-            <AppIcon name={route.icon} />
-            <span>{route.shortLabel}</span>
-          </NavLink>
-        ))}
-      </nav>
+      {!isHomeRoute ? (
+        <nav className="bottom-command-bar" aria-label="Primary navigation">
+          {permanentHomeRoutes.map((route) => (
+            <NavLink
+              className={({ isActive }) =>
+                `bottom-command-bar__item${isActive ? " is-active" : ""}`
+              }
+              key={route.id}
+              to={route.path}
+            >
+              <AppIcon name={route.icon} />
+              <span>{route.shortLabel}</span>
+            </NavLink>
+          ))}
+        </nav>
+      ) : null}
     </div>
   );
 }

@@ -89,6 +89,63 @@ test.describe("Deck Nexus local-first flow", () => {
     }
   });
 
+  test("uses the floating orbit as the only visible Home navigation and saves gear customization", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("home-hologram-scene")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Customize Home menu" }),
+    ).toBeVisible();
+    await expect(page.getByText(/Orbit order/i)).toHaveCount(0);
+    await expect(page.locator(".home-accessibility-nav")).toHaveCount(0);
+    await expect(page.locator(".bottom-command-bar")).toHaveCount(0);
+
+    const homeOverflow = await page.evaluate(() => {
+      const scrollingElement = document.scrollingElement ?? document.documentElement;
+      return {
+        bodyOverflow:
+          document.body.scrollHeight - document.body.clientHeight,
+        documentOverflow:
+          scrollingElement.scrollHeight - scrollingElement.clientHeight,
+        horizontalOverflow:
+          scrollingElement.scrollWidth - scrollingElement.clientWidth,
+      };
+    });
+    expect(homeOverflow.bodyOverflow).toBeLessThanOrEqual(2);
+    expect(homeOverflow.documentOverflow).toBeLessThanOrEqual(2);
+    expect(homeOverflow.horizontalOverflow).toBeLessThanOrEqual(2);
+
+    await page
+      .getByRole("button", { name: "Customize Home menu" })
+      .click();
+    await expect(
+      page.getByRole("dialog", { name: "Customize Home Menu" }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Move Deck Library earlier" })
+      .click();
+    await page.getByRole("button", { name: "Save Order" }).click();
+    await expect(
+      page.getByRole("dialog", { name: "Customize Home Menu" }),
+    ).toHaveCount(0);
+
+    await page.reload();
+    const scene = page.getByTestId("home-hologram-scene");
+    await expect(scene).toBeVisible();
+    await scene.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/library$/);
+
+    await page.goto("/");
+    await page
+      .getByRole("button", { name: "Customize Home menu" })
+      .click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Restore Default" }).click();
+    await page.getByRole("button", { name: "Save Order" }).click();
+  });
+
   test("returns Home without replaying the full intro and opens dynamic favorites", async ({
     page,
   }) => {
@@ -132,9 +189,13 @@ test.describe("Deck Nexus local-first flow", () => {
     });
 
     await expect(
-      page.getByTestId("fallback-card-favorite:favorite-e2e"),
-    ).toBeVisible();
-    await page.getByTestId("fallback-card-favorite:favorite-e2e").click();
+      page.getByTestId("orbit-card-favorite:favorite-e2e"),
+    ).toBeAttached();
+    await page.getByTestId("home-hologram-scene").focus();
+    for (let index = 0; index < homeRouteChecks.length; index += 1) {
+      await page.keyboard.press("ArrowRight");
+    }
+    await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/deck-builder\/deck-e2e$/);
   });
 
@@ -146,7 +207,10 @@ test.describe("Deck Nexus local-first flow", () => {
     await expect(
       page.getByRole("heading", { name: "No decks summoned" }),
     ).toBeVisible();
-    await page.getByRole("link", { name: /Create Deck/ }).first().click();
+    await page
+      .locator(".home-core-status__actions")
+      .getByRole("link", { name: /Create Deck/ })
+      .click();
 
     await page.getByLabel("Deck name").fill("Starlit Command");
     await page.getByLabel("Commander name").fill("Atraxa");
@@ -172,9 +236,8 @@ test.describe("Deck Nexus local-first flow", () => {
     await page.getByRole("link", { name: /Nexus/ }).click();
 
     await expect(page.locator(".nexus-orbit--static")).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /Create Deck/ }).first(),
-    ).toBeVisible();
+    await expect(page.getByTestId("orbit-card-create-deck")).toBeVisible();
+    await expect(page.locator(".bottom-command-bar")).toHaveCount(0);
 
     await page.reload();
     await expect(page.locator(".nexus-orbit--static")).toBeVisible();

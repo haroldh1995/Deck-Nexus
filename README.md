@@ -5,7 +5,7 @@ Deck Nexus is a mobile-first, local-first Commander deck builder for Magic: The 
 The current build establishes the Commander-focused app foundation:
 
 - Arcane Holographic Command Hub visual identity.
-- Dynamic 3D holographic Home Screen with a coded card orbit, upper rune ring, central beam, floating crystal, lower floor projection, particles, smoke, and accessible fallback navigation.
+- Dynamic 3D holographic Home Screen with a coded card orbit, upper rune ring, central beam, floating crystal, lower floor projection, particles, smoke, and gear-based menu customization.
 - Holographic Deck Workspace for saved Commander decks, with a top commander projection, color-identity orbs, fixed card-type archive sections, independent horizontal section scrolling, deck count diagnostics, and Live Bracket Tracker integration.
 - Local IndexedDB persistence through Dexie.
 - Commander-only deck model and deck creation flow.
@@ -26,14 +26,28 @@ Controls:
 - Press Enter on the scene to open the focused command.
 - Click a focused card to open it, or click an unfocused card to bring it forward.
 - Long press a card for quick actions such as Open, Focus, and order changes.
-- Use the bottom command bar or fallback command rail if the 3D scene is not the preferred navigation path.
+- Use the small top-right gear icon to customize the floating menu order. Permanent destinations can be reordered but not removed; dynamic favorite cards can be hidden from Home.
+- Screen-reader users get a visually hidden logical destination list without a second visible dashboard.
 
 Accessibility and performance:
 
 - Reduced Motion disables continuous orbit motion, complex intro animation, projection fragmentation, and parallax.
-- Static Home Screen keeps the arcane visual system but exposes commands as a stable projection grid/rail.
+- Static Home Screen keeps the arcane visual system and presents the same floating cards without idle orbit movement.
 - Performance modes are Full Arcane, Balanced Arcane, and Performance Mode. Balanced is the default and limits the heaviest continuous animation loops while preserving the holographic composition.
 - High Contrast and Large Text settings are respected by the Home scene and app shell.
+
+Home layout:
+
+- The floating holographic orbit is the only visible Home navigation surface.
+- The old shortcut strip, permanent Orbit Order panel, and bottom Home navigation bar have been removed.
+- Home is sized to the usable viewport with `100dvh`, safe-area padding, and no app-controlled vertical scroll.
+- Menu order, dynamic favorite visibility, and Home motion preferences persist in local IndexedDB settings.
+
+## Deployment
+
+The app is deployed to GitHub Pages at `https://haroldh1995.github.io/Deck-Nexus/`.
+
+Because the current Pages configuration serves the repository root, the production build is mirrored into the root fallback files `assets/deck-nexus-app.js` and `assets/deck-nexus-app.css` after `npm run build -- --mode github-pages`. Source changes are not considered complete until the branch is pushed and the live Pages URL is verified against the new build.
 
 ## Local-First Rules
 

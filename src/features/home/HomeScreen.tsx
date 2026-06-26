@@ -37,6 +37,16 @@ export function HomeScreen() {
   }, []);
 
   const orbitItems = useMemo(
+    () =>
+      buildHomeOrbitItems(
+        favorites,
+        settings.homeOrbitOrder,
+        settings.homeOrbitHiddenIds,
+      ),
+    [favorites, settings.homeOrbitHiddenIds, settings.homeOrbitOrder],
+  );
+
+  const menuItems = useMemo(
     () => buildHomeOrbitItems(favorites, settings.homeOrbitOrder),
     [favorites, settings.homeOrbitOrder],
   );
@@ -66,6 +76,13 @@ export function HomeScreen() {
     await persistOrbitOrder(nextItems);
   }
 
+  async function saveMenuOrder(nextOrderIds: string[], nextHiddenIds: string[]) {
+    await updateSettings({
+      homeOrbitHiddenIds: nextHiddenIds,
+      homeOrbitOrder: nextOrderIds,
+    });
+  }
+
   return (
     <HomeHologramScene
       cards={hologramCards}
@@ -74,7 +91,10 @@ export function HomeScreen() {
         hasDecks: decks.length > 0,
         mostRecentDeckName: mostRecentDeck?.name,
       }}
+      hiddenItemIds={settings.homeOrbitHiddenIds}
+      menuItems={menuItems}
       onMoveCard={(cardId, direction) => void moveCard(cardId, direction)}
+      onSaveMenuOrder={saveMenuOrder}
       settings={{
         deviceTiltParallax: settings.deviceTiltParallax,
         glowIntensity: settings.glowIntensity,

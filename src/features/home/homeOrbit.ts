@@ -15,7 +15,9 @@ export const permanentHomeOrbitItems: HomeOrbitItem[] =
 export function buildHomeOrbitItems(
   favorites: readonly FavoriteItem[],
   order: readonly string[],
+  hiddenIds: readonly string[] = [],
 ): HomeOrbitItem[] {
+  const hiddenIdSet = new Set(hiddenIds);
   const dynamicItems: HomeOrbitItem[] = favorites.map((favorite) => ({
     id: `favorite:${favorite.id}`,
     label: favorite.title,
@@ -29,24 +31,26 @@ export function buildHomeOrbitItems(
   const items = [...permanentHomeOrbitItems, ...dynamicItems];
   const orderedIds = new Map(order.map((id, index) => [id, index]));
 
-  return items.sort((a, b) => {
-    const aOrder = orderedIds.get(a.id);
-    const bOrder = orderedIds.get(b.id);
+  return items
+    .filter((item) => item.kind === "permanent" || !hiddenIdSet.has(item.id))
+    .sort((a, b) => {
+      const aOrder = orderedIds.get(a.id);
+      const bOrder = orderedIds.get(b.id);
 
-    if (aOrder !== undefined && bOrder !== undefined) {
-      return aOrder - bOrder;
-    }
+      if (aOrder !== undefined && bOrder !== undefined) {
+        return aOrder - bOrder;
+      }
 
-    if (aOrder !== undefined) {
-      return -1;
-    }
+      if (aOrder !== undefined) {
+        return -1;
+      }
 
-    if (bOrder !== undefined) {
-      return 1;
-    }
+      if (bOrder !== undefined) {
+        return 1;
+      }
 
-    return items.indexOf(a) - items.indexOf(b);
-  });
+      return items.indexOf(a) - items.indexOf(b);
+    });
 }
 
 export function moveHomeOrbitItem(

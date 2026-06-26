@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { homeIntroSessionKey } from "./homeSceneConstants";
 import type { HologramIntroMode } from "./homeSceneTypes";
 
@@ -16,7 +16,10 @@ export function getHomeIntroMode({
   return sessionPlayed ? "return" : "full";
 }
 
-export function useHomeIntro(reducedMotion: boolean): HologramIntroMode {
+export function useHomeIntro(reducedMotion: boolean): {
+  introMode: HologramIntroMode;
+  markIntroPlayed: () => void;
+} {
   const sessionPlayed = useMemo(() => {
     if (typeof window === "undefined") {
       return false;
@@ -30,6 +33,14 @@ export function useHomeIntro(reducedMotion: boolean): HologramIntroMode {
   const [introMode, setIntroMode] = useState(() =>
     getHomeIntroMode({ reducedMotion, sessionPlayed }),
   );
+
+  const markIntroPlayed = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(homeIntroSessionKey, "true");
+    }
+
+    setIntroMode(reducedMotion ? "reduced" : "return");
+  }, [reducedMotion]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -50,5 +61,8 @@ export function useHomeIntro(reducedMotion: boolean): HologramIntroMode {
     };
   }, [reducedMotion]);
 
-  return introMode;
+  return {
+    introMode,
+    markIntroPlayed,
+  };
 }

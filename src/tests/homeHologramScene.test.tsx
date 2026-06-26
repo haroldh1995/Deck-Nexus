@@ -30,13 +30,22 @@ function LocationProbe() {
 
 function renderScene({
   favorites = [],
+  hiddenItemIds = [],
   settings = baseSettings,
 }: {
   favorites?: FavoriteItem[];
+  hiddenItemIds?: string[];
   settings?: HomeSceneSettings;
 } = {}) {
-  const cards = buildHomeHologramCards(buildHomeOrbitItems(favorites, []));
+  const menuItems = buildHomeOrbitItems(favorites, []);
+  const cards = buildHomeHologramCards(
+    buildHomeOrbitItems(favorites, [], hiddenItemIds),
+  );
   const movedCards: Array<{ id: string; direction: -1 | 1 }> = [];
+  const saveMenuOrder =
+    vi.fn<
+      (nextOrderIds: string[], nextHiddenIds: string[]) => Promise<void>
+    >(async () => {});
 
   render(
     <MemoryRouter initialEntries={["/"]}>
@@ -46,14 +55,17 @@ function renderScene({
           deckCount: 0,
           hasDecks: false,
         }}
+        hiddenItemIds={hiddenItemIds}
+        menuItems={menuItems}
         onMoveCard={(id, direction) => movedCards.push({ direction, id })}
+        onSaveMenuOrder={saveMenuOrder}
         settings={settings}
       />
       <LocationProbe />
     </MemoryRouter>,
   );
 
-  return { movedCards };
+  return { movedCards, saveMenuOrder };
 }
 
 beforeEach(() => {
@@ -118,8 +130,7 @@ describe("HomeHologramScene", () => {
     expect(screen.getByTestId("location")).toHaveTextContent("/library");
   });
 
-  it("shows every command in static home fallback navigation", async () => {
-    const user = userEvent.setup();
+  it("keeps every command in the static holographic orbit without rendering the removed dashboard", () => {
     renderScene({
       settings: {
         ...baseSettings,
@@ -132,11 +143,14 @@ describe("HomeHologramScene", () => {
     );
 
     for (const item of permanentHomeOrbitItems) {
-      expect(screen.getByTestId(`fallback-card-${item.id}`)).toBeVisible();
+      expect(screen.getByTestId(`orbit-card-${item.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`screen-reader-card-${item.id}`))
+        .toHaveAttribute("href", item.route);
     }
 
-    await user.click(screen.getByTestId("fallback-card-deck-library"));
-    expect(screen.getByTestId("location")).toHaveTextContent("/library");
+    expect(screen.queryByText(/Orbit order/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("fallback-card-create-deck"))
+      .not.toBeInTheDocument();
   });
 
   it("marks reduced motion and disables the moving orbit presentation", () => {
@@ -170,8 +184,106 @@ describe("HomeHologramScene", () => {
 
     expect(screen.getByTestId("orbit-card-favorite:favorite-deck"))
       .toHaveAccessibleName(/Favorite Deck/);
-    expect(screen.getByTestId("fallback-card-favorite:favorite-deck"))
+    expect(screen.getByTestId("screen-reader-card-favorite:favorite-deck"))
       .toHaveAccessibleName(/Favorite Deck/);
+  });
+
+  it("renders one unlabeled gear that opens and closes Home menu customization", async () => {
+    const user = userEvent.setup();
+    renderScene();
+
+    const gear = screen.getByRole("button", { name: "Customize Home menu" });
+    expect(gear).toBeVisible();
+    expect(gear).not.toHaveTextContent(/Customize|Settings|Orbit Order/i);
+
+    await user.click(gear);
+    expect(
+      screen.getByRole("dialog", { name: "Customize Home Menu" }),
+    ).toBeVisible();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Close Home menu customization",
+      }),
+    );
+
+    await waitFor(() => expect(gear).toHaveFocus());
+  });
+
+  it("saves reordered Home menu items from the customization overlay", async () => {
+    const user = userEvent.setup();
+    const { saveMenuOrder } = renderScene();
+
+    await user.click(
+      screen.getByRole("button", { name: "Customize Home menu" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Move Deck Library earlier" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save Order" }));
+
+    await waitFor(() => expect(saveMenuOrder).toHaveBeenCalledTimes(1));
+    expect(saveMenuOrder.mock.calls[0][0].slice(0, 2)).toEqual([
+      "deck-library",
+      "create-deck",
+    ]);
+    expect(saveMenuOrder.mock.calls[0][1]).toEqual([]);
+  });
+
+  it("cancels Home menu customization without saving", async () => {
+    const user = userEvent.setup();
+    const { saveMenuOrder } = renderScene();
+
+    await user.click(
+      screen.getByRole("button", { name: "Customize Home menu" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Move Deck Library earlier" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(saveMenuOrder).not.toHaveBeenCalled();
+  });
+
+  it("keeps permanent cards required and lets dynamic favorite cards hide from Home", async () => {
+    const user = userEvent.setup();
+    const favorite: FavoriteItem = {
+      id: "favorite-deck",
+      type: "deck",
+      targetId: "deck-one",
+      title: "Favorite Deck",
+      subtitle: "Atraxa local favorite",
+      route: "/deck-builder/deck-one",
+      order: 0,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const { saveMenuOrder } = renderScene({ favorites: [favorite] });
+
+    await user.click(
+      screen.getByRole("button", { name: "Customize Home menu" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Create Deck is required" }),
+    ).toBeDisabled();
+
+    while (
+      !screen.queryByRole("button", {
+        name: "Hide Favorite Deck from Home",
+      })
+    ) {
+      await user.click(screen.getByRole("button", { name: "Next" }));
+    }
+
+    await user.click(
+      screen.getByRole("button", { name: "Hide Favorite Deck from Home" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save Order" }));
+
+    await waitFor(() => expect(saveMenuOrder).toHaveBeenCalledTimes(1));
+    expect(saveMenuOrder.mock.calls[0][1]).toContain(
+      "favorite:favorite-deck",
+    );
   });
 
   it("does not open long-press actions after drag intent is detected", () => {
