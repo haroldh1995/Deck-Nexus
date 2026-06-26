@@ -6,6 +6,7 @@ The current build establishes the Commander-focused app foundation:
 
 - Arcane Holographic Command Hub visual identity.
 - Dynamic 3D holographic Home Screen with a coded card orbit, upper rune ring, central beam, floating crystal, lower floor projection, particles, smoke, and accessible fallback navigation.
+- Holographic Deck Workspace for saved Commander decks, with a top commander projection, color-identity orbs, fixed card-type archive sections, independent horizontal section scrolling, deck count diagnostics, and Live Bracket Tracker integration.
 - Local IndexedDB persistence through Dexie.
 - Commander-only deck model and deck creation flow.
 - Deck Library with local saved decks and deletion.
@@ -39,6 +40,32 @@ Accessibility and performance:
 Deck Nexus stores app data in the browser's IndexedDB and does not require login or cloud sync. The app intentionally contains no commerce data, collection valuation, or external acquisition flows.
 
 Automatic deck-building architecture must respect Commander color identity. Manual search can eventually show broader results, but automated suggestions and placements must stay inside the commander's color identity.
+
+## Holographic Deck Workspace
+
+Saved decks open into a coded arcane workspace inspired by `public/assets/deck-workspace-reference.jpg`. The reference image is used as a low-opacity atmospheric alignment layer; commander data, color orbs, card archives, counts, tools, and actions are real React elements.
+
+Layout:
+
+- Commander projection stays at the top center with a cyan/violet frame.
+- Five custom color-identity orbs surround the commander area. Active commander colors glow, inactive colors remain dim, and colorless commanders activate a neutral diamond rune.
+- Total Commander count remains visible at the upper-right of the workspace and counts commander-zone plus main deck cards only.
+- Creatures are full-width below the commander.
+- Instants/Sorceries, Artifacts/Enchantments, and Other Permanents/Lands are paired in the required left/right rows.
+- Maybeboard and Cuts remain accessible through local tabs and do not count toward the 100-card Commander total.
+
+Card organization:
+
+- Creature cards, including Artifact Creatures and Enchantment Creatures, appear in Creatures with secondary badges.
+- Instants, Sorceries, noncreature Artifacts, noncreature Enchantments, Lands, Artifact Lands, Planeswalkers, Battles, and unusual future permanent types are classified into their Commander workspace sections.
+- Section counts include card quantity, exclude Maybeboard and Cuts in Main Deck view, and update immediately after local edits.
+
+Controls and accessibility:
+
+- Every section is an independent horizontal scroll archive with previous/next controls, touch or trackpad scrolling, keyboard Left/Right/Home/End support, and screen-reader range text.
+- Section Add opens the local manual add flow with Commander rule warnings. Scan Into Section routes to the scanner surface with the deck and target section in the URL.
+- Expanded section panels include section search, sort, filter, scan, recommendations entry, multi-select foundations, move, tag, protect, cut, and remove actions.
+- Reduced Motion stops nonessential workspace animation while preserving glow, section scrolling, and all deck-editing functions. High Contrast increases border clarity through the app setting.
 
 ## Scripts
 

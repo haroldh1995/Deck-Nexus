@@ -22,7 +22,9 @@ export function useHomeIntro(reducedMotion: boolean): HologramIntroMode {
       return false;
     }
 
-    return window.sessionStorage.getItem(homeIntroSessionKey) === "true";
+    const played = window.sessionStorage.getItem(homeIntroSessionKey) === "true";
+    window.sessionStorage.setItem(homeIntroSessionKey, "true");
+    return played;
   }, []);
 
   const [introMode, setIntroMode] = useState(() =>

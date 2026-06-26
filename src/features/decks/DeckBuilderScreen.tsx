@@ -2,7 +2,10 @@ import {
   type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
+  type PointerEvent,
   type ReactNode,
+  type UIEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -75,7 +78,6 @@ import {
 } from "./commanderRules";
 import {
   builderSections,
-  mainBuilderSectionIds,
   type AddDestination,
   type BuilderSectionId,
   type BuilderTab,
@@ -84,7 +86,20 @@ import {
   type RuleWarning,
   type SectionHealth,
 } from "./builderTypes";
+import { CommanderIdentityOrbs } from "./CommanderIdentityOrbs";
+import {
+  deckWorkspaceSectionRows,
+  filterWorkspaceCards,
+  getCardsForBuilderTab,
+  getCardsForWorkspaceSection,
+  getDeckCountSummary,
+  getScrollRangeDescription,
+  sortWorkspaceCards,
+  sumDeckCardQuantities,
+  type SectionSortOption,
+} from "./deckWorkspace";
 import { formatBracketLock, formatCommanderNames } from "./deckPresentation";
+import "../../styles/deckWorkspace.css";
 
 type CardFormState = {
   name: string;
@@ -146,6 +161,8 @@ const tabLabels: Record<BuilderTab, string> = {
   maybeboard: "Maybeboard",
   cuts: "Cuts",
 };
+
+const sectionScrollMemory = new Map<string, number>();
 
 function destinationForTab(tab: BuilderTab): AddDestination {
   return tab === "main" ? "main" : tab;
@@ -217,15 +234,7 @@ function getDeckCardById(deck: Deck, cardId: string): DeckCard | undefined {
 }
 
 function getCardsForTab(deck: Deck, tab: BuilderTab): DeckCard[] {
-  if (tab === "maybeboard") {
-    return deck.maybeboard;
-  }
-
-  if (tab === "cuts") {
-    return deck.cuts;
-  }
-
-  return deck.cards;
+  return getCardsForBuilderTab(deck, tab);
 }
 
 function getCardsForSection(
@@ -233,13 +242,11 @@ function getCardsForSection(
   section: BuilderSectionId,
   tab: BuilderTab,
 ): DeckCard[] {
-  return getCardsForTab(deck, tab).filter(
-    (card) => getCardBuilderSection(card) === section,
-  );
+  return getCardsForWorkspaceSection(deck, section, tab);
 }
 
 function sumQuantities(cards: readonly DeckCard[]): number {
-  return cards.reduce((total, card) => total + card.quantity, 0);
+  return sumDeckCardQuantities(cards);
 }
 
 function getSectionHealth(deck: Deck, cards: readonly DeckCard[]): SectionHealth {
@@ -767,6 +774,11 @@ export function DeckBuilderScreen() {
   const replacementCandidates = deck.cards.filter(
     (card) => card.section === "main",
   );
+  const hasIllegalWarnings = deckWarnings.some(
+    (warning) => warning.severity === "illegal",
+  );
+  const deckCountSummary = getDeckCountSummary(deck, hasIllegalWarnings);
+  const workspaceReferenceSrc = `${import.meta.env.BASE_URL}assets/deck-workspace-reference.jpg`;
 
   return (
     <div className="screen deck-builder-screen">
@@ -775,7 +787,7 @@ export function DeckBuilderScreen() {
           <ArrowLeft aria-hidden="true" />
           Library
         </Link>
-        <StatusPill tone={deckWarnings.some((warning) => warning.severity === "illegal") ? "violet" : "cyan"}>
+        <StatusPill tone={hasIllegalWarnings ? "violet" : "cyan"}>
           {formatBracketLock(deck.bracketLock)}
         </StatusPill>
       </PageHeader>
@@ -821,9 +833,24 @@ export function DeckBuilderScreen() {
       <section
         className={`deck-builder-stage deck-builder-stage--${bracketAnalysis.meterTone}`}
         aria-label="Commander deck builder"
+        data-active-tab={activeTab}
       >
+        <img
+          alt=""
+          aria-hidden="true"
+          className="deck-workspace-reference-layer"
+          src={workspaceReferenceSrc}
+        />
         <div className="builder-rune builder-rune--top" aria-hidden="true" />
+        <div className="builder-rune builder-rune--floor" aria-hidden="true" />
         <div className="builder-beam" aria-hidden="true" />
+        <div className="deck-workspace-backdrop" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+
+        <DeckCountStatusBadge summary={deckCountSummary} />
 
         <CommanderZone
           commanderCards={commanderCards}
@@ -834,30 +861,13 @@ export function DeckBuilderScreen() {
           onQuickMenu={(card) => setQuickMenuCardId(card.id)}
         />
 
-        <DeckSectionPanel
-          cards={getCardsForSection(deck, "creatures", activeTab)}
-          deck={deck}
-          focusedCardId={focusedCardId}
-          health={getSectionHealth(
-            deck,
-            getCardsForSection(deck, "creatures", activeTab),
-          )}
-          isLarge
-          onAdd={() => openAddCardModal("creatures")}
-          onBeginPress={beginCardPress}
-          onEndPress={endCardPress}
-          onExpand={() => setExpandedSection("creatures")}
-          onFocusCard={(card) => setFocusedCardId(card.id)}
-          onKeyDown={handleCardKeyDown}
-          onOpenDetail={openDetail}
-          onQuickMenu={(card) => setQuickMenuCardId(card.id)}
-          sectionId="creatures"
-        />
-
-        <div className="builder-section-grid">
-          {mainBuilderSectionIds
-            .filter((sectionId) => sectionId !== "creatures")
-            .map((sectionId) => {
+        <div className="deck-workspace-grid" aria-label={`${tabLabels[activeTab]} card sections`}>
+          {deckWorkspaceSectionRows.map((row) => (
+            <div
+              className={`deck-workspace-row${row.length === 1 ? " deck-workspace-row--full" : " deck-workspace-row--split"}`}
+              key={row.join("-")}
+            >
+              {row.map((sectionId) => {
               const cards = getCardsForSection(deck, sectionId, activeTab);
               return (
                 <DeckSectionPanel
@@ -865,6 +875,7 @@ export function DeckBuilderScreen() {
                   deck={deck}
                   focusedCardId={focusedCardId}
                   health={getSectionHealth(deck, cards)}
+                  isLarge={sectionId === "creatures"}
                   key={sectionId}
                   onAdd={() => openAddCardModal(sectionId)}
                   onBeginPress={beginCardPress}
@@ -874,13 +885,17 @@ export function DeckBuilderScreen() {
                   onKeyDown={handleCardKeyDown}
                   onOpenDetail={openDetail}
                   onQuickMenu={(card) => setQuickMenuCardId(card.id)}
+                  onScan={() => navigate(`/scan?deckId=${deck.id}&section=${sectionId}`)}
                   sectionId={sectionId}
+                  tab={activeTab}
                 />
               );
-            })}
+              })}
+            </div>
+          ))}
         </div>
 
-        <div className="builder-meter-row">
+        <div className="builder-meter-row deck-diagnostic-assembly">
           <DeckCountRing count={mainDeckCount} />
           <BracketTracker
             analysis={bracketAnalysis}
@@ -924,6 +939,14 @@ export function DeckBuilderScreen() {
           >
             <Layers3 aria-hidden="true" />
             <span>Smart Build</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/analyzer")}
+            title="Analyze and statistics"
+          >
+            <BarChart3 aria-hidden="true" />
+            <span>Analyze</span>
           </button>
           <button
             type="button"
@@ -1062,6 +1085,12 @@ export function DeckBuilderScreen() {
             handleUpdateCard(card, { protected: !card.protected })
           }
           onRemove={handleRemoveCard}
+          onRecommendations={() =>
+            setStatusMessage(
+              "Section recommendations will use local deck intelligence in a later prompt and will respect commander color identity.",
+            )
+          }
+          onScan={() => navigate(`/scan?deckId=${deck.id}&section=${expandedSection}`)}
           onTag={(card) => openDetail(card)}
         />
       ) : null}
@@ -1103,25 +1132,10 @@ function CommanderZone({
       className={`commander-zone commander-zone--${deck.colorIdentity.join("").toLowerCase() || "colorless"}`}
       aria-label="Commander zone"
     >
-      <div className="commander-orbit" aria-hidden="true">
-        {["W", "U", "B", "R", "G", "C"].map((color) => (
-          <span
-            className={
-              color === "C"
-                ? deck.colorIdentity.length === 0 && commanderCards.length > 0
-                  ? "is-active"
-                  : ""
-                : deck.colorIdentity.includes(color as CommanderColor)
-                  ? "is-active"
-                  : ""
-            }
-            data-color={color}
-            key={color}
-          >
-            {color}
-          </span>
-        ))}
-      </div>
+      <CommanderIdentityOrbs
+        colorIdentity={deck.colorIdentity}
+        hasCommander={commanderCards.length > 0}
+      />
       <div className="commander-card-frame">
         <div className="commander-card-frame__inner">
           <p className="builder-kicker">Commander Zone</p>
@@ -1140,13 +1154,21 @@ function CommanderZone({
                 }}
                 type="button"
               >
+                <span className="commander-card-art" aria-hidden="true">
+                  <span />
+                </span>
                 <strong>{card.name}</strong>
                 <span>{card.typeLine || "Legendary Creature"}</span>
-                <small>{formatColorIdentity(card.colorIdentity ?? [])}</small>
+                <small>
+                  {formatColorIdentity(card.colorIdentity ?? [])} · Protected zone
+                </small>
               </button>
             ))
           ) : (
             <div className="commander-empty">
+              <span className="commander-card-art" aria-hidden="true">
+                <span />
+              </span>
               <strong>
                 {deck.commanderNames.length > 0
                   ? formatCommanderNames(deck)
@@ -1179,7 +1201,9 @@ function DeckSectionPanel({
   onKeyDown,
   onOpenDetail,
   onQuickMenu,
+  onScan,
   sectionId,
+  tab,
 }: {
   cards: DeckCard[];
   deck: Deck;
@@ -1194,9 +1218,79 @@ function DeckSectionPanel({
   onKeyDown: (event: KeyboardEvent, card: DeckCard) => void;
   onOpenDetail: (card: DeckCard) => void;
   onQuickMenu: (card: DeckCard) => void;
+  onScan: () => void;
   sectionId: BuilderSectionId;
+  tab: BuilderTab;
 }) {
   const section = builderSections.find((item) => item.id === sectionId);
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const scrollKey = `${deck.id}:${tab}:${sectionId}`;
+  const [rangeDescription, setRangeDescription] = useState(
+    getScrollRangeDescription(section?.label ?? "Section", cards.length, 0, 1, 1),
+  );
+
+  const updateRange = useCallback((element: HTMLDivElement) => {
+    const firstTile = element.querySelector<HTMLElement>(".builder-card-tile");
+    const itemWidth = firstTile
+      ? firstTile.offsetWidth + 8
+      : Math.max(1, element.clientWidth);
+
+    setRangeDescription(
+      getScrollRangeDescription(
+        section?.label ?? "Section",
+        cards.length,
+        element.scrollLeft,
+        element.clientWidth,
+        itemWidth,
+      ),
+    );
+  }, [cards.length, section?.label]);
+
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) {
+      return;
+    }
+
+    rail.scrollLeft = sectionScrollMemory.get(scrollKey) ?? 0;
+    updateRange(rail);
+  }, [cards.length, scrollKey, updateRange]);
+
+  function handleRailScroll(event: UIEvent<HTMLDivElement>) {
+    sectionScrollMemory.set(scrollKey, event.currentTarget.scrollLeft);
+    updateRange(event.currentTarget);
+  }
+
+  function scrollTrack(direction: "previous" | "next") {
+    const rail = railRef.current;
+    if (!rail) {
+      return;
+    }
+
+    rail.scrollBy({
+      left: (direction === "next" ? 1 : -1) * rail.clientWidth * 0.76,
+      behavior: "smooth",
+    });
+  }
+
+  function handleTrackKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      scrollTrack("previous");
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      scrollTrack("next");
+    } else if (event.key === "Home" && railRef.current) {
+      event.preventDefault();
+      railRef.current.scrollTo({ left: 0, behavior: "smooth" });
+    } else if (event.key === "End" && railRef.current) {
+      event.preventDefault();
+      railRef.current.scrollTo({
+        left: railRef.current.scrollWidth,
+        behavior: "smooth",
+      });
+    }
+  }
 
   return (
     <section
@@ -1208,35 +1302,72 @@ function DeckSectionPanel({
           <span className="section-glyph">{section?.glyph}</span>
           <h2>{section?.label}</h2>
         </div>
-        <span>{sumQuantities(cards)}</span>
+        <span aria-label={`${section?.label} count ${sumQuantities(cards)}`}>
+          {sumQuantities(cards)}
+        </span>
       </header>
       {cards.length === 0 ? (
         <button className="builder-empty-card" onClick={onAdd} type="button">
           <Plus aria-hidden="true" />
-          Add {section?.shortLabel}
+          <strong>No {section?.label}</strong>
+          <span>Tap + to add {section?.shortLabel.toLowerCase()}.</span>
         </button>
       ) : (
-        <div className="builder-card-rail" aria-label={`${section?.label} cards`}>
-          {cards.map((card) => (
-            <CardTile
-              card={card}
-              deck={deck}
-              focused={focusedCardId === card.id}
-              key={card.id}
-              onBeginPress={onBeginPress}
-              onEndPress={onEndPress}
-              onFocus={onFocusCard}
-              onKeyDown={onKeyDown}
-              onOpenDetail={onOpenDetail}
-              onQuickMenu={onQuickMenu}
-            />
-          ))}
+        <div className="builder-track-shell">
+          <button
+            aria-label={`Previous ${section?.label}`}
+            className="section-scroll-button section-scroll-button--previous"
+            onClick={() => scrollTrack("previous")}
+            type="button"
+          >
+            <ArrowLeft aria-hidden="true" />
+          </button>
+          <div
+            aria-describedby={`${sectionId}-range`}
+            aria-label={`${section?.label} cards`}
+            className="builder-card-rail"
+            onKeyDown={handleTrackKeyDown}
+            onScroll={handleRailScroll}
+            ref={railRef}
+            role="region"
+            tabIndex={0}
+          >
+            {cards.map((card) => (
+              <CardTile
+                card={card}
+                deck={deck}
+                focused={focusedCardId === card.id}
+                key={card.id}
+                onBeginPress={onBeginPress}
+                onEndPress={onEndPress}
+                onFocus={onFocusCard}
+                onKeyDown={onKeyDown}
+                onOpenDetail={onOpenDetail}
+                onQuickMenu={onQuickMenu}
+              />
+            ))}
+          </div>
+          <button
+            aria-label={`Next ${section?.label}`}
+            className="section-scroll-button section-scroll-button--next"
+            onClick={() => scrollTrack("next")}
+            type="button"
+          >
+            <ArrowLeft aria-hidden="true" />
+          </button>
+          <p className="section-range sr-only" id={`${sectionId}-range`}>
+            {rangeDescription}
+          </p>
         </div>
       )}
       <footer className="builder-section__footer">
         <button className="secondary-action" onClick={onAdd} type="button">
           <Plus aria-hidden="true" />
           Add
+        </button>
+        <button className="secondary-action" onClick={onScan} type="button">
+          <ScanLine aria-hidden="true" />
+          Scan
         </button>
         <button className="secondary-action" onClick={onExpand} type="button">
           <Archive aria-hidden="true" />
@@ -1271,26 +1402,70 @@ function CardTile({
   const badges = getCardBadges(card.typeLine ?? "");
   const legality = getCardLegalityLabel(deck, card);
   const serious = legality === "Outside color identity" || legality === "Singleton warning";
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const dragged = useRef(false);
+
+  function handlePointerDown(event: PointerEvent<HTMLElement>) {
+    pointerStart.current = { x: event.clientX, y: event.clientY };
+    dragged.current = false;
+    onBeginPress(card);
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLElement>) {
+    if (!pointerStart.current) {
+      return;
+    }
+
+    const distance = Math.hypot(
+      event.clientX - pointerStart.current.x,
+      event.clientY - pointerStart.current.y,
+    );
+
+    if (distance > 8) {
+      dragged.current = true;
+      onEndPress();
+    }
+  }
+
+  function handlePointerEnd() {
+    pointerStart.current = null;
+    onEndPress();
+  }
 
   return (
     <article
       className={`builder-card-tile${focused ? " is-focused" : ""}${serious ? " is-illegal" : ""}${card.missingQuantity > 0 ? " is-missing" : ""}`}
-      onClick={() => onFocus(card)}
+      aria-label={`${card.name}. ${card.typeLine || "Card"}. ${legality}. ${card.missingQuantity > 0 ? "Missing" : "Owned"}.`}
+      aria-pressed={focused}
+      onClick={() => {
+        if (dragged.current) {
+          dragged.current = false;
+          return;
+        }
+
+        if (focused) {
+          onOpenDetail(card);
+        } else {
+          onFocus(card);
+        }
+      }}
       onContextMenu={(event) => {
         event.preventDefault();
         onQuickMenu(card);
       }}
       onKeyDown={(event) => onKeyDown(event, card)}
-      onPointerCancel={onEndPress}
-      onPointerDown={() => onBeginPress(card)}
-      onPointerLeave={onEndPress}
-      onPointerUp={onEndPress}
+      onPointerCancel={handlePointerEnd}
+      onPointerDown={handlePointerDown}
+      onPointerLeave={handlePointerEnd}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
       role="button"
       tabIndex={0}
     >
       <div className="builder-card-art" aria-hidden="true" />
       <strong>{card.name}</strong>
       <span>{card.typeLine || "Card"}</span>
+      {card.quantity > 1 ? <em className="card-quantity">x{card.quantity}</em> : null}
       <div className="builder-card-badges">
         {badges.map((badge) => (
           <small key={badge}>{badge}</small>
@@ -1310,6 +1485,23 @@ function CardTile({
         Details
       </button>
     </article>
+  );
+}
+
+function DeckCountStatusBadge({
+  summary,
+}: {
+  summary: ReturnType<typeof getDeckCountSummary>;
+}) {
+  return (
+    <aside
+      aria-label={summary.ariaLabel}
+      className={`deck-count-status deck-count-status--${summary.tone}`}
+    >
+      <strong>{summary.count}</strong>
+      <span>/ {summary.required}</span>
+      <small>{summary.status}</small>
+    </aside>
   );
 }
 
@@ -1863,6 +2055,8 @@ function ExpandedSectionPanel({
   onOpenDetail,
   onProtect,
   onRemove,
+  onRecommendations,
+  onScan,
   onTag,
   sectionId,
   tab,
@@ -1876,6 +2070,8 @@ function ExpandedSectionPanel({
   onOpenDetail: (card: DeckCard) => void;
   onProtect: (card: DeckCard) => void;
   onRemove: (card: DeckCard) => void;
+  onRecommendations: () => void;
+  onScan: () => void;
   onTag: (card: DeckCard) => void;
   sectionId: BuilderSectionId;
   tab: BuilderTab;
@@ -1885,7 +2081,7 @@ function ExpandedSectionPanel({
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const section = builderSections.find((item) => item.id === sectionId);
-  const visibleCards = [...cards]
+  const filteredCards = [...cards]
     .filter((card) =>
       card.name.toLowerCase().includes(search.trim().toLowerCase()),
     )
@@ -1899,17 +2095,12 @@ function ExpandedSectionPanel({
       if (filter === "warnings") {
         return getCardLegalityLabel(deck, card) !== "No rule warnings";
       }
-      return true;
-    })
-    .sort((left, right) => {
-      if (sort === "added") {
-        return right.addedAt.localeCompare(left.addedAt);
-      }
-      if (sort === "missing") {
-        return right.missingQuantity - left.missingQuantity;
-      }
-      return left.name.localeCompare(right.name);
+      return filterWorkspaceCards([card], filter).length > 0;
     });
+  const visibleCards = sortWorkspaceCards(
+    filteredCards,
+    sort as SectionSortOption,
+  );
 
   function selectedCards() {
     return visibleCards.filter((card) => selected.has(card.id));
@@ -1933,15 +2124,24 @@ function ExpandedSectionPanel({
           <label>
             Sort
             <select value={sort} onChange={(event) => setSort(event.target.value)}>
+              <option value="custom">Custom order</option>
+              <option value="manaValue">Mana value</option>
               <option value="name">Name</option>
-              <option value="added">Recently Added</option>
-              <option value="missing">Missing Marker</option>
+              <option value="color">Color</option>
+              <option value="cardType">Card type</option>
+              <option value="role">Role</option>
+              <option value="owned">Owned status</option>
+              <option value="legality">Legality issue</option>
+              <option value="recent">Recently added</option>
+              <option value="protected">Protected first</option>
+              <option value="missing">Missing owned first</option>
             </select>
           </label>
           <label>
             Filter
             <select value={filter} onChange={(event) => setFilter(event.target.value)}>
               <option value="all">All</option>
+              <option value="owned">Owned</option>
               <option value="missing">Missing</option>
               <option value="protected">Protected</option>
               <option value="warnings">Rule Warnings</option>
@@ -1953,6 +2153,14 @@ function ExpandedSectionPanel({
           </button>
         </div>
         <div className="expanded-actions">
+          <button className="secondary-action" onClick={onScan} type="button">
+            <ScanLine aria-hidden="true" />
+            Scan Into Section
+          </button>
+          <button className="secondary-action" onClick={onRecommendations} type="button">
+            <Sparkles aria-hidden="true" />
+            Recommendations
+          </button>
           <button
             className="secondary-action"
             disabled={selected.size === 0}

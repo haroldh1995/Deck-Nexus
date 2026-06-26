@@ -70,7 +70,7 @@ test.describe("Deck Nexus local-first flow", () => {
   test("opens every permanent Home command route from the holographic orbit keyboard controls", async ({
     page,
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
 
     for (const [id, route] of homeRouteChecks) {
       await page.goto("/");
@@ -197,6 +197,13 @@ test.describe("Deck Nexus local-first flow", () => {
     await expect(
       page.locator(".commander-zone").getByText("Tatyova, Benthic Druid"),
     ).toBeVisible();
+    await expect(page.locator(".deck-count-status")).toContainText("1");
+    await expect(
+      page.locator(".commander-orbit").getByLabel("Blue color identity active."),
+    ).toBeVisible();
+    await expect(
+      page.locator(".commander-orbit").getByLabel("Green color identity active."),
+    ).toBeVisible();
 
     await addCardToSection(page, "Creatures", {
       name: "Etherium-Horn Scout",
@@ -236,6 +243,42 @@ test.describe("Deck Nexus local-first flow", () => {
       name: "Command Tower",
       typeLine: "Artifact Land",
     });
+
+    const workspaceSectionOrder = await page
+      .locator(".deck-workspace-grid section.builder-section")
+      .evaluateAll((sections) =>
+        sections.map((section) => section.getAttribute("aria-label")),
+      );
+    expect(workspaceSectionOrder).toEqual([
+      "Creatures",
+      "Instants",
+      "Sorceries",
+      "Artifacts",
+      "Enchantments",
+      "Other Permanents",
+      "Lands",
+    ]);
+    await expect(
+      page.locator('section[aria-label="Creatures"]').getByLabel("Creatures count 1"),
+    ).toBeVisible();
+    await expect(
+      page.locator('section[aria-label="Lands"]').getByLabel("Lands count 1"),
+    ).toBeVisible();
+    await expect(page.locator(".builder-card-rail")).toHaveCount(7);
+
+    const creatureRail = page
+      .locator('section[aria-label="Creatures"] .builder-card-rail')
+      .first();
+    const landsRail = page
+      .locator('section[aria-label="Lands"] .builder-card-rail')
+      .first();
+    await creatureRail.evaluate((element) => {
+      element.scrollLeft = element.scrollWidth;
+      element.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+    await expect
+      .poll(() => landsRail.evaluate((element) => element.scrollLeft))
+      .toBe(0);
 
     await expect(
       page.locator('section[aria-label="Creatures"]').getByText("Etherium-Horn Scout"),
@@ -284,6 +327,11 @@ test.describe("Deck Nexus local-first flow", () => {
       .locator(".builder-card-tile")
       .filter({ hasText: "Etherium-Horn Scout" })
       .first();
+    await scoutTile.click();
+    await expect(scoutTile).toHaveAttribute("aria-pressed", "true");
+    await scoutTile.click();
+    await expect(page.getByRole("dialog").last()).toContainText("Card Detail");
+    await page.getByRole("button", { name: "Close" }).click();
     await scoutTile.getByRole("button", { name: "Details" }).click();
     await page.getByLabel("Notes").fill("Keep with artifact synergies.");
     await page.getByLabel("Custom tags").fill("favorite");

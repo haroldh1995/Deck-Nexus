@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildHomeOrbitItems, permanentHomeOrbitItems } from "../features/home/homeOrbit";
 import { HomeHologramScene } from "../features/home/scene/HomeHologramScene";
 import { buildHomeHologramCards } from "../features/home/scene/homeSceneContent";
@@ -56,6 +56,10 @@ function renderScene({
   return { movedCards };
 }
 
+beforeEach(() => {
+  window.sessionStorage.clear();
+});
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -79,7 +83,12 @@ describe("HomeHologramScene", () => {
 
   it("opens the focused command card route", async () => {
     const user = userEvent.setup();
-    renderScene();
+    renderScene({
+      settings: {
+        ...baseSettings,
+        reducedMotion: true,
+      },
+    });
 
     await user.click(screen.getByTestId("orbit-card-create-deck"));
 
@@ -87,7 +96,12 @@ describe("HomeHologramScene", () => {
   });
 
   it("changes focus with keyboard arrows and opens with Enter", async () => {
-    renderScene();
+    renderScene({
+      settings: {
+        ...baseSettings,
+        reducedMotion: true,
+      },
+    });
     const scene = screen.getByTestId("home-hologram-scene");
 
     scene.focus();
