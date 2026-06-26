@@ -1,6 +1,6 @@
 import type { HomePerformanceMode } from "../../../types/domain";
 
-export const homeReferenceImage = "/assets/deck-nexus-home-reference.jpg";
+export const homeReferenceImage = `${import.meta.env.BASE_URL}assets/deck-nexus-home-reference.jpg`;
 
 export const homeIntroSessionKey = "deck-nexus-home-intro-played";
 
