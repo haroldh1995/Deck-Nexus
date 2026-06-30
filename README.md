@@ -11,6 +11,10 @@ The current build establishes the Commander-focused app foundation:
 - Commander-only deck model and deck creation flow.
 - Deck Library with local saved decks and deletion.
 - Deck Builder editing with Commander color identity warnings, maybeboard/cuts, bracket tracker foundation, and local persistence.
+- Local Card Search with Commander-aware badges, owned/deck scopes, deck-aware add actions, and manual outside-identity warnings.
+- Owned Cards registry with quantities, exact printing fields, tags, notes, favorites, storage location, and duplicate/share status.
+- Scanner UI with persistent batches, batch review, simulated scan engine, Automatic Feeder Mode, Stacking Feeder Mode, tray-full prompts, and local recovery.
+- Analyzer, Recommendation Panel, Smart Build review foundations, Maybeboard/Cuts history controls, decision timeline, and local version-result storage.
 - Settings saved locally, including reduced motion, static home controls, glow intensity, text size, high contrast, device tilt parallax opt-in, and Home performance modes.
 - Strong TypeScript domain models for decks, owned cards, tags, scanner data, imports, analysis, exports, backups, and future smart-build results.
 - Route shell for the full initial surface area.
@@ -47,7 +51,7 @@ Home layout:
 
 The app is deployed to GitHub Pages at `https://haroldh1995.github.io/Deck-Nexus/`.
 
-Because the current Pages configuration serves the repository root, the production build is mirrored into the root fallback files `assets/deck-nexus-app.js` and `assets/deck-nexus-app.css` after `npm run build -- --mode github-pages`. Source changes are not considered complete until the branch is pushed and the live Pages URL is verified against the new build.
+The active workflow `.github/workflows/deploy-pages.yml` runs `npm ci`, lint, unit tests, and `npm run build -- --mode github-pages`, uploads `dist`, and deploys it through GitHub Pages. Source changes are not considered complete until the branch is pushed and the live Pages URL is verified against the new build.
 
 ## Local-First Rules
 
@@ -81,6 +85,68 @@ Controls and accessibility:
 - Expanded section panels include section search, sort, filter, scan, recommendations entry, multi-select foundations, move, tag, protect, cut, and remove actions.
 - Reduced Motion stops nonessential workspace animation while preserving glow, section scrolling, and all deck-editing functions. High Contrast increases border clarity through the app setting.
 
+## Card Search
+
+The Card Search route is a real local-first search surface backed by `src/data/cardCatalog.ts` and `src/features/cards/cardSearch.ts`.
+
+- Supports partial names, single-word and multi-word queries, exact phrase matching, type/subtype search, oracle text search, keyword/role search, and fuzzy-helper scoring.
+- Search scopes include All Cards, Owned Cards, Current Deck, Maybeboard, Cuts, Commander Candidates, and Cached Cards Only.
+- Result views include Compact, Image/Card Tile, and Grid.
+- Badges distinguish Owned, Missing, In Deck, Legal, Outside Identity, Commander Legal, Not Commander Legal, Duplicate, Banned, Synergy Pick, High Power, cEDH Relevant, and Manual Search Result.
+- Manual search can show cards outside the active commander's identity, but adding one to Main Deck uses the soft Commander warning flow with Add Anyway, Send to Maybeboard, and Cancel.
+- The Deck Builder Search glyph opens this route with the active `deckId`; scanner/import correction and Find Similar can build on the same module.
+
+The current search provider uses a seeded local card cache so tests and offline usage work without network access. The service shape is prepared for a future public Scryfall provider without introducing prices or marketplace data.
+
+## Owned Cards
+
+Owned Cards is a planning-only local registry. Users can build with cards they do not own; missing markers mean missing/not confirmed owned only.
+
+- Add owned cards manually with quantity, mana cost, type line, color identity, tags, notes, favorite state, storage location, duplicate/share flag, and exact-printing fields.
+- Quantity can be increased, decreased, or removed locally.
+- Duplicate/share flags are `none`, `needs_review`, `multiple_owned`, and `sharing_between_decks`; duplicates are flagged, never blocked.
+- Views are prepared for All Owned Cards, Recently Scanned, Favorites, By Color Identity, By Card Type, By Tag, By Deck Usage, Unused Owned Cards, Missing From Decks, Exact Printings, and Extras/Tokens.
+
+## Scanner And Batch Persistence
+
+The Scan Cards route implements the scanner workflow UI and a testable simulated scan engine while leaving browser camera/OCR/image matching behind service boundaries for later.
+
+Modes:
+
+- Scan to Owned Cards
+- Scan Directly Into Deck
+- Scan Into Section
+- Batch Scan
+- Correction Mode
+- Automatic Feeder Mode
+- Stacking Feeder Mode
+
+Batch behavior:
+
+- Scanner batches persist in IndexedDB through pause, route changes, refresh, tray-full prompts, and review interruptions.
+- Batch lifecycle states include scanning, paused, needs review, reviewing, partially applied, applied, saved for later, and discarded.
+- Batch Review supports confirming high-confidence records, reviewing assumed records, correcting/removing selected records, applying confirmed records, saving unresolved records for later, and undoing/discarding a batch.
+- Destinations include Owned Cards, Current Deck, Main Deck, Maybeboard, Cuts, Extras/Tokens, New Deck, New List, Existing List, and Custom Collection.
+
+Feeder behavior:
+
+- Automatic Feeder Mode follows idle, card entering, stable, capture, resolve, queue, wait for removal, and ready states.
+- Stacking Feeder Mode never relies on card removal detection. Too-close distortion is treated as the normal new-card-arrival cue.
+- If too-close/unreadable state exceeds the timeout, the scanner pauses with: “Tray may be full. Empty the catch tray, then resume scanning.” The batch queue remains preserved.
+- Tokens/extras can be marked separately and do not count toward Commander totals.
+
+## Analyzer, Recommendations, And Smart Build
+
+Analyzer and Smart Build are local-first foundations with Commander safeguards.
+
+- Analyzer checks Commander count, commander-zone presence, singleton basics exceptions, color identity, bracket pressure, role balance, mana curve, ownership summary, and missing-card status.
+- Health labels include Excellent, Healthy, Needs Work, Incomplete, Illegal, Above Bracket, Below Bracket, and Needs Review where applicable.
+- Recommendation tabs include Best Fits, Owned First, Role Fixes, Goal Support, Commander Voltron / Goal-Specific, Mana Curve Fixes, Staples, Replacements, and Wild Within-Color.
+- Recommendations are filtered to Commander color identity and bracket constraints, show owned quantity and role tags, and explain why each card is suggested.
+- Smart Build modes include Owned Cards Only, Owned First + Missing Upgrades, Ideal Goal-Based Build, Bracket-Locked Build, and Rebuild Existing Deck.
+- Smart Build creates a review-only result before applying. It can apply to Main after review, save as a new deck, or send suggestions to Maybeboard. It records local Smart Build results and decision events.
+- Maybeboard and Cuts stay separate from the seven main workspace sections, do not count toward 100, and include restore/move controls and cut-reason history fields.
+
 ## Scripts
 
 ```bash
@@ -109,4 +175,4 @@ public/assets  App assets
 
 ## Current Deferred Work
 
-Card search, scanning, analysis, export, groups, tags, and test deck routes are present as honest coming-later screens with database architecture already prepared. Future prompts can deepen those features without adding commerce, prices, marketplace links, or required login.
+Live camera capture, OCR, image fingerprinting, remote Scryfall querying, EDHREC-compatible external datasets, full import/export tooling, groups/tags management depth, backup/restore flows, and goldfish/test-play simulation remain future work. The current implementations are local-first, no-price, no-marketplace foundations designed to deepen without required login or commerce links.

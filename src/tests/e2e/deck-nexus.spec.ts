@@ -243,6 +243,59 @@ test.describe("Deck Nexus local-first flow", () => {
     await expect(page.locator(".nexus-orbit--static")).toBeVisible();
   });
 
+  test("uses Card Search, Owned Cards, Scanner feeder persistence, and Analyzer Smart Build", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    await page.goto("/search");
+    await expect(page.getByRole("heading", { name: "Card Search" })).toBeVisible();
+    await page.getByLabel("Search card name").fill("Counterspell");
+    await expect(page.getByRole("heading", { name: "Counterspell" })).toBeVisible();
+    await page
+      .locator(".search-result-card")
+      .filter({ hasText: "Counterspell" })
+      .getByRole("button", { name: "Add Owned" })
+      .click();
+
+    await page.goto("/owned");
+    await expect(page.getByRole("heading", { name: "Owned Cards" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Counterspell" })).toBeVisible();
+
+    await page.goto("/scan");
+    await expect(page.getByRole("heading", { name: "Scan Cards" })).toBeVisible();
+    await page.getByLabel("Scanner mode").selectOption("stacking_feeder");
+    await page.getByRole("button", { name: "Start Batch" }).click();
+    await page.getByRole("button", { name: "Simulate Scan" }).click();
+    await page.getByRole("button", { name: "Too-Close Cue" }).click();
+    await expect(page.getByText(/Too-close cue detected/i)).toBeVisible();
+    await page.getByRole("button", { name: "Trigger Tray Full Prompt" }).click();
+    await expect(page.locator(".scanner-tray-prompt").getByText(/Tray may be full/i)).toBeVisible();
+    await page.getByRole("button", { name: "Review Batch" }).first().click();
+    await expect(page.getByRole("dialog", { name: "Batch Review" })).toBeVisible();
+    await page.getByRole("button", { name: /Confirm All High Confidence/ }).click();
+    await page.getByRole("button", { name: "Apply All Confirmed to Owned" }).click();
+    await expect(page.getByText(/applied to Owned Cards/i)).toBeVisible();
+
+    await createBlankDeck(page, "Analysis Flow");
+    await page.getByRole("button", { name: /Add Commander/ }).click();
+    await fillCardModal(page, {
+      name: "Tatyova, Benthic Druid",
+      typeLine: "Legendary Creature",
+      colors: ["U", "G"],
+      roleTags: "commander, draw",
+    });
+    await page.getByRole("button", { name: "Save Card" }).click();
+    await page.goto("/analyzer");
+    await expect(page.getByRole("heading", { name: "Analyzer" })).toBeVisible();
+    await page.getByRole("tab", { name: "Recommendations" }).click();
+    await expect(page.getByLabel("Recommendation tab")).toBeVisible();
+    await expect(page.getByText("Lightning Bolt")).toHaveCount(0);
+    await page.getByRole("tab", { name: "Smart Build" }).click();
+    await page.getByRole("button", { name: /Generate Smart Build Review/i }).click();
+    await expect(page.getByText("Build Summary")).toBeVisible();
+  });
+
   test("opens a deck from the library and edits the Deck Builder locally", async ({
     page,
   }) => {

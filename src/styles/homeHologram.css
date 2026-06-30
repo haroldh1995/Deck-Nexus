@@ -26,6 +26,10 @@
   text-shadow: 0 0 14px rgba(55, 234, 255, 0.7);
 }
 
+.app-root--home .bottom-command-bar {
+  display: none !important;
+}
+
 .home-menu-gear {
   position: fixed;
   top: max(0.86rem, env(safe-area-inset-top));
@@ -426,9 +430,16 @@
 .orbit-stage {
   position: absolute;
   inset: 0;
-  z-index: 42;
   transform-style: preserve-3d;
   pointer-events: none;
+}
+
+.orbit-stage--rear {
+  z-index: 40;
+}
+
+.orbit-stage--front {
+  z-index: 66;
 }
 
 .home-orbit-card {
@@ -677,7 +688,7 @@
   position: absolute;
   left: 50%;
   top: clamp(19.2rem, 44svh, 28.8rem);
-  z-index: 48;
+  z-index: 52;
   width: clamp(6.8rem, 24vw, 10.4rem);
   aspect-ratio: 1;
   display: grid;

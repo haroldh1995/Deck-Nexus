@@ -93,6 +93,27 @@ export function HomeHologramScene({
 
   const focusedCard = cards[orbit.focusedIndex] ?? cards[0];
   const focusedTransform = getFocusedTransform(transforms);
+  const renderOrbitLayer = (rearLayer: boolean) =>
+    cards.map((card, index) => {
+      const transform = transformById.get(card.id);
+      if (!transform || transform.rear !== rearLayer) {
+        return null;
+      }
+
+      return (
+        <OrbitCard
+          card={card}
+          distorted={orbit.distortedIds.has(card.id)}
+          focused={focusedCard?.id === card.id}
+          index={index}
+          key={card.id}
+          onClick={() => handleCardClick(card, index)}
+          onPointerDown={(event) => orbit.beginPointerDrag(event, card.id)}
+          reducedMotion={settings.reducedMotion}
+          transform={transform}
+        />
+      );
+    });
 
   useEffect(() => {
     if (!focusedTransform || (!dragging && !settling)) {
@@ -248,35 +269,24 @@ export function HomeHologramScene({
         <div className="orbit-path" aria-hidden="true" />
         <div className="rear-orbit-fog" aria-hidden="true" />
 
-        <div className="orbit-stage">
-          {cards.map((card, index) => {
-            const transform = transformById.get(card.id);
-            if (!transform) {
-              return null;
-            }
-
-            return (
-              <OrbitCard
-                card={card}
-                distorted={orbit.distortedIds.has(card.id)}
-                focused={focusedCard?.id === card.id}
-                index={index}
-                key={card.id}
-                onClick={() => handleCardClick(card, index)}
-                onPointerDown={(event) =>
-                  orbit.beginPointerDrag(event, card.id)
-                }
-                reducedMotion={settings.reducedMotion}
-                transform={transform}
-              />
-            );
-          })}
+        <div
+          className="orbit-stage orbit-stage--rear"
+          data-testid="orbit-layer-rear"
+        >
+          {renderOrbitLayer(true)}
         </div>
 
         <CentralCrystalAssembly
           active={Math.abs(orbit.velocity) > 0.004}
           onResetFocus={() => orbit.focusIndex(0)}
         />
+
+        <div
+          className="orbit-stage orbit-stage--front"
+          data-testid="orbit-layer-front"
+        >
+          {renderOrbitLayer(false)}
+        </div>
 
         <div className="home-core-status" aria-live="polite">
           <h1>{statusCopy.title}</h1>

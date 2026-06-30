@@ -906,7 +906,7 @@ export function DeckBuilderScreen() {
         <div className="builder-command-glyphs" aria-label="Deck commands">
           <button
             type="button"
-            onClick={() => openAddCardModal("creatures")}
+            onClick={() => navigate(`/search?deckId=${deck.id}`)}
             title="Search and add card"
           >
             <Search aria-hidden="true" />
@@ -914,27 +914,19 @@ export function DeckBuilderScreen() {
           </button>
           <button
             type="button"
-            onClick={() =>
-              setStatusMessage(
-                "Recommendations need local card intelligence in a later prompt. Automatic suggestions will stay inside commander color identity.",
-              )
-            }
+            onClick={() => navigate(`/analyzer?deckId=${deck.id}&tab=recommendations`)}
             title="Recommend"
           >
             <Sparkles aria-hidden="true" />
             <span>Recommend</span>
           </button>
-          <button type="button" onClick={() => navigate("/scan")} title="Scan">
+          <button type="button" onClick={() => navigate(`/scan?deckId=${deck.id}`)} title="Scan">
             <ScanLine aria-hidden="true" />
             <span>Scan</span>
           </button>
           <button
             type="button"
-            onClick={() =>
-              setStatusMessage(
-                "Smart Build is not placing cards yet. The rules foundation is active for future automatic builds.",
-              )
-            }
+            onClick={() => navigate(`/analyzer?deckId=${deck.id}&tab=smart-build`)}
             title="Smart Build"
           >
             <Layers3 aria-hidden="true" />
@@ -942,7 +934,7 @@ export function DeckBuilderScreen() {
           </button>
           <button
             type="button"
-            onClick={() => navigate("/analyzer")}
+            onClick={() => navigate(`/analyzer?deckId=${deck.id}`)}
             title="Analyze and statistics"
           >
             <BarChart3 aria-hidden="true" />
@@ -961,6 +953,7 @@ export function DeckBuilderScreen() {
 
       {moreOpen ? (
         <MoreMenu
+          deckId={deck.id}
           onClose={() => setMoreOpen(false)}
           onDelete={() => openMetadataModal("delete")}
           onDuplicate={handleDuplicateDeck}
@@ -1086,9 +1079,7 @@ export function DeckBuilderScreen() {
           }
           onRemove={handleRemoveCard}
           onRecommendations={() =>
-            setStatusMessage(
-              "Section recommendations will use local deck intelligence in a later prompt and will respect commander color identity.",
-            )
+            navigate(`/analyzer?deckId=${deck.id}&tab=recommendations`)
           }
           onScan={() => navigate(`/scan?deckId=${deck.id}&section=${expandedSection}`)}
           onTag={(card) => openDetail(card)}
@@ -2240,12 +2231,14 @@ function ExpandedSectionPanel({
 }
 
 function MoreMenu({
+  deckId,
   onClose,
   onDelete,
   onDuplicate,
   onMetadata,
   onNavigate,
 }: {
+  deckId: string;
   onClose: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -2253,7 +2246,7 @@ function MoreMenu({
   onNavigate: (to: string) => void;
 }) {
   const actions: { label: string; icon: ReactNode; onClick: () => void }[] = [
-    { label: "Analyze / Stats", icon: <BarChart3 aria-hidden="true" />, onClick: () => onNavigate("/analyzer") },
+    { label: "Analyze / Stats", icon: <BarChart3 aria-hidden="true" />, onClick: () => onNavigate(`/analyzer?deckId=${deckId}`) },
     { label: "Deck Goals", icon: <Sparkles aria-hidden="true" />, onClick: () => onMetadata("goals") },
     { label: "Bracket Lock", icon: <Shield aria-hidden="true" />, onClick: () => onMetadata("bracket") },
     { label: "Tags", icon: <Tags aria-hidden="true" />, onClick: () => onNavigate("/tags") },
@@ -2262,8 +2255,8 @@ function MoreMenu({
       icon: <Archive aria-hidden="true" />,
       onClick: () => onNavigate("/tags"),
     },
-    { label: "Import Into Deck", icon: <FileInput aria-hidden="true" />, onClick: () => onNavigate("/import") },
-    { label: "Export Deck", icon: <Download aria-hidden="true" />, onClick: () => onNavigate("/export") },
+    { label: "Import Into Deck", icon: <FileInput aria-hidden="true" />, onClick: () => onNavigate(`/import?deckId=${deckId}`) },
+    { label: "Export Deck", icon: <Download aria-hidden="true" />, onClick: () => onNavigate(`/export?deckId=${deckId}`) },
     { label: "Duplicate Deck", icon: <Copy aria-hidden="true" />, onClick: onDuplicate },
     { label: "Rename Deck", icon: <NotebookPen aria-hidden="true" />, onClick: () => onMetadata("rename") },
     { label: "Deck Notes", icon: <NotebookPen aria-hidden="true" />, onClick: () => onMetadata("notes") },

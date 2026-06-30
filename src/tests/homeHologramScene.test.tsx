@@ -93,6 +93,20 @@ describe("HomeHologramScene", () => {
       .toBeVisible();
   });
 
+  it("renders rear cards behind the central core and front cards above it", () => {
+    renderScene();
+
+    const frontLayer = screen.getByTestId("orbit-layer-front");
+    const rearLayer = screen.getByTestId("orbit-layer-rear");
+    const focusedCard = screen.getByTestId("orbit-card-create-deck");
+    const rearCard = screen.getByTestId("orbit-card-analyzer");
+
+    expect(frontLayer).toContainElement(focusedCard);
+    expect(rearLayer).toContainElement(rearCard);
+    expect(focusedCard).toHaveAttribute("data-depth", "front");
+    expect(rearCard).toHaveAttribute("data-depth", "rear");
+  });
+
   it("opens the focused command card route", async () => {
     const user = userEvent.setup();
     renderScene({

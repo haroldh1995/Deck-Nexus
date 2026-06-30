@@ -2,11 +2,15 @@ import type { CSSProperties } from "react";
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { AppIcon } from "../components/AppIcon";
 import { permanentHomeRoutes } from "../data/routes";
+import { AnalyzerScreen } from "../features/analyzer/AnalyzerScreen";
+import { CardSearchScreen } from "../features/cards/CardSearchScreen";
 import { CreateDeckScreen } from "../features/decks/CreateDeckScreen";
 import { DeckBuilderScreen } from "../features/decks/DeckBuilderScreen";
 import { DeckLibraryScreen } from "../features/decks/DeckLibraryScreen";
 import { FoundationScreen } from "../features/foundation/FoundationScreen";
 import { HomeScreen } from "../features/home/HomeScreen";
+import { OwnedCardsScreen } from "../features/owned/OwnedCardsScreen";
+import { ScanCardsScreen } from "../features/scanner/ScanCardsScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { useSettings } from "./useSettings";
 
@@ -56,36 +60,9 @@ export function AppShell() {
           <Route path="/" element={<HomeScreen />} />
           <Route path="/create" element={<CreateDeckScreen />} />
           <Route path="/library" element={<DeckLibraryScreen />} />
-          <Route
-            path="/search"
-            element={
-              <FoundationScreen
-                title="Card Search"
-                status="Coming later"
-                summary="Manual card search will be added with Commander-focused filters and no commerce data."
-              />
-            }
-          />
-          <Route
-            path="/scan"
-            element={
-              <FoundationScreen
-                title="Scan Cards"
-                status="Coming later"
-                summary="Scanner batches and scan records are already modeled for local persistence."
-              />
-            }
-          />
-          <Route
-            path="/owned"
-            element={
-              <FoundationScreen
-                title="Owned Cards"
-                status="Coming later"
-                summary="Owned card and printing stores are ready for local collection tracking."
-              />
-            }
-          />
+          <Route path="/search" element={<CardSearchScreen />} />
+          <Route path="/scan" element={<ScanCardsScreen />} />
+          <Route path="/owned" element={<OwnedCardsScreen />} />
           <Route
             path="/import"
             element={
@@ -96,16 +73,7 @@ export function AppShell() {
               />
             }
           />
-          <Route
-            path="/analyzer"
-            element={
-              <FoundationScreen
-                title="Analyzer"
-                status="Coming later"
-                summary="Deck and bracket analysis snapshots are prepared for Commander checks."
-              />
-            }
-          />
+          <Route path="/analyzer" element={<AnalyzerScreen />} />
           <Route
             path="/groups"
             element={

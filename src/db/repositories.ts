@@ -8,7 +8,16 @@ import type {
   DeckCard,
   DeckGoal,
   FavoriteItem,
+  OwnedCard,
+  OwnedDuplicateFlag,
+  OwnedPrinting,
   OwnershipPreference,
+  ScanBatch,
+  ScanBatchDestination,
+  ScanRecord,
+  SmartBuildResult,
+  DeckAnalysis,
+  DecisionEvent,
 } from "../types/domain";
 import { createId, nowIso } from "../utils/ids";
 import type { AddDestination, ManualCardInput } from "../features/decks/builderTypes";
@@ -32,6 +41,23 @@ export type SettingsPatch = Partial<
 export type DeckMetadataPatch = Partial<
   Pick<Deck, "name" | "notes" | "goals" | "bracketLock" | "tags" | "status">
 >;
+
+export type OwnedCardInput = {
+  name: string;
+  quantityOwned: number;
+  oracleId?: string;
+  scryfallId?: string;
+  manaCost?: string;
+  typeLine?: string;
+  oracleText?: string;
+  colorIdentity?: CommanderColor[];
+  tags?: string[];
+  notes?: string;
+  favorite?: boolean;
+  storageLocation?: string;
+  duplicateFlag?: OwnedDuplicateFlag;
+  printing?: Partial<OwnedPrinting>;
+};
 
 function dispatchLocalEvent(eventName: string) {
   if (typeof window !== "undefined") {
@@ -683,4 +709,327 @@ export function createBracketLockFromDefault(
     enabled,
     bracket,
   };
+}
+
+export async function listOwnedCards(): Promise<OwnedCard[]> {
+  return db.ownedCards.orderBy("updatedAt").reverse().toArray();
+}
+
+export async function getOwnedCard(ownedCardId: string): Promise<OwnedCard | undefined> {
+  return db.ownedCards.get(ownedCardId);
+}
+
+function createOwnedPrintingFromInput(
+  input: OwnedCardInput,
+  ownedCardId: string,
+): OwnedPrinting | undefined {
+  if (!input.printing && !input.scryfallId && !input.oracleId) {
+    return undefined;
+  }
+
+  const printing = input.printing ?? {};
+
+  return {
+    id: printing.id ?? createId("printing"),
+    scryfallId: printing.scryfallId ?? input.scryfallId ?? ownedCardId,
+    oracleId: printing.oracleId ?? input.oracleId ?? ownedCardId,
+    name: printing.name ?? input.name.trim(),
+    setCode: printing.setCode ?? "local",
+    setName: printing.setName ?? "Local Entry",
+    collectorNumber: printing.collectorNumber ?? "",
+    language: printing.language ?? "en",
+    foil: printing.foil ?? false,
+    condition: printing.condition ?? "unspecified",
+    quantityOwned: printing.quantityOwned ?? input.quantityOwned,
+    imageUri: printing.imageUri ?? "",
+    lastScannedAt: printing.lastScannedAt,
+  };
+}
+
+export async function upsertOwnedCard(input: OwnedCardInput): Promise<OwnedCard> {
+  const normalizedName = input.name.trim();
+  const existing = await db.ownedCards
+    .filter((card) => card.name.trim().toLowerCase() === normalizedName.toLowerCase())
+    .first();
+  const now = nowIso();
+  const baseId = existing?.id ?? createId("owned");
+  const printing = createOwnedPrintingFromInput(input, baseId);
+  const printings = printing
+    ? [
+        ...(existing?.printings.filter(
+          (existingPrinting) => existingPrinting.id !== printing.id,
+        ) ?? []),
+        printing,
+      ]
+    : (existing?.printings ?? []);
+  const next: OwnedCard = {
+    id: baseId,
+    oracleId: input.oracleId ?? existing?.oracleId ?? createId("owned-oracle"),
+    scryfallId: input.scryfallId ?? existing?.scryfallId ?? createId("owned-scryfall"),
+    name: normalizedName,
+    manaCost: input.manaCost ?? existing?.manaCost,
+    typeLine: input.typeLine ?? existing?.typeLine,
+    oracleText: input.oracleText ?? existing?.oracleText,
+    colorIdentity: input.colorIdentity ?? existing?.colorIdentity ?? [],
+    quantityOwned: Math.max(0, input.quantityOwned),
+    printings,
+    tags: input.tags ?? existing?.tags ?? [],
+    notes: input.notes ?? existing?.notes ?? "",
+    favorite: input.favorite ?? existing?.favorite ?? false,
+    storageLocation: input.storageLocation ?? existing?.storageLocation ?? "",
+    duplicateFlag:
+      input.duplicateFlag ??
+      (typeof existing?.duplicateFlag === "boolean"
+        ? existing.duplicateFlag
+          ? "needs_review"
+          : "none"
+        : existing?.duplicateFlag) ??
+      "none",
+    deckUsage: existing?.deckUsage ?? {},
+    lastScannedAt: existing?.lastScannedAt,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  await db.transaction("rw", db.ownedCards, db.ownedPrintings, db.decisionEvents, async () => {
+    await db.ownedCards.put(next);
+    if (printing) {
+      await db.ownedPrintings.put(printing);
+    }
+    await db.decisionEvents.add({
+      id: createId("decision"),
+      type: existing ? "owned_card_updated" : "owned_card_added",
+      message: `${next.name} ownership updated locally.`,
+      payload: { quantityOwned: next.quantityOwned, duplicateFlag: next.duplicateFlag },
+      createdAt: now,
+    });
+  });
+
+  dispatchLocalEvent("deck-nexus:owned-updated");
+  return next;
+}
+
+export async function updateOwnedCard(
+  ownedCardId: string,
+  patch: Partial<OwnedCard>,
+): Promise<OwnedCard> {
+  const current = await db.ownedCards.get(ownedCardId);
+
+  if (!current) {
+    throw new Error("Owned card was not found.");
+  }
+
+  const next: OwnedCard = {
+    ...current,
+    ...patch,
+    id: current.id,
+    updatedAt: nowIso(),
+  };
+
+  await db.ownedCards.put(next);
+  dispatchLocalEvent("deck-nexus:owned-updated");
+  return next;
+}
+
+export async function deleteOwnedCard(ownedCardId: string): Promise<void> {
+  await db.transaction("rw", db.ownedCards, db.ownedPrintings, db.decisionEvents, async () => {
+    const current = await db.ownedCards.get(ownedCardId);
+    await db.ownedCards.delete(ownedCardId);
+    if (current) {
+      await db.ownedPrintings.where("oracleId").equals(current.oracleId).delete();
+      await db.decisionEvents.add({
+        id: createId("decision"),
+        type: "owned_card_removed",
+        message: `${current.name} removed from owned registry.`,
+        payload: { ownedCardId },
+        createdAt: nowIso(),
+      });
+    }
+  });
+
+  dispatchLocalEvent("deck-nexus:owned-updated");
+}
+
+export async function listScanBatches(): Promise<ScanBatch[]> {
+  return db.scannerBatches.orderBy("updatedAt").reverse().toArray();
+}
+
+export async function getScanBatch(batchId: string): Promise<ScanBatch | undefined> {
+  return db.scannerBatches.get(batchId);
+}
+
+export async function getRecoverableScanBatch(): Promise<ScanBatch | undefined> {
+  const recoverableStatuses: ScanBatch["status"][] = [
+    "scanning",
+    "paused",
+    "needs_review",
+    "reviewing",
+    "partially_applied",
+    "saved_for_later",
+    "open",
+  ];
+  return db.scannerBatches
+    .orderBy("updatedAt")
+    .reverse()
+    .filter((batch) => recoverableStatuses.includes(batch.status))
+    .first();
+}
+
+export async function saveScanBatch(batch: ScanBatch): Promise<ScanBatch> {
+  const next: ScanBatch = {
+    ...batch,
+    persistenceEnabled: true,
+    updatedAt: nowIso(),
+  };
+
+  await db.scannerBatches.put(next);
+  dispatchLocalEvent("deck-nexus:scanner-updated");
+  return next;
+}
+
+export async function updateScanBatch(
+  batchId: string,
+  patch: Partial<ScanBatch>,
+): Promise<ScanBatch> {
+  const current = await db.scannerBatches.get(batchId);
+
+  if (!current) {
+    throw new Error("Scan batch was not found.");
+  }
+
+  return saveScanBatch({ ...current, ...patch, id: current.id });
+}
+
+export async function listScanRecords(batchId: string): Promise<ScanRecord[]> {
+  return db.scanRecords.where("batchId").equals(batchId).sortBy("createdAt");
+}
+
+export async function addScanRecord(record: ScanRecord): Promise<ScanRecord> {
+  const batch = await db.scannerBatches.get(record.batchId);
+
+  await db.transaction("rw", db.scanRecords, db.scannerBatches, async () => {
+    await db.scanRecords.put(record);
+    if (batch) {
+      await db.scannerBatches.put({
+        ...batch,
+        recordsCreated: batch.recordsCreated + record.quantity,
+        status: batch.status === "open" ? "scanning" : batch.status,
+        updatedAt: nowIso(),
+      });
+    }
+  });
+
+  dispatchLocalEvent("deck-nexus:scanner-updated");
+  return record;
+}
+
+export async function updateScanRecord(
+  recordId: string,
+  patch: Partial<ScanRecord>,
+): Promise<ScanRecord> {
+  const current = await db.scanRecords.get(recordId);
+
+  if (!current) {
+    throw new Error("Scan record was not found.");
+  }
+
+  const next: ScanRecord = {
+    ...current,
+    ...patch,
+    id: current.id,
+    updatedAt: nowIso(),
+  };
+
+  await db.scanRecords.put(next);
+  dispatchLocalEvent("deck-nexus:scanner-updated");
+  return next;
+}
+
+export async function applyScanBatchToOwned(batchId: string): Promise<number> {
+  const batch = await db.scannerBatches.get(batchId);
+  const records = await listScanRecords(batchId);
+  const applicableRecords = records.filter((record) =>
+    ["confirmed", "assumed", "matched", "low_confidence"].includes(record.status),
+  );
+
+  if (!batch) {
+    throw new Error("Scan batch was not found.");
+  }
+
+  for (const record of applicableRecords) {
+    await upsertOwnedCard({
+      name: record.name,
+      quantityOwned: record.quantity,
+      oracleId: record.oracleId,
+      scryfallId: record.scryfallId,
+      typeLine: record.typeLine,
+      colorIdentity: record.colorIdentity,
+      duplicateFlag: "none",
+      printing: {
+        name: record.name,
+        oracleId: record.oracleId,
+        scryfallId: record.scryfallId,
+        quantityOwned: record.quantity,
+        lastScannedAt: nowIso(),
+      },
+    });
+    await updateScanRecord(record.id, {
+      status: "applied",
+      destination: "owned_cards" satisfies ScanBatchDestination,
+    });
+  }
+
+  await updateScanBatch(batchId, {
+    status: "applied",
+    recordsCreated: records.length,
+  });
+
+  return applicableRecords.length;
+}
+
+export async function saveAnalysisSnapshot(analysis: DeckAnalysis): Promise<DeckAnalysis> {
+  await db.analysisSnapshots.put(analysis);
+  dispatchLocalEvent("deck-nexus:analysis-updated");
+  return analysis;
+}
+
+export async function saveSmartBuildResult(
+  result: SmartBuildResult,
+): Promise<SmartBuildResult> {
+  await db.smartBuildResults.put(result);
+  dispatchLocalEvent("deck-nexus:smart-build-updated");
+  return result;
+}
+
+export async function listSmartBuildResults(deckId: string): Promise<SmartBuildResult[]> {
+  return db.smartBuildResults.where("deckId").equals(deckId).reverse().sortBy("createdAt");
+}
+
+export async function listDecisionEvents(deckId?: string) {
+  if (!deckId) {
+    return db.decisionEvents.orderBy("createdAt").reverse().toArray();
+  }
+
+  return db.decisionEvents
+    .where("deckId")
+    .equals(deckId)
+    .reverse()
+    .sortBy("createdAt");
+}
+
+export async function recordDecisionEvent(
+  input: Omit<DecisionEvent, "id" | "createdAt"> & { id?: string; createdAt?: string },
+): Promise<DecisionEvent> {
+  const event: DecisionEvent = {
+    id: input.id ?? createId("decision"),
+    deckId: input.deckId,
+    type: input.type,
+    message: input.message,
+    payload: input.payload,
+    createdAt: input.createdAt ?? nowIso(),
+  };
+
+  await db.decisionEvents.add(event);
+  dispatchLocalEvent("deck-nexus:decks-updated");
+  return event;
 }
