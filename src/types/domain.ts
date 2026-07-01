@@ -323,6 +323,10 @@ export interface ScanBatch {
   persistenceEnabled: boolean;
   prompt?: string;
   lastCue?: string;
+  cameraDeviceId?: string;
+  feederState?: string;
+  lastAcceptedFingerprint?: string;
+  lastAcceptedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -353,6 +357,14 @@ export interface ScanRecord {
   colorIdentity?: CommanderColor[];
   destination?: ScanBatchDestination;
   extraKind?: ScanExtraKind;
+  setCode?: string;
+  setName?: string;
+  collectorNumber?: string;
+  imageUri?: string;
+  capturedThumbnail?: string;
+  frameFingerprint?: string;
+  matchSource?: "ocr" | "visual" | "scryfall_exact" | "scryfall_fuzzy" | "manual" | "test_harness";
+  scannerWarnings?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -658,6 +670,9 @@ export interface AppMigration {
 export type TextSize = "compact" | "normal" | "large";
 
 export type HomePerformanceMode = "full" | "balanced" | "performance";
+export type ScannerConfirmationVolume = "low" | "medium" | "high";
+export type ScannerPreviewQuality = "low" | "balanced" | "high";
+export type ScannerPreferredDestination = ScanBatchDestination | "ask";
 
 export interface AppSettings {
   id: "app";
@@ -673,6 +688,22 @@ export interface AppSettings {
   defaultBracketLock: BracketLock;
   defaultOwnershipPreference: OwnershipPreference;
   scannerBatchPersistence: boolean;
+  scannerConfirmationSound: boolean;
+  scannerConfirmationVolume: ScannerConfirmationVolume;
+  scannerHapticConfirmation: boolean;
+  scannerDefaultCameraId?: string;
+  scannerTorchDefault: boolean;
+  scannerDefaultMode: ScannerMode;
+  scannerStableFrameDurationMs: number;
+  scannerAutoConfirmHighConfidence: boolean;
+  scannerRequireReviewAssumed: boolean;
+  scannerRequireReviewLowConfidence: boolean;
+  scannerSaveUnresolved: boolean;
+  scannerPreferredDestination: ScannerPreferredDestination;
+  scannerTrayFullTimeoutMs: number;
+  scannerPreviewQuality: ScannerPreviewQuality;
+  scannerPerformanceMode: HomePerformanceMode;
+  scannerStoreCorrectionThumbnails: boolean;
   scryfallLiveSearchEnabled: boolean;
   scryfallBulkDownloadWifiOnly: boolean;
   scryfallOfflineDatabaseDownloaded: boolean;

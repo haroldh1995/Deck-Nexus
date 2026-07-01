@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -81,6 +81,42 @@ function renderWithAppProviders(ui: ReactElement, route = "/") {
       <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
     </SettingsProvider>,
   );
+}
+
+function installFakeCamera() {
+  const track = {
+    stop: vi.fn(),
+    getSettings: () => ({ deviceId: "fake-rear-camera" }),
+    getCapabilities: () => ({
+      torch: false,
+      focusMode: ["continuous"],
+    }),
+    applyConstraints: vi.fn(),
+  };
+  const stream = {
+    getTracks: () => [track],
+    getVideoTracks: () => [track],
+  } as unknown as MediaStream;
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: {
+      getUserMedia: vi.fn(async () => stream),
+      enumerateDevices: vi.fn(async () => [
+        {
+          kind: "videoinput",
+          deviceId: "fake-rear-camera",
+          groupId: "fake-group",
+          label: "Back Camera",
+        },
+      ]),
+    },
+  });
+  Object.defineProperty(window, "isSecureContext", {
+    configurable: true,
+    value: true,
+  });
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+  return { stream, track };
 }
 
 describe("Prompt 3 card search and owned registry", () => {
@@ -190,6 +226,7 @@ describe("Prompt 3 card search and owned registry", () => {
 describe("Prompt 3 scanner persistence and feeder modes", () => {
   beforeEach(async () => {
     await resetDatabaseForTests();
+    vi.restoreAllMocks();
   });
 
   it("treats stacking feeder too-close as a normal cue and pauses on tray-full timeout", () => {
@@ -233,10 +270,31 @@ describe("Prompt 3 scanner persistence and feeder modes", () => {
     renderWithAppProviders(<ScanCardsScreen />, "/scan");
     await screen.findByRole("heading", { name: "Scan Cards" });
     await userEvent.selectOptions(screen.getByLabelText("Scanner mode"), "stacking_feeder");
+    await userEvent.click(screen.getByText("Manual fallback and feeder controls"));
     await userEvent.click(screen.getByRole("button", { name: "Too-Close Cue" }));
     expect(await screen.findByText(/Too-close cue detected/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Trigger Tray Full Prompt" }));
-    expect(await screen.findByText(/Tray may be full/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Tray may be full/i)).length).toBeGreaterThan(0);
+  });
+
+  it("requests camera permission, attaches live preview, and toggles scan sound", async () => {
+    installFakeCamera();
+    renderWithAppProviders(<ScanCardsScreen />, "/scan");
+    await screen.findByRole("heading", { name: "Scan Cards" });
+    expect(screen.getByRole("heading", { name: /needs camera access/i })).toBeInTheDocument();
+
+    await userEvent.click(screen.getAllByRole("button", { name: /Allow Camera/i })[0]);
+    fireEvent.loadedMetadata(screen.getByLabelText("Live camera preview"));
+
+    await screen.findByText(/Camera live/i);
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith(
+      expect.objectContaining({ audio: false }),
+    );
+    expect(screen.getByRole("button", { name: "Mute scan confirmation sound" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Mute scan confirmation sound" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Enable scan confirmation sound" })).toBeInTheDocument();
+    });
   });
 });
 

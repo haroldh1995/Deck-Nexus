@@ -7,6 +7,7 @@ import type {
   ScanRecordStatus,
 } from "../../types/domain";
 import { createId, nowIso } from "../../utils/ids";
+import type { ScannerResolvedCard } from "./scannerRecognition";
 
 export type AutomaticFeederState =
   | "idle"
@@ -257,6 +258,42 @@ export function createScanRecordFromCard({
     colorIdentity: card.colorIdentity,
     destination,
     extraKind: card.extraKind,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function createScanRecordFromResolvedCard({
+  batchId,
+  result,
+}: {
+  batchId: string;
+  result: ScannerResolvedCard;
+}): ScanRecord {
+  const now = nowIso();
+
+  return {
+    id: createId("scan-record"),
+    batchId,
+    rawText: result.rawText,
+    scryfallId: result.scryfallId,
+    oracleId: result.oracleId,
+    name: result.name,
+    quantity: result.quantity,
+    status: result.status,
+    confidence: result.confidence,
+    possibleMatches: result.possibleMatches,
+    typeLine: result.typeLine,
+    colorIdentity: result.colorIdentity,
+    destination: result.destination,
+    setCode: result.setCode,
+    setName: result.setName,
+    collectorNumber: result.collectorNumber,
+    imageUri: result.imageUri,
+    capturedThumbnail: result.capturedThumbnail,
+    frameFingerprint: result.frameFingerprint,
+    matchSource: result.matchSource,
+    scannerWarnings: result.scannerWarnings,
     createdAt: now,
     updatedAt: now,
   };

@@ -74,6 +74,7 @@
 .feature-form button,
 .feature-toolbar button,
 .result-actions button,
+.scanner-top-controls button,
 .scanner-actions button,
 .scanner-mode-panel button,
 .scanner-review-actions button,
@@ -95,6 +96,7 @@
 .feature-form button:focus-visible,
 .feature-toolbar button:focus-visible,
 .result-actions button:focus-visible,
+.scanner-top-controls button:focus-visible,
 .scanner-actions button:focus-visible,
 .scanner-mode-panel button:focus-visible,
 .scanner-review-actions button:focus-visible,
@@ -674,6 +676,21 @@
   background: rgba(2, 8, 28, 0.58);
 }
 
+.scanner-record {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.scanner-record img {
+  width: 3.8rem;
+  aspect-ratio: 5 / 7;
+  border: 1px solid rgba(89, 234, 255, 0.22);
+  border-radius: 6px;
+  object-fit: cover;
+}
+
 .directory-summary,
 .directory-card {
   display: flex;
@@ -740,6 +757,41 @@
   gap: 1rem;
 }
 
+.scanner-permission-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.scanner-permission-panel > svg {
+  width: 2.4rem;
+  height: 2.4rem;
+  color: var(--cyan);
+}
+
+.scanner-permission-panel h2 {
+  margin: 0 0 0.25rem;
+}
+
+.scanner-permission-panel p,
+.scanner-permission-panel small {
+  margin: 0;
+  color: var(--muted);
+}
+
+.scanner-top-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.scanner-top-controls button {
+  min-width: 2.75rem;
+}
+
 .scanner-frame {
   position: relative;
   display: grid;
@@ -755,7 +807,37 @@
   text-align: center;
 }
 
-.scanner-frame > svg {
+.scanner-frame--live {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(55, 234, 255, 0.08), transparent 50%),
+    #010514;
+}
+
+.scanner-frame--too-close {
+  border-color: rgba(255, 188, 91, 0.8);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 188, 91, 0.34),
+    0 0 28px rgba(255, 188, 91, 0.18);
+}
+
+.scanner-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #010514;
+}
+
+.scanner-frame__empty {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+}
+
+.scanner-frame__empty > svg {
   width: 4rem;
   height: 4rem;
   color: rgba(89, 234, 255, 0.64);
@@ -773,8 +855,65 @@
   color: var(--muted);
 }
 
+.scanner-frame__guide {
+  position: absolute;
+  inset: 11% 15%;
+  z-index: 2;
+  pointer-events: none;
+  border: 1px dashed rgba(207, 249, 255, 0.45);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 24px rgba(89, 234, 255, 0.1),
+    0 0 30px rgba(89, 234, 255, 0.12);
+}
+
+.scanner-frame__guide::before {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36%;
+  height: 1px;
+  background: rgba(207, 249, 255, 0.3);
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.scanner-frame__hud {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.52rem;
+  border: 1px solid rgba(89, 234, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(2, 7, 24, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.scanner-frame__hud strong,
+.scanner-frame__hud span {
+  position: static;
+  max-width: none;
+  font-size: 0.72rem;
+}
+
+.scanner-analysis-canvas {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .scanner-frame__corner {
   position: absolute;
+  z-index: 3;
   width: 3.8rem;
   height: 3.8rem;
   border-color: var(--cyan);
@@ -836,6 +975,7 @@
 }
 
 .scanner-mode-panel,
+.scanner-feeder-controls,
 .scanner-recovery,
 .scanner-tray-prompt {
   display: flex;
@@ -843,6 +983,23 @@
   align-items: center;
   gap: 0.6rem;
   margin-top: 0.85rem;
+}
+
+.scanner-mode-panel {
+  display: block;
+  border-top: 1px solid rgba(89, 234, 255, 0.12);
+  padding-top: 0.7rem;
+}
+
+.scanner-mode-panel summary {
+  min-height: 2.4rem;
+  cursor: pointer;
+  color: var(--silver);
+  font-weight: 800;
+}
+
+.scanner-feeder-controls {
+  margin-top: 0.55rem;
 }
 
 .scanner-recovery,

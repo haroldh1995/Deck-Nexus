@@ -13,7 +13,7 @@ The current build establishes the Commander-focused app foundation:
 - Deck Builder editing with Commander color identity warnings, maybeboard/cuts, bracket tracker foundation, and local persistence.
 - Live Scryfall Card Search with universal Add To workflows, multi-select, deck-aware warnings, owned registration, Wishlist, Upgrade Lists, Custom Collections, and undo.
 - Owned Cards registry with quantities, exact printing fields, tags, notes, favorites, storage location, and duplicate/share status.
-- Scanner UI with persistent batches, batch review, simulated scan engine, Automatic Feeder Mode, Stacking Feeder Mode, tray-full prompts, and local recovery.
+- Real camera scanner with permission flow, live preview, continuous batch recognition, OCR/Scryfall resolution, toggleable scan confirmation sound, Automatic Feeder Mode, Stacking Feeder Mode, tray-full prompts, and local recovery.
 - Analyzer, Recommendation Panel, Smart Build setup/review/apply flows, Maybeboard/Cuts history controls, decision timeline, recommendation feedback, replacement records, and restorable local deck versions.
 - Settings saved locally, including reduced motion, static home controls, glow intensity, text size, high contrast, device tilt parallax opt-in, and Home performance modes.
 - Strong TypeScript domain models for decks, owned cards, tags, scanner data, imports, analysis, exports, backups, and future smart-build results.
@@ -174,7 +174,7 @@ Owned Cards is a planning-only local registry. Users can build with cards they d
 
 ## Scanner And Batch Persistence
 
-The Scan Cards route implements the scanner workflow UI and a testable simulated scan engine while leaving browser camera/OCR/image matching behind service boundaries for later.
+The Scan Cards route is a real browser-camera scanner with a simulation/manual fallback for automated tests and unsupported devices. It requests video-only camera access after the user taps Allow Camera, prefers the rear/environment camera, displays a live `<video>` preview, samples stable card candidates, resolves cards through local OCR plus Scryfall lookups, and writes accepted scans into the persistent batch immediately.
 
 Modes:
 
@@ -186,9 +186,33 @@ Modes:
 - Automatic Feeder Mode
 - Stacking Feeder Mode
 
+Camera and recognition architecture:
+
+- `src/features/scanner/scannerCamera.ts` centralizes secure-context checks, `getUserMedia` constraints, rear-camera fallback, device enumeration, stream cleanup, torch support, zoom support, and browser error mapping.
+- `src/features/scanner/frameAnalysis.ts` samples downscaled frames at a controlled rate, estimates card-like boundaries, lighting, glare, sharpness, stability, too-close coverage, and duplicate fingerprints without requiring a black or white background.
+- `src/features/scanner/scannerRecognition.ts` lazily loads Tesseract.js, OCRs the captured stable frame, extracts likely name/set/collector candidates, resolves exact/fuzzy matches through the centralized Scryfall services, and queues unresolved offline scans when lookup is unavailable.
+- Continuous scanning writes each accepted result to IndexedDB before playing feedback. The scanner does not ask for confirmation after every card.
+- The test harness can supply fake camera media and deterministic scan cards; real camera mode remains the default when browser camera APIs are available.
+
+Camera permissions and privacy:
+
+- Deck Nexus checks `window.isSecureContext`, `navigator.mediaDevices`, and `getUserMedia` before requesting access. GitHub Pages is HTTPS and supports the scanner route where the browser/device allows camera capture.
+- The app requests video only and never requests microphone permission.
+- Live video remains on the device. Continuous video is not uploaded or stored.
+- Card lookup requests may send OCR text, Scryfall IDs, or search terms to Scryfall. Correction thumbnails are stored locally only when the scanner setting allows them.
+- Camera-denied, insecure-context, no-device, device-busy, overconstrained, and stream-error states keep the current batch saved and offer retry/manual-entry paths.
+
+Sound, haptics, and settings:
+
+- Accepted scans play one short Web Audio confirmation beep only after duplicate suppression passes and the scan record is successfully written to the batch.
+- The scanner page has a small speaker toggle, and Settings includes Confirmation Sound, Confirmation Volume, Haptic Confirmation, Default Scanner Mode, Preferred Destination, Stable Frame Duration, Tray-Full Timeout, Preview Quality, Performance Mode, Store Correction Thumbnails, and Save Unresolved Camera Scans.
+- Haptic confirmation uses `navigator.vibrate` only where supported and enabled.
+- If browser audio is suspended, Deck Nexus primes/resumes the audio context from the Allow Camera gesture and continues scanning even if sound is unavailable.
+
 Batch behavior:
 
 - Scanner batches persist in IndexedDB through pause, route changes, refresh, tray-full prompts, and review interruptions.
+- Scan records store confidence, match source, Scryfall/oracle IDs, set/collector details, thumbnails where allowed, frame fingerprints, timestamps, destination, and unresolved/correction data.
 - Batch lifecycle states include scanning, paused, needs review, reviewing, partially applied, applied, saved for later, and discarded.
 - Batch Review supports confirming high-confidence records, reviewing assumed records, correcting/removing selected records, applying confirmed records, saving unresolved records for later, and undoing/discarding a batch.
 - Destinations include Owned Cards, Current Deck, Main Deck, Maybeboard, Cuts, Extras/Tokens, New Deck, New List, Existing List, and Custom Collection.
@@ -197,8 +221,17 @@ Feeder behavior:
 
 - Automatic Feeder Mode follows idle, card entering, stable, capture, resolve, queue, wait for removal, and ready states.
 - Stacking Feeder Mode never relies on card removal detection. Too-close distortion is treated as the normal new-card-arrival cue.
-- If too-close/unreadable state exceeds the timeout, the scanner pauses with: “Tray may be full. Empty the catch tray, then resume scanning.” The batch queue remains preserved.
+- If too-close/unreadable state exceeds the timeout, the scanner pauses with: "Tray may be full. Empty the catch tray, then resume scanning." The batch queue remains preserved.
+- After Empty Tray Done, temporary fingerprints and frame baselines reset, the same batch resumes, and the last accepted card is not duplicated.
 - Tokens/extras can be marked separately and do not count toward Commander totals.
+
+Browser limitations:
+
+- Camera capture requires HTTPS or localhost and a browser that implements `navigator.mediaDevices.getUserMedia`.
+- Torch, optical zoom, focus modes, vibration, and camera labels depend on browser and device support; unsupported controls are hidden instead of simulated.
+- iOS Safari/PWA may require site-level permission changes in Safari or device settings, does not expose every camera capability, and may suspend streams when backgrounded.
+- Android Chrome generally exposes richer camera and vibration capabilities, but users may still need both site and system camera permissions.
+- Desktop webcams work when present, with camera selection shown only after permission reveals available devices.
 
 ## Search Directories
 
@@ -276,4 +309,4 @@ public/assets  App assets
 
 ## Current Deferred Work
 
-Live camera capture, OCR, image fingerprinting, EDHREC-compatible external datasets, full import/export tooling, groups/tags management depth, backup/restore flows, and goldfish/test-play simulation remain future work. The current implementations are local-first, no-price, no-marketplace foundations designed to deepen without required login or commerce links.
+EDHREC-compatible external datasets, deeper import/export tooling, groups/tags management depth, backup/restore flows, and goldfish/test-play simulation remain future work. Scanner recognition now uses live camera capture, local frame analysis, OCR, Scryfall resolution, and persistent batch recovery; future scanner depth can add stronger perspective correction and richer local visual fingerprint databases without changing the user-facing batch model. The current implementations remain local-first, no-price, no-marketplace foundations designed to deepen without required login or commerce links.

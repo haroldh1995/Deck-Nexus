@@ -324,10 +324,183 @@ test.describe("Deck Nexus local-first flow", () => {
     await expect(page.getByTestId("home-hologram-scene")).toBeVisible();
     await expect(page.getByRole("button", { name: "Return to Home" })).toHaveCount(0);
 
+    await page.addInitScript(() => {
+      const testWindow = window as unknown as {
+        __deckNexusScannerTestHarness?: boolean;
+        __deckNexusScannerTestCards?: Array<{
+          name: string;
+          scryfallId: string;
+          oracleId: string;
+          typeLine: string;
+          colorIdentity: string[];
+          confidence: number;
+        }>;
+        __deckNexusScannerBeepCount?: number;
+        __deckNexusAdvanceFakeCard?: boolean;
+        __deckNexusDrawFakeScanner?: () => void;
+      };
+      testWindow.__deckNexusScannerTestHarness = true;
+      testWindow.__deckNexusScannerTestCards = [
+        {
+          name: "Counterspell",
+          scryfallId: "fake-counterspell",
+          oracleId: "fake-oracle-counterspell",
+          typeLine: "Instant",
+          colorIdentity: ["U"],
+          confidence: 0.94,
+        },
+        {
+          name: "Sol Ring",
+          scryfallId: "fake-sol-ring",
+          oracleId: "fake-oracle-sol-ring",
+          typeLine: "Artifact",
+          colorIdentity: [],
+          confidence: 0.92,
+        },
+      ];
+      testWindow.__deckNexusScannerBeepCount = 0;
+      window.addEventListener("deck-nexus:scan-beep", () => {
+        testWindow.__deckNexusScannerBeepCount =
+          (testWindow.__deckNexusScannerBeepCount ?? 0) + 1;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 640;
+      canvas.height = 896;
+      const context = canvas.getContext("2d")!;
+      function draw() {
+        const secondCard = Boolean(testWindow.__deckNexusAdvanceFakeCard);
+        context.fillStyle = secondCard ? "#102030" : "#18243d";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        const cardX = secondCard ? 48 : 76;
+        const cardY = secondCard ? 132 : 96;
+        const cardWidth = secondCard ? 516 : 488;
+        const cardHeight = secondCard ? 720 : 682;
+        context.fillStyle = secondCard ? "#c8b276" : "#8da7d0";
+        context.fillRect(cardX, cardY, cardWidth, cardHeight);
+        for (let stripe = 0; stripe < 14; stripe += 1) {
+          context.fillStyle = stripe % 2 === 0
+            ? secondCard ? "#a98c42" : "#5d7fb8"
+            : secondCard ? "#d7c083" : "#a9bad8";
+          context.fillRect(cardX + 24, cardY + 82 + stripe * 34, cardWidth - 48, 16);
+        }
+        context.strokeStyle = secondCard ? "#5c4518" : "#173c78";
+        context.lineWidth = 4;
+        for (let line = 0; line < 9; line += 1) {
+          const x = cardX + 42 + line * 46;
+          context.beginPath();
+          context.moveTo(x, cardY + 112);
+          context.lineTo(x, cardY + cardHeight - 42);
+          context.stroke();
+        }
+        for (let line = 0; line < 10; line += 1) {
+          const y = cardY + 132 + line * 48;
+          context.beginPath();
+          context.moveTo(cardX + 34, y);
+          context.lineTo(cardX + cardWidth - 34, y);
+          context.stroke();
+        }
+        context.strokeStyle = secondCard ? "#a88c32" : "#2f78ff";
+        context.lineWidth = 18;
+        context.strokeRect(cardX, cardY, cardWidth, cardHeight);
+        context.fillStyle = secondCard ? "#2b2112" : "#07152e";
+        context.font = "40px sans-serif";
+        context.fillText(secondCard ? "Sol Ring" : "Counterspell", cardX + 32, cardY + 72);
+      }
+      draw();
+      testWindow.__deckNexusDrawFakeScanner = draw;
+      window.setInterval(draw, 120);
+      const stream = canvas.captureStream(12);
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: {
+          getUserMedia: async () => stream,
+          enumerateDevices: async () => [
+            {
+              kind: "videoinput",
+              deviceId: "fake-rear-camera",
+              groupId: "fake",
+              label: "Back Camera",
+            },
+          ],
+        },
+      });
+      Object.defineProperty(window, "isSecureContext", {
+        configurable: true,
+        value: true,
+      });
+      class FakeAudioContext {
+        currentTime = 0;
+        destination = {};
+        state = "running";
+        resume = async () => undefined;
+        close = async () => undefined;
+        createOscillator = () => ({
+          type: "triangle",
+          frequency: {
+            setValueAtTime: () => undefined,
+            exponentialRampToValueAtTime: () => undefined,
+          },
+          connect: () => undefined,
+          start: () => undefined,
+          stop: () => {
+            window.setTimeout(() => undefined, 0);
+          },
+          disconnect: () => undefined,
+          onended: undefined,
+        });
+        createGain = () => ({
+          gain: {
+            setValueAtTime: () => undefined,
+            exponentialRampToValueAtTime: () => undefined,
+          },
+          connect: () => undefined,
+          disconnect: () => undefined,
+        });
+      }
+      Object.defineProperty(window, "AudioContext", {
+        configurable: true,
+        value: FakeAudioContext,
+      });
+    });
+
     await page.goto("/scan");
     await expect(page.getByRole("heading", { name: "Scan Cards" })).toBeVisible();
+    await page.getByRole("button", { name: /Allow Camera/ }).first().click();
+    await expect(page.getByText(/Camera live/i)).toBeVisible();
+    await expect(page.locator(".scanner-batch-summary").getByText(/1 records/i)).toBeVisible({
+      timeout: 20_000,
+    });
+    const beepCountAfterFirst = await page.evaluate(
+      () =>
+        (window as unknown as { __deckNexusScannerBeepCount?: number })
+          .__deckNexusScannerBeepCount ?? 0,
+    );
+    expect(beepCountAfterFirst).toBe(1);
+    await page.getByRole("button", { name: "Mute scan confirmation sound" }).click();
+    await page.evaluate(() => {
+      const scannerWindow = window as unknown as {
+        __deckNexusAdvanceFakeCard?: boolean;
+        __deckNexusDrawFakeScanner?: () => void;
+      };
+      scannerWindow.__deckNexusAdvanceFakeCard = true;
+      scannerWindow.__deckNexusDrawFakeScanner?.();
+    });
+    await expect(page.locator(".scanner-batch-summary").getByText(/2 records/i)).toBeVisible({
+      timeout: 20_000,
+    });
+    const beepCountAfterSecond = await page.evaluate(
+      () =>
+        (window as unknown as { __deckNexusScannerBeepCount?: number })
+          .__deckNexusScannerBeepCount ?? 0,
+    );
+    expect(beepCountAfterSecond).toBe(beepCountAfterFirst);
+    await page.reload();
+    await expect(page.getByText(/Unfinished scan batch found/i)).toBeVisible();
+    await expect(page.locator(".scanner-batch-summary").getByText(/2 records/i)).toBeVisible();
     await page.getByLabel("Scanner mode").selectOption("stacking_feeder");
     await page.getByRole("button", { name: "Start Batch" }).click();
+    await page.getByText("Manual fallback and feeder controls").click();
     await page.getByRole("button", { name: "Simulate Scan" }).click();
     await page.getByRole("button", { name: "Too-Close Cue" }).click();
     await expect(page.getByText(/Too-close cue detected/i)).toBeVisible();

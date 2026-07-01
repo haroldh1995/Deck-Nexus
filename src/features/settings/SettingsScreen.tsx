@@ -14,6 +14,10 @@ import type {
   ExportFormat,
   HomePerformanceMode,
   OwnershipPreference,
+  ScannerConfirmationVolume,
+  ScannerPreviewQuality,
+  ScannerPreferredDestination,
+  ScannerMode,
   TextSize,
 } from "../../types/domain";
 
@@ -244,6 +248,177 @@ export function SettingsScreen() {
                 <option value="owned_only">Owned only</option>
                 <option value="allow_missing">Allow missing cards</option>
               </select>
+            </label>
+          </div>
+        </HolographicPanel>
+
+        <HolographicPanel>
+          <div className="settings-section">
+            <h2>Scanner</h2>
+            <label className="toggle-row">
+              <input
+                checked={settings.scannerConfirmationSound}
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerConfirmationSound: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              <span>Scan confirmation sound</span>
+            </label>
+            <label>
+              Confirmation volume
+              <select
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerConfirmationVolume: event.target
+                      .value as ScannerConfirmationVolume,
+                  })
+                }
+                value={settings.scannerConfirmationVolume}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <label className="toggle-row">
+              <input
+                checked={settings.scannerHapticConfirmation}
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerHapticConfirmation: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              <span>Haptic confirmation where supported</span>
+            </label>
+            <label>
+              Default scanner mode
+              <select
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerDefaultMode: event.target.value as ScannerMode,
+                  })
+                }
+                value={settings.scannerDefaultMode}
+              >
+                <option value="owned">Scan to Owned Cards</option>
+                <option value="deck">Scan Directly Into Deck</option>
+                <option value="section">Scan Into Section</option>
+                <option value="batch">Batch Scan</option>
+                <option value="correction">Correction Mode</option>
+                <option value="automatic_feeder">Automatic Feeder Mode</option>
+                <option value="stacking_feeder">Stacking Feeder Mode</option>
+              </select>
+            </label>
+            <label>
+              Preferred destination
+              <select
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerPreferredDestination: event.target
+                      .value as ScannerPreferredDestination,
+                  })
+                }
+                value={settings.scannerPreferredDestination}
+              >
+                <option value="ask">Ask each session</option>
+                <option value="owned_cards">Owned Cards</option>
+                <option value="current_deck">Current Deck</option>
+                <option value="main_deck">Main Deck</option>
+                <option value="maybeboard">Maybeboard</option>
+                <option value="cuts">Cuts</option>
+                <option value="extras_tokens">Extras / Tokens</option>
+              </select>
+            </label>
+            <label>
+              Stable frame duration
+              <input
+                max="900"
+                min="120"
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerStableFrameDurationMs: Number(event.target.value),
+                  })
+                }
+                step="30"
+                type="range"
+                value={settings.scannerStableFrameDurationMs}
+              />
+            </label>
+            <label>
+              Tray-full timeout
+              <input
+                max="9000"
+                min="2000"
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerTrayFullTimeoutMs: Number(event.target.value),
+                  })
+                }
+                step="250"
+                type="range"
+                value={settings.scannerTrayFullTimeoutMs}
+              />
+            </label>
+            <label>
+              Preview quality
+              <select
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerPreviewQuality: event.target
+                      .value as ScannerPreviewQuality,
+                  })
+                }
+                value={settings.scannerPreviewQuality}
+              >
+                <option value="low">Low</option>
+                <option value="balanced">Balanced</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <label>
+              Scanner performance mode
+              <select
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerPerformanceMode: event.target
+                      .value as HomePerformanceMode,
+                  })
+                }
+                value={settings.scannerPerformanceMode}
+              >
+                <option value="full">Full analysis</option>
+                <option value="balanced">Balanced</option>
+                <option value="performance">Performance mode</option>
+              </select>
+            </label>
+            <label className="toggle-row">
+              <input
+                checked={settings.scannerStoreCorrectionThumbnails}
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerStoreCorrectionThumbnails: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              <span>Store local correction thumbnails</span>
+            </label>
+            <label className="toggle-row">
+              <input
+                checked={settings.scannerSaveUnresolved}
+                onChange={(event) =>
+                  void updateSettings({
+                    scannerSaveUnresolved: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              <span>Save unresolved camera scans</span>
             </label>
           </div>
         </HolographicPanel>
