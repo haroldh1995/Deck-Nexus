@@ -64,8 +64,8 @@ describe("home hologram scene math", () => {
 
     expect(frontCard.rear).toBe(false);
     expect(rearCard.rear).toBe(true);
-    expect(frontCard.zIndex).toBeGreaterThan(1200);
-    expect(rearCard.zIndex).toBeLessThan(1200);
+    expect(frontCard.zIndex).toBeGreaterThan(54);
+    expect(rearCard.zIndex).toBeLessThan(54);
   });
 
   it("keeps responsive scene scale inside mobile and desktop bounds", () => {
@@ -73,12 +73,17 @@ describe("home hologram scene math", () => {
       width: 320,
       height: 568,
     });
+    const shortLandscape = calculateResponsiveSceneScale({
+      width: 568,
+      height: 320,
+    });
     const desktop = calculateResponsiveSceneScale({
       width: 1280,
       height: 900,
     });
 
     expect(smallPhone.cardWidth).toBeGreaterThanOrEqual(84);
+    expect(shortLandscape.centerY).toBeLessThan(220);
     expect(desktop.radiusX).toBeLessThanOrEqual(470);
     expect(desktop.cardHeight).toBeGreaterThan(desktop.cardWidth);
   });

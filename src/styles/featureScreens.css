@@ -350,6 +350,8 @@
 
 .search-result-card {
   grid-template-columns: auto 1fr minmax(8rem, auto);
+  content-visibility: auto;
+  contain-intrinsic-size: 9rem;
 }
 
 .search-result-card.is-selected {

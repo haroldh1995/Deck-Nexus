@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -289,6 +289,7 @@ export function CardSearchScreen() {
     const next = decorateResults(page?.cards ?? [], { deck, ownedCards, manualSearch: true });
     return applyLocalScope(next, scope, deck);
   }, [deck, ownedCards, page, scope]);
+  const deferredResults = useDeferredValue(results);
   const selectedCards = useMemo(() => Object.values(selectedCardsById), [selectedCardsById]);
   const primaryAction = useMemo(
     () => getPrimarySearchAction({ context, hasCurrentDeck: Boolean(deck) }),
@@ -497,7 +498,7 @@ export function CardSearchScreen() {
     setSelectionMode(true);
     setSelectedCardsById((current) => {
       const next = { ...current };
-      for (const result of results) {
+      for (const result of deferredResults) {
         next[result.card.id] = result.card;
       }
       return next;
@@ -753,7 +754,7 @@ export function CardSearchScreen() {
       <div className="search-status-row" role="status" aria-live="polite">
         <span>{advanced ? "Advanced Scryfall query" : "Predictive name search"}</span>
         <strong>{status}</strong>
-        <span>{loadingSearch ? "Refreshing..." : `${results.length} shown`}</span>
+        <span>{loadingSearch ? "Refreshing..." : `${deferredResults.length} shown`}</span>
       </div>
 
       <HolographicPanel className="search-selection-toolbar">
@@ -770,7 +771,7 @@ export function CardSearchScreen() {
             {selectionMode ? <CheckSquare aria-hidden="true" /> : <Square aria-hidden="true" />}
             Selection Mode
           </button>
-          <button type="button" onClick={selectAllVisible} disabled={results.length === 0}>
+          <button type="button" onClick={selectAllVisible} disabled={deferredResults.length === 0}>
             Select Visible
           </button>
           <button type="button" onClick={clearSelection} disabled={selectedCards.length === 0}>
@@ -813,10 +814,10 @@ export function CardSearchScreen() {
       ) : null}
 
       <div ref={resultsRef} className={`search-results search-results--${view}`} aria-busy={loadingSearch}>
-        {loadingSearch && results.length === 0
+        {loadingSearch && deferredResults.length === 0
           ? Array.from({ length: 6 }, (_, index) => <div className="search-result-skeleton" key={index} />)
           : null}
-        {results.map((result) => {
+        {deferredResults.map((result) => {
           const selected = Boolean(selectedCardsById[result.card.id]);
 
           return (

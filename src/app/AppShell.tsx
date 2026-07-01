@@ -1,22 +1,73 @@
-import { useState, type CSSProperties } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+  type CSSProperties,
+} from "react";
 import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AppIcon } from "../components/AppIcon";
 import { HolographicPanel } from "../components/HolographicPanel";
 import { permanentHomeRoutes } from "../data/routes";
 import { getRecoverableScanBatch, updateScanBatch } from "../db/repositories";
-import { AnalyzerScreen } from "../features/analyzer/AnalyzerScreen";
-import { CardSearchScreen } from "../features/cards/CardSearchScreen";
-import { CreateDeckScreen } from "../features/decks/CreateDeckScreen";
-import { DeckBuilderScreen } from "../features/decks/DeckBuilderScreen";
-import { DeckLibraryScreen } from "../features/decks/DeckLibraryScreen";
-import { CardDirectoriesScreen } from "../features/directories/CardDirectoriesScreen";
 import { FoundationScreen } from "../features/foundation/FoundationScreen";
-import { HomeScreen } from "../features/home/HomeScreen";
-import { OwnedCardsScreen } from "../features/owned/OwnedCardsScreen";
-import { ScanCardsScreen } from "../features/scanner/ScanCardsScreen";
-import { SettingsScreen } from "../features/settings/SettingsScreen";
 import type { ScanBatch } from "../types/domain";
 import { useSettings } from "./useSettings";
+
+const HomeScreen = lazy(async () => ({
+  default: (await import("../features/home/HomeScreen")).HomeScreen,
+}));
+const CreateDeckScreen = lazy(async () => ({
+  default: (await import("../features/decks/CreateDeckScreen")).CreateDeckScreen,
+}));
+const DeckLibraryScreen = lazy(async () => ({
+  default: (await import("../features/decks/DeckLibraryScreen")).DeckLibraryScreen,
+}));
+const CardSearchScreen = lazy(async () => ({
+  default: (await import("../features/cards/CardSearchScreen")).CardSearchScreen,
+}));
+const CardDirectoriesScreen = lazy(async () => ({
+  default: (await import("../features/directories/CardDirectoriesScreen")).CardDirectoriesScreen,
+}));
+const ScanCardsScreen = lazy(async () => ({
+  default: (await import("../features/scanner/ScanCardsScreen")).ScanCardsScreen,
+}));
+const OwnedCardsScreen = lazy(async () => ({
+  default: (await import("../features/owned/OwnedCardsScreen")).OwnedCardsScreen,
+}));
+const AnalyzerScreen = lazy(async () => ({
+  default: (await import("../features/analyzer/AnalyzerScreen")).AnalyzerScreen,
+}));
+const SettingsScreen = lazy(async () => ({
+  default: (await import("../features/settings/SettingsScreen")).SettingsScreen,
+}));
+const DeckBuilderScreen = lazy(async () => ({
+  default: (await import("../features/decks/DeckBuilderScreen")).DeckBuilderScreen,
+}));
+
+const routePreloaders: Record<string, () => Promise<unknown>> = {
+  "/": () => import("../features/home/HomeScreen"),
+  "/analyzer": () => import("../features/analyzer/AnalyzerScreen"),
+  "/collections": () => import("../features/directories/CardDirectoriesScreen"),
+  "/create": () => import("../features/decks/CreateDeckScreen"),
+  "/deck-builder": () => import("../features/decks/DeckBuilderScreen"),
+  "/library": () => import("../features/decks/DeckLibraryScreen"),
+  "/owned": () => import("../features/owned/OwnedCardsScreen"),
+  "/scan": () => import("../features/scanner/ScanCardsScreen"),
+  "/search": () => import("../features/cards/CardSearchScreen"),
+  "/settings": () => import("../features/settings/SettingsScreen"),
+  "/upgrade-lists": () => import("../features/directories/CardDirectoriesScreen"),
+  "/wishlist": () => import("../features/directories/CardDirectoriesScreen"),
+};
+
+function RouteLoading() {
+  return (
+    <div className="route-loading-shell" role="status" aria-live="polite">
+      Loading
+    </div>
+  );
+}
 
 export function AppShell() {
   const { settings } = useSettings();
@@ -24,6 +75,37 @@ export function AppShell() {
   const navigate = useNavigate();
   const isHomeRoute = location.pathname === "/";
   const [protectedBatch, setProtectedBatch] = useState<ScanBatch | null>(null);
+  const preloadRoute = useCallback((path: string) => {
+    const preload = routePreloaders[path];
+    if (preload) {
+      void preload();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isHomeRoute) {
+      return;
+    }
+
+    const preload = () => {
+      for (const route of permanentHomeRoutes) {
+        preloadRoute(route.path);
+      }
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      const idleHandle = window.requestIdleCallback(preload, { timeout: 1800 });
+      return () => {
+        window.cancelIdleCallback(idleHandle);
+      };
+    }
+
+    const timer = window.setTimeout(preload, 900);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [isHomeRoute, preloadRoute]);
 
   const textScale =
     settings.textSize === "large"
@@ -83,72 +165,74 @@ export function AppShell() {
         ) : null}
       </header>
 
-      <main className="route-surface" key={location.pathname}>
-        <Routes>
-          <Route path="/" element={<HomeScreen />} />
-          <Route path="/create" element={<CreateDeckScreen />} />
-          <Route path="/library" element={<DeckLibraryScreen />} />
-          <Route path="/search" element={<CardSearchScreen />} />
-          <Route path="/wishlist" element={<CardDirectoriesScreen kind="wishlist" />} />
-          <Route path="/upgrade-lists" element={<CardDirectoriesScreen kind="upgradeLists" />} />
-          <Route path="/collections" element={<CardDirectoriesScreen kind="collections" />} />
-          <Route path="/scan" element={<ScanCardsScreen />} />
-          <Route path="/owned" element={<OwnedCardsScreen />} />
-          <Route
-            path="/import"
-            element={
-              <FoundationScreen
-                title="Import Deck"
-                status="Coming later"
-                summary="Deck import results and unresolved card records are part of the local schema."
-              />
-            }
-          />
-          <Route path="/analyzer" element={<AnalyzerScreen />} />
-          <Route
-            path="/groups"
-            element={
-              <FoundationScreen
-                title="Deck Groups"
-                status="Coming later"
-                summary="Local deck groups are modeled for organizing Commander decks."
-              />
-            }
-          />
-          <Route
-            path="/tags"
-            element={
-              <FoundationScreen
-                title="Tags"
-                status="Coming later"
-                summary="Tags and categories are ready for decks, cards, owned cards, and analysis."
-              />
-            }
-          />
-          <Route
-            path="/test"
-            element={
-              <FoundationScreen
-                title="Test Deck"
-                status="Coming later"
-                summary="Goldfish and test-play tools will be added after the Deck Builder is complete."
-              />
-            }
-          />
-          <Route
-            path="/export"
-            element={
-              <FoundationScreen
-                title="Export"
-                status="Coming later"
-                summary="Export history and default export format settings are already local-first."
-              />
-            }
-          />
-          <Route path="/settings" element={<SettingsScreen />} />
-          <Route path="/deck-builder" element={<DeckBuilderScreen />} />
-          <Route path="/deck-builder/:deckId" element={<DeckBuilderScreen />} />
-        </Routes>
+      <main className="route-surface">
+        <Suspense fallback={<RouteLoading />}>
+          <Routes>
+            <Route path="/" element={<HomeScreen />} />
+            <Route path="/create" element={<CreateDeckScreen />} />
+            <Route path="/library" element={<DeckLibraryScreen />} />
+            <Route path="/search" element={<CardSearchScreen />} />
+            <Route path="/wishlist" element={<CardDirectoriesScreen kind="wishlist" />} />
+            <Route path="/upgrade-lists" element={<CardDirectoriesScreen kind="upgradeLists" />} />
+            <Route path="/collections" element={<CardDirectoriesScreen kind="collections" />} />
+            <Route path="/scan" element={<ScanCardsScreen />} />
+            <Route path="/owned" element={<OwnedCardsScreen />} />
+            <Route
+              path="/import"
+              element={
+                <FoundationScreen
+                  title="Import Deck"
+                  status="Coming later"
+                  summary="Deck import results and unresolved card records are part of the local schema."
+                />
+              }
+            />
+            <Route path="/analyzer" element={<AnalyzerScreen />} />
+            <Route
+              path="/groups"
+              element={
+                <FoundationScreen
+                  title="Deck Groups"
+                  status="Coming later"
+                  summary="Local deck groups are modeled for organizing Commander decks."
+                />
+              }
+            />
+            <Route
+              path="/tags"
+              element={
+                <FoundationScreen
+                  title="Tags"
+                  status="Coming later"
+                  summary="Tags and categories are ready for decks, cards, owned cards, and analysis."
+                />
+              }
+            />
+            <Route
+              path="/test"
+              element={
+                <FoundationScreen
+                  title="Test Deck"
+                  status="Coming later"
+                  summary="Goldfish and test-play tools will be added after the Deck Builder is complete."
+                />
+              }
+            />
+            <Route
+              path="/export"
+              element={
+                <FoundationScreen
+                  title="Export"
+                  status="Coming later"
+                  summary="Export history and default export format settings are already local-first."
+                />
+              }
+            />
+            <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/deck-builder" element={<DeckBuilderScreen />} />
+            <Route path="/deck-builder/:deckId" element={<DeckBuilderScreen />} />
+          </Routes>
+        </Suspense>
       </main>
 
       {!isHomeRoute ? (
@@ -159,6 +243,8 @@ export function AppShell() {
                 `bottom-command-bar__item${isActive ? " is-active" : ""}`
               }
               key={route.id}
+              onFocus={() => preloadRoute(route.path)}
+              onPointerEnter={() => preloadRoute(route.path)}
               to={route.path}
             >
               <AppIcon name={route.icon} />

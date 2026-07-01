@@ -1,9 +1,4 @@
-import { useEffect, useState } from "react";
-
-export interface SceneParallax {
-  x: number;
-  y: number;
-}
+import { useCallback, useEffect, useRef } from "react";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -16,12 +11,32 @@ export function useSceneParallax({
   enabled: boolean;
   deviceTiltEnabled: boolean;
 }) {
-  const [parallax, setParallax] = useState<SceneParallax>({ x: 0, y: 0 });
+  const elementRef = useRef<HTMLElement | null>(null);
+
+  const applyParallax = useCallback((x: number, y: number) => {
+    const element = elementRef.current;
+    if (!element) {
+      return;
+    }
+
+    element.style.setProperty("--home-parallax-x", String(x));
+    element.style.setProperty("--home-parallax-y", String(y));
+  }, []);
+
+  const registerParallaxSurface = useCallback(
+    (element: HTMLElement | null) => {
+      elementRef.current = element;
+      if (element) {
+        applyParallax(0, 0);
+      }
+    },
+    [applyParallax],
+  );
 
   useEffect(() => {
     if (!enabled) {
       const frame = window.requestAnimationFrame(() => {
-        setParallax({ x: 0, y: 0 });
+        applyParallax(0, 0);
       });
       return () => {
         window.cancelAnimationFrame(frame);
@@ -33,8 +48,8 @@ export function useSceneParallax({
     let nextY = 0;
 
     function handlePointerMove(event: PointerEvent) {
-      const width = window.innerWidth || 1;
-      const height = window.innerHeight || 1;
+      const width = window.visualViewport?.width ?? window.innerWidth ?? 1;
+      const height = window.visualViewport?.height ?? window.innerHeight ?? 1;
       nextX = clamp((event.clientX / width - 0.5) * 2, -1, 1);
       nextY = clamp((event.clientY / height - 0.5) * 2, -1, 1);
 
@@ -44,7 +59,7 @@ export function useSceneParallax({
 
       frame = window.requestAnimationFrame(() => {
         frame = 0;
-        setParallax({ x: nextX, y: nextY });
+        applyParallax(nextX, nextY);
       });
     }
 
@@ -68,7 +83,7 @@ export function useSceneParallax({
 
       frame = window.requestAnimationFrame(() => {
         frame = 0;
-        setParallax({ x: nextX, y: nextY });
+        applyParallax(nextX, nextY);
       });
     }
 
@@ -85,7 +100,7 @@ export function useSceneParallax({
         window.cancelAnimationFrame(frame);
       }
     };
-  }, [deviceTiltEnabled, enabled]);
+  }, [applyParallax, deviceTiltEnabled, enabled]);
 
-  return parallax;
+  return registerParallaxSurface;
 }

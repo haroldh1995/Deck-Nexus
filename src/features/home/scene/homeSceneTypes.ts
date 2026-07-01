@@ -63,5 +63,4 @@ export interface OrbitPhysicsState {
   dragging: boolean;
   settling: boolean;
   velocity: number;
-  distortedIds: Set<string>;
 }

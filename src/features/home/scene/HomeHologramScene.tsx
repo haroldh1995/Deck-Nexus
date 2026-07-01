@@ -12,9 +12,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AppIcon } from "../../../components/AppIcon";
 import type { HomeOrbitItem } from "../../../types/navigation";
 import {
-  calculateOrbitTransforms,
-  getCardOverlapIntensity,
-  getFocusedTransform,
+  getRotationForIndex,
 } from "./orbitMath";
 import {
   homeFocusedCardStorageKey,
@@ -63,12 +61,13 @@ export function HomeHologramScene({
 }) {
   const navigate = useNavigate();
   const gearButtonRef = useRef<HTMLButtonElement>(null);
+  const persistFocusFrameRef = useRef(0);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const sceneScale = useResponsiveSceneScale();
   const visible = useSceneVisibility();
   const staticHome = settings.staticHomeScreen;
   const { introMode, markIntroPlayed } = useHomeIntro(settings.reducedMotion);
-  const parallax = useSceneParallax({
+  const registerParallaxSurface = useSceneParallax({
     deviceTiltEnabled: settings.deviceTiltParallax,
     enabled: !settings.reducedMotion && !settings.staticHomeScreen,
   });
@@ -92,89 +91,52 @@ export function HomeHologramScene({
         return;
       }
 
-      window.localStorage.setItem(homeFocusedCardStorageKey, card.id);
+      if (persistFocusFrameRef.current) {
+        window.cancelAnimationFrame(persistFocusFrameRef.current);
+      }
+
+      persistFocusFrameRef.current = window.requestAnimationFrame(() => {
+        persistFocusFrameRef.current = 0;
+        window.localStorage.setItem(homeFocusedCardStorageKey, card.id);
+      });
     },
     [cards],
   );
   const orbit = useOrbitPhysics({
+    cards,
     initialFocusedIndex,
-    itemCount: cards.length,
     onFocusedIndexChange: persistFocusedIndex,
     reducedMotion: settings.reducedMotion,
+    scale: sceneScale,
     staticHomeScreen: staticHome,
     visible,
   });
   const statusCopy = getHomeStatusCopy(deckState);
   const controlsPortal = typeof document === "undefined" ? null : document.body;
-  const {
-    clearDistortion,
-    dragging,
-    settling,
-    markDistortion,
-  } = orbit;
-
-  const transforms = useMemo(
-    () =>
-      calculateOrbitTransforms({
-        cards,
-        rotation: orbit.rotation,
-        scale: sceneScale,
-      }),
-    [cards, orbit.rotation, sceneScale],
-  );
-
-  const transformById = useMemo(
-    () => new Map(transforms.map((transform) => [transform.id, transform])),
-    [transforms],
-  );
-
   const focusedCard = cards[orbit.focusedIndex] ?? cards[0];
-  const focusedTransform = getFocusedTransform(transforms);
-  const renderOrbitLayer = (rearLayer: boolean) =>
+  const renderOrbitCards = () =>
     cards.map((card, index) => {
-      const transform = transformById.get(card.id);
-      if (!transform || transform.rear !== rearLayer) {
-        return null;
-      }
-
       return (
         <OrbitCard
           card={card}
-          distorted={orbit.distortedIds.has(card.id)}
+          cardRef={orbit.registerCardElement(card.id)}
           focused={focusedCard?.id === card.id}
           index={index}
           key={card.id}
           onClick={() => handleCardClick(card, index)}
           reducedMotion={settings.reducedMotion}
           total={cards.length}
-          transform={transform}
         />
       );
     });
 
   useEffect(() => {
-    if (!focusedTransform || (!dragging && !settling)) {
-      clearDistortion();
-      return;
-    }
-
-    const distortedIds = transforms
-      .filter((transform) => transform.id !== focusedTransform.id)
-      .filter(
-        (transform) =>
-          getCardOverlapIntensity(focusedTransform, transform) > 0.12,
-      )
-      .map((transform) => transform.id);
-
-    markDistortion(distortedIds);
-  }, [
-    clearDistortion,
-    dragging,
-    focusedTransform,
-    markDistortion,
-    settling,
-    transforms,
-  ]);
+    return () => {
+      if (persistFocusFrameRef.current) {
+        window.cancelAnimationFrame(persistFocusFrameRef.current);
+      }
+    };
+  }, []);
 
   function openCard(card: HomeHologramCard) {
     orbit.setQuickActionCardId(null);
@@ -271,6 +233,7 @@ export function HomeHologramScene({
         data-performance={settings.homePerformanceMode}
         data-reduced-motion={settings.reducedMotion}
         data-testid="home-hologram-scene"
+        ref={registerParallaxSurface}
         onKeyDown={(event) =>
           orbit.handleKeyDown(event, () => {
             if (focusedCard) {
@@ -294,8 +257,8 @@ export function HomeHologramScene({
             "--home-upper-ring-scale": sceneScale.upperRingScale,
             "--home-lower-ring-scale": sceneScale.lowerRingScale,
             "--home-beam-width": `${sceneScale.beamWidth}px`,
-            "--home-parallax-x": parallax.x,
-            "--home-parallax-y": parallax.y,
+            "--home-parallax-x": 0,
+            "--home-parallax-y": 0,
             "--home-glow-intensity": settings.glowIntensity,
           } as CSSProperties
         }
@@ -325,23 +288,17 @@ export function HomeHologramScene({
         <div className="rear-orbit-fog" aria-hidden="true" />
 
         <div
-          className="orbit-stage orbit-stage--rear"
-          data-testid="orbit-layer-rear"
+          className="orbit-stage orbit-stage--continuous"
+          data-initial-rotation={getRotationForIndex(initialFocusedIndex, cards.length)}
+          data-testid="orbit-layer-active"
         >
-          {renderOrbitLayer(true)}
+          {renderOrbitCards()}
         </div>
 
         <CentralCrystalAssembly
-          active={Math.abs(orbit.velocity) > 0.004}
+          active={orbit.dragging || orbit.settling}
           onResetFocus={() => orbit.focusIndex(0)}
         />
-
-        <div
-          className="orbit-stage orbit-stage--front"
-          data-testid="orbit-layer-front"
-        >
-          {renderOrbitLayer(false)}
-        </div>
 
         <div className="home-core-status" aria-live="polite">
           <h1>{statusCopy.title}</h1>

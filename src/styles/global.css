@@ -55,10 +55,16 @@ textarea {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 a {
   color: inherit;
+}
+
+button:active:not(:disabled),
+a:active {
+  opacity: 0.86;
 }
 
 #root {
@@ -227,7 +233,7 @@ a {
 .route-surface {
   position: relative;
   z-index: 1;
-  min-height: calc(100svh - 8.4rem);
+  min-height: calc(100dvh - 8.4rem);
   padding: 1rem 1rem 7.6rem;
 }
 
@@ -235,11 +241,21 @@ a {
 .home-screen {
   width: min(1120px, 100%);
   margin: 0 auto;
-  animation: spell-in 460ms ease both;
+  animation: spell-in 160ms ease-out both;
 }
 
 .screen--narrow {
   width: min(760px, 100%);
+}
+
+.route-loading-shell {
+  display: grid;
+  min-height: 12rem;
+  place-items: center;
+  border: 1px solid rgba(55, 234, 255, 0.16);
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: rgba(4, 12, 32, 0.42);
 }
 
 .page-header {
@@ -1978,13 +1994,11 @@ input[type="range"] {
 @keyframes spell-in {
   from {
     opacity: 0;
-    filter: blur(12px);
-    transform: translateY(0.7rem) scale(0.99);
+    transform: translate3d(0, 0.32rem, 0);
   }
   to {
     opacity: 1;
-    filter: blur(0);
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -2155,7 +2169,7 @@ input[type="range"] {
     padding: 0 1rem 0.35rem;
     pointer-events: auto;
     scroll-padding-inline: 1rem;
-    scroll-snap-type: x mandatory;
+    scroll-snap-type: x proximity;
   }
 
   .nexus-orbit:not(.nexus-orbit--static) .orbit-card {

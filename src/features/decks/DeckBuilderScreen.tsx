@@ -229,6 +229,70 @@ function getAllDeckCards(deck: Deck): DeckCard[] {
   return [...deck.cards, ...deck.maybeboard, ...deck.cuts];
 }
 
+function removeDeckCardLocally(deck: Deck, cardId: string): Deck {
+  return {
+    ...deck,
+    cards: deck.cards.filter((card) => card.id !== cardId),
+    cuts: deck.cuts.filter((card) => card.id !== cardId),
+    maybeboard: deck.maybeboard.filter((card) => card.id !== cardId),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function updateDeckCardLocally(
+  deck: Deck,
+  cardId: string,
+  patch: Partial<DeckCard>,
+): Deck {
+  const update = (card: DeckCard): DeckCard =>
+    card.id === cardId
+      ? { ...card, ...patch, updatedAt: new Date().toISOString() }
+      : card;
+
+  return {
+    ...deck,
+    cards: deck.cards.map(update),
+    cuts: deck.cuts.map(update),
+    maybeboard: deck.maybeboard.map(update),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function moveDeckCardLocally(
+  deck: Deck,
+  card: DeckCard,
+  destination: AddDestination,
+  cutReason = "",
+): Deck {
+  const deckWithoutCard = removeDeckCardLocally(deck, card.id);
+  const movedCard: DeckCard = {
+    ...card,
+    cutReason: destination === "cuts" ? cutReason : undefined,
+    previousSection: destination === "cuts" ? card.section : card.previousSection,
+    section: destination,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (destination === "maybeboard") {
+    return {
+      ...deckWithoutCard,
+      maybeboard: [...deckWithoutCard.maybeboard, movedCard],
+    };
+  }
+
+  if (destination === "cuts") {
+    return {
+      ...deckWithoutCard,
+      cuts: [...deckWithoutCard.cuts, movedCard],
+    };
+  }
+
+  return {
+    ...deckWithoutCard,
+    cards: [...deckWithoutCard.cards, movedCard],
+  };
+}
+
 function getDeckCardById(deck: Deck, cardId: string): DeckCard | undefined {
   return getAllDeckCards(deck).find((card) => card.id === cardId);
 }
@@ -516,9 +580,19 @@ export function DeckBuilderScreen() {
       }
     }
 
-    const nextDeck = await moveDeckCard(deck.id, card.id, destination, cutReason);
-    rememberDeck(nextDeck, `${card.name} moved locally.`);
+    const previousDeck = deck;
+    rememberDeck(
+      moveDeckCardLocally(deck, card, destination, cutReason),
+      `${card.name} moved. Saving...`,
+    );
     setQuickMenuCardId("");
+
+    try {
+      const nextDeck = await moveDeckCard(deck.id, card.id, destination, cutReason);
+      rememberDeck(nextDeck, `${card.name} moved locally.`);
+    } catch {
+      rememberDeck(previousDeck, `${card.name} could not be moved. Local state restored.`);
+    }
   }
 
   async function confirmCut() {
@@ -526,15 +600,25 @@ export function DeckBuilderScreen() {
       return;
     }
 
-    const nextDeck = await moveDeckCard(
-      deck.id,
-      cutModal.card.id,
-      "cuts",
-      cutModal.reason,
+    const previousDeck = deck;
+    rememberDeck(
+      moveDeckCardLocally(deck, cutModal.card, "cuts", cutModal.reason),
+      `${cutModal.card.name} moved to Cuts. Saving...`,
     );
-    rememberDeck(nextDeck, `${cutModal.card.name} moved to Cuts.`);
     setCutModal(null);
     setDetailCardId("");
+
+    try {
+      const nextDeck = await moveDeckCard(
+        deck.id,
+        cutModal.card.id,
+        "cuts",
+        cutModal.reason,
+      );
+      rememberDeck(nextDeck, `${cutModal.card.name} moved to Cuts.`);
+    } catch {
+      rememberDeck(previousDeck, `${cutModal.card.name} cut was not saved. Local state restored.`);
+    }
   }
 
   async function handleRemoveCard(card: DeckCard) {
@@ -542,10 +626,17 @@ export function DeckBuilderScreen() {
       return;
     }
 
-    const nextDeck = await removeDeckCard(deck.id, card.id);
-    rememberDeck(nextDeck, `${card.name} removed locally.`);
+    const previousDeck = deck;
+    rememberDeck(removeDeckCardLocally(deck, card.id), `${card.name} removed. Saving...`);
     setQuickMenuCardId("");
     setDetailCardId("");
+
+    try {
+      const nextDeck = await removeDeckCard(deck.id, card.id);
+      rememberDeck(nextDeck, `${card.name} removed locally.`);
+    } catch {
+      rememberDeck(previousDeck, `${card.name} could not be removed. Local state restored.`);
+    }
   }
 
   async function handleUpdateCard(card: DeckCard, patch: Partial<DeckCard>) {
@@ -553,11 +644,23 @@ export function DeckBuilderScreen() {
       return;
     }
 
-    const nextDeck = await updateDeckCard(deck.id, card.id, patch);
-    rememberDeck(nextDeck, `${card.name} updated locally.`);
-    const updatedCard = getDeckCardById(nextDeck, card.id);
-    if (updatedCard && detailCardId === card.id) {
-      openDetail(updatedCard);
+    const previousDeck = deck;
+    const optimisticDeck = updateDeckCardLocally(deck, card.id, patch);
+    rememberDeck(optimisticDeck, `${card.name} updated. Saving...`);
+    const optimisticCard = getDeckCardById(optimisticDeck, card.id);
+    if (optimisticCard && detailCardId === card.id) {
+      openDetail(optimisticCard);
+    }
+
+    try {
+      const nextDeck = await updateDeckCard(deck.id, card.id, patch);
+      rememberDeck(nextDeck, `${card.name} updated locally.`);
+      const updatedCard = getDeckCardById(nextDeck, card.id);
+      if (updatedCard && detailCardId === card.id) {
+        openDetail(updatedCard);
+      }
+    } catch {
+      rememberDeck(previousDeck, `${card.name} update failed. Local state restored.`);
     }
   }
 
@@ -1215,6 +1318,9 @@ function DeckSectionPanel({
 }) {
   const section = builderSections.find((item) => item.id === sectionId);
   const railRef = useRef<HTMLDivElement | null>(null);
+  const scrollFrameRef = useRef<number | null>(null);
+  const scrollMemoryTimerRef = useRef<number | null>(null);
+  const latestScrollLeftRef = useRef(0);
   const scrollKey = `${deck.id}:${tab}:${sectionId}`;
   const [rangeDescription, setRangeDescription] = useState(
     getScrollRangeDescription(section?.label ?? "Section", cards.length, 0, 1, 1),
@@ -1247,9 +1353,40 @@ function DeckSectionPanel({
     updateRange(rail);
   }, [cards.length, scrollKey, updateRange]);
 
+  useEffect(
+    () => () => {
+      if (scrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+      }
+
+      if (scrollMemoryTimerRef.current !== null) {
+        window.clearTimeout(scrollMemoryTimerRef.current);
+      }
+    },
+    [],
+  );
+
   function handleRailScroll(event: UIEvent<HTMLDivElement>) {
-    sectionScrollMemory.set(scrollKey, event.currentTarget.scrollLeft);
-    updateRange(event.currentTarget);
+    latestScrollLeftRef.current = event.currentTarget.scrollLeft;
+
+    if (scrollFrameRef.current === null) {
+      scrollFrameRef.current = window.requestAnimationFrame(() => {
+        scrollFrameRef.current = null;
+        const rail = railRef.current;
+        if (rail) {
+          updateRange(rail);
+        }
+      });
+    }
+
+    if (scrollMemoryTimerRef.current !== null) {
+      window.clearTimeout(scrollMemoryTimerRef.current);
+    }
+
+    scrollMemoryTimerRef.current = window.setTimeout(() => {
+      scrollMemoryTimerRef.current = null;
+      sectionScrollMemory.set(scrollKey, latestScrollLeftRef.current);
+    }, 140);
   }
 
   function scrollTrack(direction: "previous" | "next") {

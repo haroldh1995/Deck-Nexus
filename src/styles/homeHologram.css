@@ -466,6 +466,10 @@
   pointer-events: none;
 }
 
+.orbit-stage--continuous {
+  z-index: auto;
+}
+
 .orbit-stage--rear {
   z-index: 36;
 }
@@ -500,22 +504,22 @@
   pointer-events: auto;
   backface-visibility: hidden;
   contain: layout paint style;
+  opacity: var(--card-opacity, 0);
+  transform: translate3d(-50%, var(--home-orbit-center-y, 430px), 0) scale(0.54);
   transform-origin: 50% 55%;
   transform-style: preserve-3d;
   will-change: transform, opacity;
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
-    opacity 180ms ease,
-    filter 180ms ease;
+    opacity 140ms ease;
 }
 
 .home-hologram-scene--interacting .home-orbit-card {
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
-    opacity 180ms ease,
-    filter 180ms ease;
+    opacity 80ms linear;
 }
 
 .home-orbit-card::before,
@@ -692,6 +696,10 @@
   animation: focused-rune-pulse 1.8s ease-in-out infinite;
 }
 
+.home-orbit-card.is-near-front .home-orbit-card__copy {
+  opacity: clamp(0.68, calc((var(--card-presence, 1) - 0.36) * 2.5), 1);
+}
+
 .home-orbit-card.is-rear {
   pointer-events: auto;
 }
@@ -825,7 +833,7 @@
     calc(var(--home-orbit-center-y, 430px) + clamp(8.8rem, 20svh, 13.2rem)),
     calc(100% - 7.1rem)
   );
-  z-index: 74;
+  z-index: 104;
   width: min(82vw, 26rem);
   display: grid;
   gap: 0.2rem;

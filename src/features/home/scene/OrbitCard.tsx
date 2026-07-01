@@ -1,53 +1,42 @@
-import type { CSSProperties } from "react";
+import { memo, type CSSProperties, type Ref } from "react";
 import { AppIcon } from "../../../components/AppIcon";
-import type { HomeHologramCard, OrbitTransform } from "./homeSceneTypes";
+import type { HomeHologramCard } from "./homeSceneTypes";
 
-export function OrbitCard({
+export const OrbitCard = memo(function OrbitCard({
   card,
-  transform,
+  cardRef,
   index,
   total,
   focused,
-  distorted,
   reducedMotion,
   onClick,
 }: {
   card: HomeHologramCard;
-  transform: OrbitTransform;
+  cardRef: Ref<HTMLButtonElement>;
   index: number;
   total: number;
   focused: boolean;
-  distorted: boolean;
   reducedMotion: boolean;
   onClick: () => void;
 }) {
   return (
     <button
+      ref={cardRef}
       aria-current={focused ? "true" : undefined}
       aria-label={`${card.label}. ${card.subtitle}. ${index + 1} of ${total}. ${
         focused ? "Open this command." : "Focus this command."
       }`}
       className={`home-orbit-card${focused ? " is-focused" : ""}${
-        transform.rear ? " is-rear" : ""
-      }${distorted ? " is-distorting" : ""}${
         reducedMotion ? " is-reduced" : ""
       }`}
       data-focused={focused}
       data-card-id={card.id}
       data-testid={`orbit-card-${card.id}`}
-      data-depth={transform.rear ? "rear" : "front"}
+      data-depth="front"
       data-index={index}
       onClick={onClick}
       style={{
-        filter: "none",
-        opacity: "var(--card-opacity)",
-        transform: `translate3d(calc(-50% + ${transform.x}px), ${transform.y}px, ${transform.z}px) rotateY(${transform.rotationY}deg) rotateX(${transform.rotationX}deg) scale(${transform.scale})`,
-        zIndex: transform.zIndex,
-        "--card-filter": "none",
-        "--card-glow": transform.glow,
         "--card-index": index,
-        "--card-opacity": transform.opacity,
-        "--card-presence": transform.frontness,
       } as CSSProperties}
       type="button"
     >
@@ -71,4 +60,4 @@ export function OrbitCard({
       </span>
     </button>
   );
-}
+});

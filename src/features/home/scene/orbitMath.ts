@@ -63,9 +63,9 @@ export function calculateResponsiveSceneScale({
   const radiusX = clamp(width * 0.48, 142, 470);
   const radiusZ = clamp(height * 0.22, 122, 286);
   const centerY = clamp(
-    height * (landscape ? 0.42 : tallness > 1.7 ? 0.54 : 0.5),
-    landscape ? 270 : 292,
-    landscape ? 420 : 570,
+    height * (landscape ? 0.5 : tallness > 1.7 ? 0.54 : 0.5),
+    landscape ? 150 : 292,
+    landscape ? Math.min(420, height - 72) : 570,
   );
 
   return {
@@ -116,7 +116,7 @@ export function calculateOrbitTransform({
   const glow = lerp(0.16, 1, visualFrontness);
   const rotationY = clamp(-sin * 64, -68, 68);
   const rotationX = lerp(-11, 5, frontness);
-  const layerBias = cos < -0.08 ? 0 : 1200;
+  const layerBias = cos < -0.08 ? 18 : 72;
 
   return {
     id: card.id,
@@ -130,7 +130,7 @@ export function calculateOrbitTransform({
     blur,
     saturation,
     glow,
-    zIndex: layerBias + Math.round(frontness * 1000),
+    zIndex: layerBias + Math.round(frontness * 24),
     rotationY,
     rotationX,
     frontness,
