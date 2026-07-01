@@ -1,4 +1,4 @@
-import type { CSSProperties, PointerEvent } from "react";
+import type { CSSProperties } from "react";
 import { AppIcon } from "../../../components/AppIcon";
 import type { HomeHologramCard, OrbitTransform } from "./homeSceneTypes";
 
@@ -6,25 +6,25 @@ export function OrbitCard({
   card,
   transform,
   index,
+  total,
   focused,
   distorted,
   reducedMotion,
   onClick,
-  onPointerDown,
 }: {
   card: HomeHologramCard;
   transform: OrbitTransform;
   index: number;
+  total: number;
   focused: boolean;
   distorted: boolean;
   reducedMotion: boolean;
   onClick: () => void;
-  onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <button
       aria-current={focused ? "true" : undefined}
-      aria-label={`${card.label}. ${card.subtitle}. ${
+      aria-label={`${card.label}. ${card.subtitle}. ${index + 1} of ${total}. ${
         focused ? "Open this command." : "Focus this command."
       }`}
       className={`home-orbit-card${focused ? " is-focused" : ""}${
@@ -33,11 +33,11 @@ export function OrbitCard({
         reducedMotion ? " is-reduced" : ""
       }`}
       data-focused={focused}
+      data-card-id={card.id}
       data-testid={`orbit-card-${card.id}`}
       data-depth={transform.rear ? "rear" : "front"}
       data-index={index}
       onClick={onClick}
-      onPointerDown={onPointerDown}
       style={{
         filter: "none",
         opacity: "var(--card-opacity)",
@@ -45,7 +45,9 @@ export function OrbitCard({
         zIndex: transform.zIndex,
         "--card-filter": "none",
         "--card-glow": transform.glow,
+        "--card-index": index,
         "--card-opacity": transform.opacity,
+        "--card-presence": transform.frontness,
       } as CSSProperties}
       type="button"
     >

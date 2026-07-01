@@ -4,7 +4,11 @@ export const homeReferenceImage = `${import.meta.env.BASE_URL}assets/deck-nexus-
 
 export const homeIntroSessionKey = "deck-nexus-home-intro-played";
 
+export const homeFocusedCardStorageKey = "deck-nexus-home-focused-card";
+
 export const orbitSnapStrength = 0.12;
+
+export const orbitDragIntentThreshold = 7;
 
 export const performanceModeParticleCounts: Record<HomePerformanceMode, number> =
   {

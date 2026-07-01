@@ -5,7 +5,7 @@ Deck Nexus is a mobile-first, local-first Commander deck builder for Magic: The 
 The current build establishes the Commander-focused app foundation:
 
 - Arcane Holographic Command Hub visual identity.
-- Dynamic 3D holographic Home Screen with a coded card orbit, upper rune ring, central beam, floating crystal, lower floor projection, particles, smoke, and gear-based menu customization.
+- Interactive 3D Home nexus chamber with a single coded command orbit, upper rune ring, central beam, floating crystal, lower floor projection, particles, smoke, and gear-based menu customization.
 - Holographic Deck Workspace for saved Commander decks, with a top commander projection, color-identity orbs, fixed card-type archive sections, independent horizontal section scrolling, deck count diagnostics, and Live Bracket Tracker integration.
 - Local IndexedDB persistence through Dexie.
 - Commander-only deck model and deck creation flow.
@@ -20,9 +20,25 @@ The current build establishes the Commander-focused app foundation:
 - Route shell for the full initial surface area.
 - A small top-right Home button on every non-Home route returns directly to the Home Screen while protecting unfinished scanner batches.
 
-## Dynamic Hologram Home
+## Interactive Nexus Chamber Home
 
-The Home route is a living coded projection chamber, not a static menu image. It uses `public/assets/deck-nexus-home-reference.jpg` as an atmospheric alignment layer while rendering the command cards, crystal, rings, beam, particles, and navigation controls as real HTML/CSS/SVG/Canvas/React elements.
+The Home route is a single interactive projection chamber, not a wallpaper with a separate carousel laid over it. It uses `public/assets/deck-nexus-home-reference.jpg` only as a low-opacity, edge-masked atmospheric texture. The active command cards, crystal, beam, upper ceiling ring, lower projection platform, particles, and navigation controls are rendered as real HTML/CSS/SVG/Canvas/React scene elements that share one coordinate system.
+
+Scene architecture:
+
+- The chamber backdrop fills the usable viewport with no framed wallpaper rectangle.
+- The upper rune disc, vertical beam, central crystal, orbit ring, and lower platform align to the same nexus axis.
+- Rear orbit cards render behind the core; front-facing cards render above it; the focused card is the only dominant foreground card.
+- Dynamic favorites enter the same orbit as permanent destinations instead of appearing in a separate shortcut strip.
+- The old foreground card carousel, shortcut dashboard, permanent Orbit Order panel, and bottom Home navigation bar are not rendered on Home.
+
+Orbit model:
+
+- Card positions are calculated from a continuous floating-point orbit angle, not an integer-only selected index.
+- Each card derives x/y/z position, scale, opacity, rotation, and z-index from its current angle around the nexus.
+- Pointer drag maps directly to orbit rotation from anywhere in the chamber.
+- Release uses velocity, friction, and a soft magnetic settle to the nearest command card.
+- Tapping an unfocused card brings it forward; tapping the focused card or pressing Enter opens its route.
 
 Controls:
 
@@ -36,17 +52,18 @@ Controls:
 
 Accessibility and performance:
 
-- Reduced Motion disables continuous orbit motion, complex intro animation, projection fragmentation, and parallax.
+- Reduced Motion disables idle orbit motion, complex intro animation, projection fragmentation, heavy particles, and parallax while preserving manual drag and keyboard orbit control.
 - Static Home Screen keeps the arcane visual system and presents the same floating cards without idle orbit movement.
 - Performance modes are Full Arcane, Balanced Arcane, and Performance Mode. Balanced is the default and limits the heaviest continuous animation loops while preserving the holographic composition.
 - High Contrast and Large Text settings are respected by the Home scene and app shell.
+- A single scene animation loop updates orbit physics and cleans up on unmount; card transforms use `translate3d`/`rotateX`/`rotateY`/`scale` to avoid layout thrash.
 
 Home layout:
 
 - The floating holographic orbit is the only visible Home navigation surface.
-- The old shortcut strip, permanent Orbit Order panel, and bottom Home navigation bar have been removed.
+- The old shortcut strip, separate overlay carousel, permanent Orbit Order panel, and bottom Home navigation bar have been removed.
 - Home is sized to the usable viewport with `100dvh`, safe-area padding, and no app-controlled vertical scroll.
-- Menu order, dynamic favorite visibility, and Home motion preferences persist in local IndexedDB settings.
+- Menu order, dynamic favorite visibility, Home motion preferences, and the last focused Home card persist locally.
 
 ## Deployment
 

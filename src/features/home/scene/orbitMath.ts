@@ -52,12 +52,21 @@ export function calculateResponsiveSceneScale({
 }): ResponsiveSceneScale {
   const shortSide = Math.min(width, height);
   const tallness = height / Math.max(width, 1);
-  const sceneScale = clamp(shortSide / 390, 0.82, 1.35);
-  const cardWidth = clamp(width * 0.32, 96, 174);
+  const landscape = width > height * 1.12;
+  const sceneScale = clamp(shortSide / 390, 0.78, 1.32);
+  const cardWidth = clamp(
+    width * (landscape ? 0.12 : 0.285),
+    84,
+    landscape ? 132 : 154,
+  );
   const cardHeight = cardWidth * 1.42;
-  const radiusX = clamp(width * 0.41, 136, 410);
-  const radiusZ = clamp(height * 0.18, 112, 240);
-  const centerY = clamp(height * (tallness > 1.7 ? 0.54 : 0.5), 300, 590);
+  const radiusX = clamp(width * 0.48, 142, 470);
+  const radiusZ = clamp(height * 0.22, 122, 286);
+  const centerY = clamp(
+    height * (landscape ? 0.42 : tallness > 1.7 ? 0.54 : 0.5),
+    landscape ? 270 : 292,
+    landscape ? 420 : 570,
+  );
 
   return {
     sceneScale,
@@ -94,14 +103,20 @@ export function calculateOrbitTransform({
   const x = sin * scale.radiusX;
   const z = cos * scale.radiusZ;
   const frontness = (cos + 1) / 2;
-  const y = scale.centerY - 62 + (1 - frontness) * -84 + Math.abs(sin) * 26;
-  const cardScale = lerp(0.48, 1.18, frontness);
-  const opacity = lerp(0.22, 1, frontness);
-  const blur = lerp(2.8, 0, frontness);
-  const saturation = lerp(0.46, 1.14, frontness);
-  const glow = lerp(0.18, 1, frontness);
-  const rotationY = clamp(-sin * 58, -62, 62);
-  const rotationX = lerp(-8, 4, frontness);
+  const visualFrontness = Math.pow(frontness, 2.25);
+  const y =
+    scale.centerY -
+    84 -
+    (1 - visualFrontness) * 116 +
+    Math.abs(sin) * 38;
+  const cardScale = lerp(0.32, 1.08, visualFrontness);
+  const opacity = lerp(0.12, 0.98, visualFrontness);
+  const blur = lerp(1.8, 0, visualFrontness);
+  const saturation = lerp(0.5, 1.18, visualFrontness);
+  const glow = lerp(0.16, 1, visualFrontness);
+  const rotationY = clamp(-sin * 64, -68, 68);
+  const rotationX = lerp(-11, 5, frontness);
+  const layerBias = cos < -0.08 ? 0 : 1200;
 
   return {
     id: card.id,
@@ -115,7 +130,7 @@ export function calculateOrbitTransform({
     blur,
     saturation,
     glow,
-    zIndex: Math.round(frontness * 1000),
+    zIndex: layerBias + Math.round(frontness * 1000),
     rotationY,
     rotationX,
     frontness,
@@ -170,4 +185,60 @@ export function getCardOverlapIntensity(
   const depthDistance = Math.abs(moving.frontness - target.frontness);
   const closeEnough = distanceX < 76 && distanceY < 92 && depthDistance < 0.28;
   return closeEnough ? clamp(1 - (distanceX + distanceY) / 168, 0, 1) : 0;
+}
+
+export function applyOrbitFriction({
+  velocity,
+  deltaMilliseconds,
+  frictionPerFrame = 0.945,
+}: {
+  velocity: number;
+  deltaMilliseconds: number;
+  frictionPerFrame?: number;
+}): number {
+  return velocity * Math.pow(frictionPerFrame, deltaMilliseconds / 16.67);
+}
+
+export function calculateMagneticSettleStep({
+  currentRotation,
+  targetRotation,
+  strength,
+  settleEpsilon = 0.1,
+}: {
+  currentRotation: number;
+  targetRotation: number;
+  strength: number;
+  settleEpsilon?: number;
+}): {
+  nextRotation: number;
+  delta: number;
+  settled: boolean;
+} {
+  const delta = shortestAngleDistance(
+    normalizeAngle(currentRotation),
+    normalizeAngle(targetRotation),
+  );
+
+  return {
+    nextRotation: currentRotation + delta * strength,
+    delta,
+    settled: Math.abs(delta) < settleEpsilon,
+  };
+}
+
+export function getPointerDragIntent({
+  startX,
+  startY,
+  currentX,
+  currentY,
+  threshold,
+}: {
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  threshold: number;
+}): "tap" | "drag" {
+  const distance = Math.hypot(currentX - startX, currentY - startY);
+  return distance >= threshold ? "drag" : "tap";
 }

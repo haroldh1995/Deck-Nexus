@@ -74,6 +74,10 @@ test.describe("Deck Nexus local-first flow", () => {
 
     for (const [id, route] of homeRouteChecks) {
       await page.goto("/");
+      await page.evaluate(() => {
+        localStorage.removeItem("deck-nexus-home-focused-card");
+      });
+      await page.reload();
       const scene = page.getByTestId("home-hologram-scene");
       await expect(scene).toBeVisible();
       await expect(page.getByTestId(`orbit-card-${id}`)).toBeAttached();
@@ -94,15 +98,23 @@ test.describe("Deck Nexus local-first flow", () => {
   }) => {
     await page.goto("/");
     await expect(page.getByTestId("home-hologram-scene")).toBeVisible();
+    await expect(page.getByTestId("home-hologram-scene")).toHaveAttribute(
+      "data-orbit-system",
+      "chamber",
+    );
     await expect(
       page.getByRole("button", { name: "Customize Home menu" }),
     ).toBeVisible();
     await expect(page.getByText(/Orbit order/i)).toHaveCount(0);
     await expect(page.locator(".home-accessibility-nav")).toHaveCount(0);
     await expect(page.locator(".bottom-command-bar")).toHaveCount(0);
+    await expect(page.locator(".home-overlay-carousel")).toHaveCount(0);
 
     const homeOverflow = await page.evaluate(() => {
       const scrollingElement = document.scrollingElement ?? document.documentElement;
+      const referenceStyle = getComputedStyle(
+        document.querySelector(".home-reference-layer") as HTMLElement,
+      );
       return {
         bodyOverflow:
           document.body.scrollHeight - document.body.clientHeight,
@@ -110,11 +122,34 @@ test.describe("Deck Nexus local-first flow", () => {
           scrollingElement.scrollHeight - scrollingElement.clientHeight,
         horizontalOverflow:
           scrollingElement.scrollWidth - scrollingElement.clientWidth,
+        referenceObjectFit: referenceStyle.objectFit,
+        referenceOpacity: referenceStyle.opacity,
       };
     });
     expect(homeOverflow.bodyOverflow).toBeLessThanOrEqual(2);
     expect(homeOverflow.documentOverflow).toBeLessThanOrEqual(2);
     expect(homeOverflow.horizontalOverflow).toBeLessThanOrEqual(2);
+    expect(homeOverflow.referenceObjectFit).toBe("cover");
+    expect(Number(homeOverflow.referenceOpacity)).toBeLessThan(0.3);
+
+    const focusedBeforeDrag = await page
+      .locator('.home-orbit-card[aria-current="true"]')
+      .getAttribute("data-testid");
+    await page.mouse.move(340, 420);
+    await page.mouse.down();
+    await page.mouse.move(220, 424, { steps: 8 });
+    await expect
+      .poll(() =>
+        page
+          .locator('.home-orbit-card[aria-current="true"]')
+          .getAttribute("data-testid"),
+      )
+      .not.toBe(focusedBeforeDrag);
+    await expect(page.getByTestId("home-hologram-scene")).toHaveClass(
+      /home-hologram-scene--interacting/,
+    );
+    await page.mouse.up();
+    await expect(page).toHaveURL(/\/$/);
 
     await page
       .getByRole("button", { name: "Customize Home menu" })
@@ -130,20 +165,27 @@ test.describe("Deck Nexus local-first flow", () => {
       page.getByRole("dialog", { name: "Customize Home Menu" }),
     ).toHaveCount(0);
 
-    await page.reload();
-    const scene = page.getByTestId("home-hologram-scene");
-    await expect(scene).toBeVisible();
-    await scene.focus();
-    await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/library$/);
+    const savedHomeOrder = await page.evaluate(async () => {
+      return await new Promise<string[]>((resolve, reject) => {
+        const request = indexedDB.open("deck-nexus-local");
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction("settings", "readonly");
+          const getRequest = transaction.objectStore("settings").get("app");
+          getRequest.onsuccess = () => {
+            resolve(getRequest.result.homeOrbitOrder);
+            database.close();
+          };
+          getRequest.onerror = () => reject(getRequest.error);
+        };
+      });
+    });
+    expect(savedHomeOrder.slice(0, 2)).toEqual([
+      "deck-library",
+      "create-deck",
+    ]);
 
-    await page.goto("/");
-    await page
-      .getByRole("button", { name: "Customize Home menu" })
-      .click();
-    page.once("dialog", (dialog) => dialog.accept());
-    await page.getByRole("button", { name: "Restore Default" }).click();
-    await page.getByRole("button", { name: "Save Order" }).click();
   });
 
   test("returns Home without replaying the full intro and opens dynamic favorites", async ({
@@ -267,6 +309,9 @@ test.describe("Deck Nexus local-first flow", () => {
     await counterspellResult.getByRole("button", { name: "Add To..." }).click();
     await page.getByRole("button", { name: /Owned Cards/i }).click();
     await page.getByRole("button", { name: /Confirm/i }).click();
+    await expect(
+      page.locator(".search-action-confirmation").getByText(/Owned Cards/i),
+    ).toBeVisible();
 
     await page.goto("/owned");
     await expect(page.getByRole("heading", { name: "Owned Cards" })).toBeVisible();

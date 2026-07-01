@@ -70,6 +70,7 @@ function renderScene({
 
 beforeEach(() => {
   window.sessionStorage.clear();
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -178,7 +179,62 @@ describe("HomeHologramScene", () => {
     const scene = screen.getByTestId("home-hologram-scene");
     expect(scene).toHaveAttribute("data-reduced-motion", "true");
     expect(scene).toHaveClass("home-hologram-scene--reduced");
-    expect(scene).toHaveClass("nexus-orbit--static");
+    expect(scene).not.toHaveClass("nexus-orbit--static");
+  });
+
+  it("uses one chamber orbit system without a separate overlay carousel", () => {
+    renderScene();
+
+    const scene = screen.getByTestId("home-hologram-scene");
+    expect(scene).toHaveAttribute("data-orbit-system", "chamber");
+    expect(screen.getAllByTestId(/^orbit-card-/)).toHaveLength(
+      permanentHomeOrbitItems.length,
+    );
+    expect(document.querySelector(".home-overlay-carousel")).toBeNull();
+    expect(document.querySelector(".bottom-command-bar")).toBeNull();
+  });
+
+  it("drags from the scene surface without navigating", async () => {
+    renderScene();
+    const scene = screen.getByTestId("home-hologram-scene");
+
+    fireEvent.pointerDown(scene, {
+      clientX: 240,
+      clientY: 330,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(scene, {
+      clientX: 104,
+      clientY: 332,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(scene, {
+      clientX: 104,
+      clientY: 332,
+      pointerId: 1,
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("orbit-card-deck-library")).toHaveAttribute(
+        "aria-current",
+        "true",
+      ),
+    );
+    expect(screen.getByTestId("location")).toHaveTextContent("/");
+  });
+
+  it("taps a side card to focus it before opening the route", async () => {
+    const user = userEvent.setup();
+    renderScene();
+
+    const deckLibraryCard = screen.getByTestId("orbit-card-deck-library");
+    await user.click(deckLibraryCard);
+
+    expect(deckLibraryCard).toHaveAttribute("aria-current", "true");
+    expect(screen.getByTestId("location")).toHaveTextContent("/");
+
+    await user.click(deckLibraryCard);
+    expect(screen.getByTestId("location")).toHaveTextContent("/library");
   });
 
   it("includes dynamic favorite cards in the same command system", () => {

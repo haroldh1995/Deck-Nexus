@@ -1,4 +1,12 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type PointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { AppIcon } from "../../../components/AppIcon";
@@ -8,7 +16,10 @@ import {
   getCardOverlapIntensity,
   getFocusedTransform,
 } from "./orbitMath";
-import { homeReferenceImage } from "./homeSceneConstants";
+import {
+  homeFocusedCardStorageKey,
+  homeReferenceImage,
+} from "./homeSceneConstants";
 import { getHomeStatusCopy } from "./homeSceneContent";
 import type {
   HomeHologramCard,
@@ -55,14 +66,40 @@ export function HomeHologramScene({
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const sceneScale = useResponsiveSceneScale();
   const visible = useSceneVisibility();
-  const staticHome = settings.staticHomeScreen || settings.reducedMotion;
+  const staticHome = settings.staticHomeScreen;
   const { introMode, markIntroPlayed } = useHomeIntro(settings.reducedMotion);
   const parallax = useSceneParallax({
     deviceTiltEnabled: settings.deviceTiltParallax,
     enabled: !settings.reducedMotion && !settings.staticHomeScreen,
   });
+  const initialFocusedIndex = useMemo(() => {
+    if (typeof window === "undefined") {
+      return 0;
+    }
+
+    const savedCardId = window.localStorage.getItem(homeFocusedCardStorageKey);
+    if (!savedCardId) {
+      return 0;
+    }
+
+    const savedIndex = cards.findIndex((card) => card.id === savedCardId);
+    return savedIndex >= 0 ? savedIndex : 0;
+  }, [cards]);
+  const persistFocusedIndex = useCallback(
+    (index: number) => {
+      const card = cards[index];
+      if (!card || typeof window === "undefined") {
+        return;
+      }
+
+      window.localStorage.setItem(homeFocusedCardStorageKey, card.id);
+    },
+    [cards],
+  );
   const orbit = useOrbitPhysics({
+    initialFocusedIndex,
     itemCount: cards.length,
+    onFocusedIndexChange: persistFocusedIndex,
     reducedMotion: settings.reducedMotion,
     staticHomeScreen: staticHome,
     visible,
@@ -108,8 +145,8 @@ export function HomeHologramScene({
           index={index}
           key={card.id}
           onClick={() => handleCardClick(card, index)}
-          onPointerDown={(event) => orbit.beginPointerDrag(event, card.id)}
           reducedMotion={settings.reducedMotion}
+          total={cards.length}
           transform={transform}
         />
       );
@@ -156,6 +193,19 @@ export function HomeHologramScene({
     }
 
     orbit.focusIndex(index);
+  }
+
+  function handleScenePointerDown(event: PointerEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+    const cardElement = target.closest<HTMLElement>(".home-orbit-card");
+    const protectedAction = target.closest<HTMLElement>(
+      ".home-core-status__actions a, .home-quick-actions button",
+    );
+    if (!cardElement && protectedAction) {
+      return;
+    }
+
+    orbit.beginPointerDrag(event, cardElement?.dataset.cardId);
   }
 
   function closeCustomizer() {
@@ -217,6 +267,7 @@ export function HomeHologramScene({
         className={sceneClassName}
         data-high-contrast={settings.highContrast}
         data-intro={introMode}
+        data-orbit-system="chamber"
         data-performance={settings.homePerformanceMode}
         data-reduced-motion={settings.reducedMotion}
         data-testid="home-hologram-scene"
@@ -228,6 +279,7 @@ export function HomeHologramScene({
           })
         }
         onPointerCancel={(event) => orbit.endPointerDrag(event)}
+        onPointerDown={handleScenePointerDown}
         onPointerMove={(event) => orbit.movePointerDrag(event)}
         onPointerUp={(event) => orbit.endPointerDrag(event)}
         onWheel={orbit.handleWheel}
@@ -236,6 +288,9 @@ export function HomeHologramScene({
             "--home-scene-scale": sceneScale.sceneScale,
             "--home-card-width": `${sceneScale.cardWidth}px`,
             "--home-card-height": `${sceneScale.cardHeight}px`,
+            "--home-orbit-center-y": `${sceneScale.centerY}px`,
+            "--home-orbit-radius-x": `${sceneScale.radiusX}px`,
+            "--home-orbit-radius-z": `${sceneScale.radiusZ}px`,
             "--home-upper-ring-scale": sceneScale.upperRingScale,
             "--home-lower-ring-scale": sceneScale.lowerRingScale,
             "--home-beam-width": `${sceneScale.beamWidth}px`,
@@ -365,7 +420,11 @@ export function HomeHologramScene({
         ) : null}
 
         <div className="sr-only" aria-live="polite">
-          {focusedCard ? `${focusedCard.label} focused` : "Command orbit ready"}
+          {focusedCard
+            ? `${focusedCard.label} focused, ${orbit.focusedIndex + 1} of ${
+                cards.length
+              }.`
+            : "Command orbit ready"}
         </div>
       </section>
 

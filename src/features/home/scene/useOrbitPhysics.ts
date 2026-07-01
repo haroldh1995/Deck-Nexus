@@ -9,20 +9,25 @@ import {
   useState,
 } from "react";
 import {
+  applyOrbitFriction,
+  calculateMagneticSettleStep,
+  getPointerDragIntent,
   getNearestOrbitIndex,
   getRotationForIndex,
-  normalizeAngle,
-  shortestAngleDistance,
 } from "./orbitMath";
-import { orbitSnapStrength } from "./homeSceneConstants";
+import {
+  orbitDragIntentThreshold,
+  orbitSnapStrength,
+} from "./homeSceneConstants";
 
 const dragDegreesPerPixel = 0.18;
 const idleDegreesPerMillisecond = 0.0011;
-const dragIntentThreshold = 7;
 const longPressDelay = 560;
 
 export interface OrbitPhysicsOptions {
   itemCount: number;
+  initialFocusedIndex?: number;
+  onFocusedIndexChange?: (index: number) => void;
   reducedMotion: boolean;
   staticHomeScreen: boolean;
   visible: boolean;
@@ -30,12 +35,19 @@ export interface OrbitPhysicsOptions {
 
 export function useOrbitPhysics({
   itemCount,
+  initialFocusedIndex = 0,
+  onFocusedIndexChange,
   reducedMotion,
   staticHomeScreen,
   visible,
 }: OrbitPhysicsOptions) {
-  const [rotation, setRotation] = useState(0);
-  const [focusedIndex, setFocusedIndex] = useState(0);
+  const initialIndex =
+    itemCount <= 0
+      ? 0
+      : ((initialFocusedIndex % itemCount) + itemCount) % itemCount;
+  const initialRotation = getRotationForIndex(initialIndex, itemCount);
+  const [rotation, setRotation] = useState(initialRotation);
+  const [focusedIndex, setFocusedIndex] = useState(initialIndex);
   const [dragging, setDragging] = useState(false);
   const [settling, setSettling] = useState(false);
   const [velocity, setVelocity] = useState(0);
@@ -58,6 +70,12 @@ export function useOrbitPhysics({
   const lastVisualCommitRef = useRef(0);
   const suppressClickRef = useRef(false);
   const longPressTimerRef = useRef<number | null>(null);
+  const onFocusedIndexChangeRef = useRef(onFocusedIndexChange);
+  const settleTargetIndexRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    onFocusedIndexChangeRef.current = onFocusedIndexChange;
+  }, [onFocusedIndexChange]);
 
   useEffect(() => {
     rotationRef.current = rotation;
@@ -90,15 +108,25 @@ export function useOrbitPhysics({
         itemCount;
       const nextRotation = getRotationForIndex(normalizedIndex, itemCount);
       focusedIndexRef.current = normalizedIndex;
-      rotationRef.current = nextRotation;
       velocityRef.current = 0;
-      settlingRef.current = false;
       setFocusedIndex(normalizedIndex);
-      setRotation(nextRotation);
       setVelocity(0);
-      setSettling(false);
+      onFocusedIndexChangeRef.current?.(normalizedIndex);
+
+      if (staticHomeScreen || reducedMotion) {
+        rotationRef.current = nextRotation;
+        settleTargetIndexRef.current = null;
+        settlingRef.current = false;
+        setRotation(nextRotation);
+        setSettling(false);
+        return;
+      }
+
+      settleTargetIndexRef.current = normalizedIndex;
+      settlingRef.current = true;
+      setSettling(true);
     },
-    [itemCount],
+    [itemCount, reducedMotion, staticHomeScreen],
   );
 
   const rotateFocus = useCallback(
@@ -142,6 +170,7 @@ export function useOrbitPhysics({
       lastXRef.current = event.clientX;
       lastMoveTimeRef.current = performance.now();
       velocityRef.current = 0;
+      settleTargetIndexRef.current = null;
       setVelocity(0);
       cancelLongPress();
 
@@ -161,11 +190,15 @@ export function useOrbitPhysics({
         return;
       }
 
-      const dxFromStart = event.clientX - startXRef.current;
-      const dyFromStart = event.clientY - startYRef.current;
-      const distance = Math.hypot(dxFromStart, dyFromStart);
+      const intent = getPointerDragIntent({
+        currentX: event.clientX,
+        currentY: event.clientY,
+        startX: startXRef.current,
+        startY: startYRef.current,
+        threshold: orbitDragIntentThreshold,
+      });
 
-      if (!draggingRef.current && distance < dragIntentThreshold) {
+      if (!draggingRef.current && intent === "tap") {
         return;
       }
 
@@ -188,7 +221,10 @@ export function useOrbitPhysics({
       velocityRef.current = nextVelocity;
       setRotation(nextRotation);
       setVelocity(nextVelocity);
-      setFocusedIndex(getNearestOrbitIndex(nextRotation, itemCount));
+      const nextFocusedIndex = getNearestOrbitIndex(nextRotation, itemCount);
+      focusedIndexRef.current = nextFocusedIndex;
+      setFocusedIndex(nextFocusedIndex);
+      onFocusedIndexChangeRef.current?.(nextFocusedIndex);
     },
     [cancelLongPress, itemCount, staticHomeScreen],
   );
@@ -234,9 +270,13 @@ export function useOrbitPhysics({
       const nextRotation = rotationRef.current - delta * 0.08;
       rotationRef.current = nextRotation;
       velocityRef.current = -delta * 0.0025;
+      settleTargetIndexRef.current = null;
       setRotation(nextRotation);
       setVelocity(velocityRef.current);
-      setFocusedIndex(getNearestOrbitIndex(nextRotation, itemCount));
+      const nextFocusedIndex = getNearestOrbitIndex(nextRotation, itemCount);
+      focusedIndexRef.current = nextFocusedIndex;
+      setFocusedIndex(nextFocusedIndex);
+      onFocusedIndexChangeRef.current?.(nextFocusedIndex);
       settlingRef.current = true;
       setSettling(true);
     },
@@ -296,21 +336,29 @@ export function useOrbitPhysics({
         if (!draggingRef.current) {
           if (Math.abs(currentVelocity) > 0.002 && !reducedMotion) {
             nextRotation += currentVelocity * dt;
-            nextVelocity = currentVelocity * Math.pow(0.945, dt / 16.67);
+            nextVelocity = applyOrbitFriction({
+              deltaMilliseconds: dt,
+              velocity: currentVelocity,
+            });
           } else if (settlingRef.current) {
-            const nearestIndex = getNearestOrbitIndex(nextRotation, itemCount);
+            const nearestIndex =
+              settleTargetIndexRef.current ??
+              getNearestOrbitIndex(nextRotation, itemCount);
             const targetRotation = getRotationForIndex(nearestIndex, itemCount);
-            const snapDelta = shortestAngleDistance(
-              normalizeAngle(nextRotation),
-              normalizeAngle(targetRotation),
-            );
             const snapStrength = reducedMotion ? 0.4 : orbitSnapStrength;
-            nextRotation += snapDelta * snapStrength;
+            const settleStep = calculateMagneticSettleStep({
+              currentRotation: nextRotation,
+              strength: snapStrength,
+              targetRotation,
+            });
+            nextRotation = settleStep.nextRotation;
             nextVelocity = 0;
             focusedIndexRef.current = nearestIndex;
             setFocusedIndex(nearestIndex);
+            onFocusedIndexChangeRef.current?.(nearestIndex);
 
-            if (Math.abs(snapDelta) < 0.1) {
+            if (settleStep.settled) {
+              settleTargetIndexRef.current = null;
               settlingRef.current = false;
               setSettling(false);
             }
@@ -320,6 +368,7 @@ export function useOrbitPhysics({
             if (nearestIndex !== focusedIndexRef.current) {
               focusedIndexRef.current = nearestIndex;
               setFocusedIndex(nearestIndex);
+              onFocusedIndexChangeRef.current?.(nearestIndex);
             }
           }
         }
@@ -330,7 +379,7 @@ export function useOrbitPhysics({
           draggingRef.current ||
           Math.abs(nextVelocity) > 0.002 ||
           settlingRef.current;
-        const commitInterval = interactiveMotion ? 16 : 1800;
+        const commitInterval = interactiveMotion ? 16 : 50;
         const shouldCommit = now - lastVisualCommitRef.current >=
           commitInterval;
 
@@ -354,6 +403,23 @@ export function useOrbitPhysics({
       window.cancelAnimationFrame(frame);
     };
   }, [itemCount, reducedMotion, staticHomeScreen, visible]);
+
+  useEffect(() => {
+    if (itemCount <= 0) {
+      return;
+    }
+
+    const normalizedIndex =
+      ((focusedIndexRef.current % itemCount) + itemCount) % itemCount;
+    if (normalizedIndex !== focusedIndexRef.current) {
+      focusedIndexRef.current = normalizedIndex;
+      setFocusedIndex(normalizedIndex);
+      const nextRotation = getRotationForIndex(normalizedIndex, itemCount);
+      rotationRef.current = nextRotation;
+      setRotation(nextRotation);
+      onFocusedIndexChangeRef.current?.(normalizedIndex);
+    }
+  }, [itemCount]);
 
   useEffect(() => cancelLongPress, [cancelLongPress]);
 
