@@ -154,9 +154,11 @@ describe("Prompt 3 card search and owned registry", () => {
     await userEvent.type(screen.getByLabelText("Search Scryfall cards"), "Lightning Bolt");
     await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
     await screen.findByRole("heading", { name: "Lightning Bolt" }, { timeout: 2500 });
-    await userEvent.click(await screen.findByRole("button", { name: "Add to Main" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Add to Current Deck" }));
 
-    expect(await screen.findByText(/outside your commander's color identity/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText(/outside identity/i).length).toBeGreaterThan(1);
+    });
   });
 
   it("adds and edits local owned card quantities with duplicate/share status", async () => {

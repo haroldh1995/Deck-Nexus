@@ -87,7 +87,7 @@ describe("Scryfall Search screen", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps search contained while selecting suggestions and registering owned cards", async () => {
+  it("keeps search contained while selecting suggestions and registering owned cards through Add To", async () => {
     mockScryfallFetch();
     renderWithAppProviders(<CardSearchScreen />);
     const input = await screen.findByLabelText("Search Scryfall cards");
@@ -104,7 +104,10 @@ describe("Scryfall Search screen", () => {
     expect(input).toHaveFocus();
     expect(screen.queryByText(/USD|TCGplayer|purchase/i)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Register Owned" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Add To..." }).at(-1) as HTMLElement);
+    expect(await screen.findByRole("dialog", { name: /add selected cards/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Owned Cards/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Confirm/i }));
     await waitFor(async () => {
       const owned = await listOwnedCards();
       expect(owned).toHaveLength(1);

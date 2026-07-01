@@ -255,15 +255,29 @@ test.describe("Deck Nexus local-first flow", () => {
     await page.getByRole("option", { name: "Counterspell" }).click();
     await expect(page.getByRole("heading", { name: "Counterspell" })).toBeVisible();
     await expect(page).toHaveURL(/\/search$/);
-    await page
+    const counterspellResult = page
       .locator(".search-result-card")
       .filter({ hasText: "Counterspell" })
-      .getByRole("button", { name: "Register Owned" })
-      .click();
+      .first();
+    await counterspellResult.getByRole("button", { name: "Add To..." }).click();
+    await expect(page.getByRole("dialog", { name: /Add selected cards/i })).toBeVisible();
+    await page.getByRole("button", { name: /Wishlist/i }).click();
+    await page.getByRole("button", { name: /Confirm/i }).click();
+    await expect(page.locator(".search-action-confirmation").getByText(/Added Counterspell to Wishlist/i)).toBeVisible();
+    await counterspellResult.getByRole("button", { name: "Add To..." }).click();
+    await page.getByRole("button", { name: /Owned Cards/i }).click();
+    await page.getByRole("button", { name: /Confirm/i }).click();
 
     await page.goto("/owned");
     await expect(page.getByRole("heading", { name: "Owned Cards" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Counterspell" })).toBeVisible();
+    await page.goto("/wishlist");
+    await expect(page.locator("h1", { hasText: "Wishlist" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Counterspell" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Return to Home" })).toBeVisible();
+    await page.getByRole("button", { name: "Return to Home" }).click();
+    await expect(page.getByTestId("home-hologram-scene")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Return to Home" })).toHaveCount(0);
 
     await page.goto("/scan");
     await expect(page.getByRole("heading", { name: "Scan Cards" })).toBeVisible();

@@ -4,14 +4,17 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
   Filter,
   ImageIcon,
   Library,
+  PlusCircle,
+  RotateCcw,
   Search,
-  ShieldAlert,
   ShoppingCart,
+  Square,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -20,13 +23,20 @@ import { PageHeader } from "../../components/PageHeader";
 import { StatusPill } from "../../components/StatusPill";
 import { db } from "../../db/database";
 import { useDecks, useOwnedCards } from "../../db/hooks";
-import { addDeckCard, updateScanRecord, upsertOwnedCard } from "../../db/repositories";
+import { updateScanRecord } from "../../db/repositories";
 import type { Deck, DeckCard, DeckstateScryfallCard, OwnedCard } from "../../types/domain";
 import { isWithinCommanderColorIdentity } from "../../utils/colorIdentity";
-import type { AddDestination, BuilderSectionId, ManualCardInput } from "../decks/builderTypes";
+import type { BuilderSectionId } from "../decks/builderTypes";
 import { classifyCardSection } from "../decks/cardClassification";
-import { evaluateAddCardRules } from "../decks/commanderRules";
 import { type SearchScope, type SearchView } from "./cardSearch";
+import { SearchAddToOverlay } from "./SearchAddToOverlay";
+import {
+  applySearchUndoTransaction,
+  getPrimarySearchAction,
+  type AddToCardsResult,
+  type SearchActionContext,
+  type SearchDestinationType,
+} from "./searchDestinations";
 import {
   autocompleteScryfallCards,
   getCachedAutocompleteSuggestions,
@@ -52,7 +62,7 @@ const searchScopes: { id: SearchScope; label: string }[] = [
   { id: "cached_only", label: "Cached Cards Only" },
 ];
 
-type SearchContext = "global" | "deck" | "section" | "owned" | "scanner" | "import" | "commander";
+type SearchContext = SearchActionContext;
 
 interface DecoratedCardResult {
   card: DeckstateScryfallCard;
@@ -62,12 +72,6 @@ interface DecoratedCardResult {
   duplicate: boolean;
   legalInCommanderIdentity: boolean;
   recommendedSection: BuilderSectionId;
-}
-
-interface PendingWarning {
-  result: DecoratedCardResult;
-  input: ManualCardInput;
-  warning: string;
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -243,11 +247,19 @@ export function CardSearchScreen() {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [status, setStatus] = useState("Live Scryfall search is ready.");
   const [page, setPage] = useState<ScryfallSearchResultPage | null>(null);
-  const [pendingWarning, setPendingWarning] = useState<PendingWarning | null>(null);
   const [selectedCard, setSelectedCard] = useState<DeckstateScryfallCard | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedCardsById, setSelectedCardsById] = useState<Record<string, DeckstateScryfallCard>>({});
+  const [addToCards, setAddToCards] = useState<DeckstateScryfallCard[]>([]);
+  const [addToDestination, setAddToDestination] = useState<SearchDestinationType | undefined>();
+  const [addToOpen, setAddToOpen] = useState(false);
+  const [lastAction, setLastAction] = useState<AddToCardsResult | null>(null);
   const [fuzzyNotice, setFuzzyNotice] = useState("");
   const [history, setHistory] = useState<string[]>(() => readHistory());
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const addToTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const overlayScrollRef = useRef(0);
   const searchAbortRef = useRef<AbortController | null>(null);
   const autocompleteAbortRef = useRef<AbortController | null>(null);
   const searchGeneration = useRef(0);
@@ -277,6 +289,11 @@ export function CardSearchScreen() {
     const next = decorateResults(page?.cards ?? [], { deck, ownedCards, manualSearch: true });
     return applyLocalScope(next, scope, deck);
   }, [deck, ownedCards, page, scope]);
+  const selectedCards = useMemo(() => Object.values(selectedCardsById), [selectedCardsById]);
+  const primaryAction = useMemo(
+    () => getPrimarySearchAction({ context, hasCurrentDeck: Boolean(deck) }),
+    [context, deck],
+  );
 
   const visibleSuggestions = useMemo(() => {
     if (!rawInput.trim()) {
@@ -463,61 +480,102 @@ export function CardSearchScreen() {
     }
   }
 
-  async function addResultToDeck(result: DecoratedCardResult, destination: AddDestination, returnAfter = false) {
-    if (!deck) {
-      setStatus("Choose a deck before adding a card to a deck zone.");
-      return;
-    }
-
-    const input = scryfallCardToManualInput({
-      card: result.card,
-      ownedQuantity: result.ownedQuantity,
-      destination,
-      requestedSection,
+  function toggleSelected(card: DeckstateScryfallCard) {
+    setSelectionMode(true);
+    setSelectedCardsById((current) => {
+      const next = { ...current };
+      if (next[card.id]) {
+        delete next[card.id];
+      } else {
+        next[card.id] = card;
+      }
+      return next;
     });
-    const ruleResult = evaluateAddCardRules({ deck, input, mode: "guided" });
-    const firstWarning = ruleResult.warnings[0];
-
-    if (destination === "main" && firstWarning) {
-      setPendingWarning({ result, input, warning: firstWarning.message });
-      return;
-    }
-
-    await addDeckCard(deck.id, input, destination);
-    setStatus(`${result.card.name} added to ${destination === "main" ? "Main Deck" : destination}.`);
-    if (returnAfter) {
-      navigate(`/deck/${deck.id}`);
-    }
   }
 
-  async function registerOwned(card: DeckstateScryfallCard) {
-    await upsertOwnedCard({
-      name: card.name,
-      quantityOwned: 1,
-      oracleId: card.oracleId,
-      scryfallId: card.id,
-      manaCost: card.manaCost,
-      manaValue: card.manaValue,
-      typeLine: card.typeLine,
-      oracleText: card.oracleText,
-      colorIdentity: card.colorIdentity,
-      imageUri: pickCardImage(card.imageUris, "normal"),
-      legalities: card.legalities,
-      tags: card.keywords,
-      duplicateFlag: "none",
-      printing: {
-        name: card.name,
-        oracleId: card.oracleId,
-        scryfallId: card.id,
-        setCode: card.setCode,
-        setName: card.setName,
-        collectorNumber: card.collectorNumber,
-        language: card.lang,
-        imageUri: pickCardImage(card.imageUris, "small") ?? pickCardImage(card.imageUris, "normal"),
-        quantityOwned: 1,
-      },
+  function selectAllVisible() {
+    setSelectionMode(true);
+    setSelectedCardsById((current) => {
+      const next = { ...current };
+      for (const result of results) {
+        next[result.card.id] = result.card;
+      }
+      return next;
     });
-    setStatus(`${card.name} owned quantity updated.`);
+  }
+
+  function clearSelection() {
+    setSelectedCardsById({});
+    setSelectionMode(false);
+  }
+
+  function openAddTo(
+    cards: DeckstateScryfallCard[],
+    destination?: SearchDestinationType,
+    trigger?: HTMLButtonElement | null,
+  ) {
+    if (cards.length === 0) {
+      setStatus("Select at least one card before opening Add To.");
+      return;
+    }
+
+    overlayScrollRef.current = resultsRef.current?.scrollTop ?? 0;
+    addToTriggerRef.current = trigger ?? null;
+    setAddToCards(cards);
+    setAddToDestination(destination);
+    setAddToOpen(true);
+  }
+
+  function closeAddTo() {
+    setAddToOpen(false);
+    window.setTimeout(() => {
+      if (resultsRef.current) {
+        resultsRef.current.scrollTop = overlayScrollRef.current;
+      }
+      addToTriggerRef.current?.focus({ preventScroll: true });
+      inputRef.current?.focus({ preventScroll: true });
+    }, 0);
+  }
+
+  function completeAddTo(result: AddToCardsResult) {
+    setLastAction(result);
+    setStatus(result.message);
+    setAddToOpen(false);
+    window.setTimeout(() => {
+      if (resultsRef.current) {
+        resultsRef.current.scrollTop = overlayScrollRef.current;
+      }
+      inputRef.current?.focus({ preventScroll: true });
+    }, 0);
+  }
+
+  async function undoLastAction() {
+    if (!lastAction?.undo) {
+      return;
+    }
+
+    const message = await applySearchUndoTransaction(lastAction.undo);
+    setLastAction(null);
+    setStatus(message);
+  }
+
+  function handlePrimaryAction(
+    result: DecoratedCardResult,
+    trigger: HTMLButtonElement | null,
+  ) {
+    if (primaryAction.kind === "scanner") {
+      void selectForScannerCorrection(result.card);
+      return;
+    }
+    if (primaryAction.kind === "import") {
+      void selectForImportCorrection(result.card);
+      return;
+    }
+    if (primaryAction.kind === "destination" && primaryAction.destination) {
+      openAddTo([result.card], primaryAction.destination, trigger);
+      return;
+    }
+    setSelectedCard(result.card);
   }
 
   async function selectForScannerCorrection(card: DeckstateScryfallCard) {
@@ -577,20 +635,6 @@ export function CardSearchScreen() {
       });
     }
     setStatus(`${card.name} selected for import correction.`);
-  }
-
-  async function confirmPending(destination: AddDestination) {
-    if (!pendingWarning || !deck) {
-      return;
-    }
-
-    await addDeckCard(deck.id, { ...pendingWarning.input, destination }, destination);
-    setStatus(
-      destination === "main"
-        ? `${pendingWarning.result.card.name} added after manual warning override.`
-        : `${pendingWarning.result.card.name} sent to Maybeboard.`,
-    );
-    setPendingWarning(null);
   }
 
   const sourcePill = page?.source === "offline" ? "Offline card data" : page?.source === "cache" ? "Cached card data" : "Live Scryfall";
@@ -712,6 +756,36 @@ export function CardSearchScreen() {
         <span>{loadingSearch ? "Refreshing..." : `${results.length} shown`}</span>
       </div>
 
+      <HolographicPanel className="search-selection-toolbar">
+        <div>
+          <strong>{selectionMode ? `${selectedCards.length} selected` : "Search actions"}</strong>
+          <span>Use Add To... to save cards without leaving Search.</span>
+        </div>
+        <div className="search-selection-toolbar__actions">
+          <button
+            type="button"
+            onClick={() => setSelectionMode((current) => !current)}
+            aria-pressed={selectionMode}
+          >
+            {selectionMode ? <CheckSquare aria-hidden="true" /> : <Square aria-hidden="true" />}
+            Selection Mode
+          </button>
+          <button type="button" onClick={selectAllVisible} disabled={results.length === 0}>
+            Select Visible
+          </button>
+          <button type="button" onClick={clearSelection} disabled={selectedCards.length === 0}>
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={(event) => openAddTo(selectedCards, undefined, event.currentTarget)}
+            disabled={selectedCards.length === 0}
+          >
+            <PlusCircle aria-hidden="true" /> Add To...
+          </button>
+        </div>
+      </HolographicPanel>
+
       {fuzzyNotice ? (
         <HolographicPanel className="search-fuzzy-notice">
           <AlertTriangle aria-hidden="true" />
@@ -722,12 +796,47 @@ export function CardSearchScreen() {
         </HolographicPanel>
       ) : null}
 
-      <div className={`search-results search-results--${view}`} aria-busy={loadingSearch}>
+      {lastAction ? (
+        <HolographicPanel className="search-action-confirmation" role="status" aria-live="polite">
+          <span>{lastAction.message}</span>
+          {lastAction.undo ? (
+            <button type="button" onClick={() => void undoLastAction()}>
+              <RotateCcw aria-hidden="true" /> Undo
+            </button>
+          ) : null}
+          {lastAction.viewRoute ? (
+            <button type="button" onClick={() => navigate(lastAction.viewRoute ?? "/")}>
+              View Destination
+            </button>
+          ) : null}
+        </HolographicPanel>
+      ) : null}
+
+      <div ref={resultsRef} className={`search-results search-results--${view}`} aria-busy={loadingSearch}>
         {loadingSearch && results.length === 0
           ? Array.from({ length: 6 }, (_, index) => <div className="search-result-skeleton" key={index} />)
           : null}
-        {results.map((result) => (
-          <HolographicPanel as="article" variant="card" className="search-result-card" key={result.card.id}>
+        {results.map((result) => {
+          const selected = Boolean(selectedCardsById[result.card.id]);
+
+          return (
+          <HolographicPanel
+            as="article"
+            variant="card"
+            className={selected ? "search-result-card is-selected" : "search-result-card"}
+            key={result.card.id}
+          >
+            {selectionMode ? (
+              <button
+                type="button"
+                className="search-select-card"
+                aria-pressed={selected}
+                aria-label={`${selected ? "Deselect" : "Select"} ${result.card.name}`}
+                onClick={() => toggleSelected(result.card)}
+              >
+                {selected ? <CheckSquare aria-hidden="true" /> : <Square aria-hidden="true" />}
+              </button>
+            ) : null}
             <div className="result-art" aria-hidden="true">
               {pickCardImage(result.card.imageUris, view === "compact" ? "small" : "normal") ? (
                 <img src={pickCardImage(result.card.imageUris, view === "compact" ? "small" : "normal")} alt="" loading="lazy" />
@@ -737,7 +846,7 @@ export function CardSearchScreen() {
             </div>
             <div className="result-copy">
               <h2>{result.card.name}</h2>
-              <p>{result.card.manaCost || "No mana cost"} · {result.card.typeLine}</p>
+              <p>{result.card.manaCost || "No mana cost"} - {result.card.typeLine}</p>
               <small>{result.card.oracleText || "Rules text unavailable."}</small>
               <div className="badge-row" aria-label={`${result.card.name} search badges`}>
                 {result.badges.map((badge) => (
@@ -753,30 +862,24 @@ export function CardSearchScreen() {
               </div>
             </div>
             <div className="result-actions">
-              {deck ? (
-                <>
-                  <button type="button" onClick={() => void addResultToDeck(result, "main")}>
-                    Add to Main
-                  </button>
-                  <button type="button" onClick={() => void addResultToDeck(result, "main", true)}>
-                    Add + Return
-                  </button>
-                  <button type="button" onClick={() => void addResultToDeck(result, "maybeboard")}>
-                    Add to Maybeboard
-                  </button>
-                </>
-              ) : null}
-              <button type="button" onClick={() => void registerOwned(result.card)}>
-                Register Owned
+              <button
+                type="button"
+                onClick={(event) => handlePrimaryAction(result, event.currentTarget)}
+              >
+                {primaryAction.label}
               </button>
-              {context === "scanner" ? (
-                <button type="button" onClick={() => void selectForScannerCorrection(result.card)}>
-                  Select for Scan
-                </button>
-              ) : null}
-              {context === "import" ? (
-                <button type="button" onClick={() => void selectForImportCorrection(result.card)}>
-                  Select for Import
+              <button
+                type="button"
+                onClick={(event) => openAddTo([result.card], undefined, event.currentTarget)}
+              >
+                <PlusCircle aria-hidden="true" /> Add To...
+              </button>
+              {deck ? (
+                <button
+                  type="button"
+                  onClick={(event) => openAddTo([result.card], "maybeboard", event.currentTarget)}
+                >
+                  Maybeboard
                 </button>
               ) : null}
               <button type="button" onClick={() => setSelectedCard(result.card)}>
@@ -784,7 +887,8 @@ export function CardSearchScreen() {
               </button>
             </div>
           </HolographicPanel>
-        ))}
+          );
+        })}
       </div>
 
       <div className="search-pagination">
@@ -795,7 +899,7 @@ export function CardSearchScreen() {
         >
           <ChevronLeft aria-hidden="true" /> Previous
         </button>
-        <span>Page {page?.page ?? 1}{page?.totalCards ? ` · ${page.totalCards} Scryfall matches` : ""}</span>
+        <span>Page {page?.page ?? 1}{page?.totalCards ? ` - ${page.totalCards} Scryfall matches` : ""}</span>
         <button
           type="button"
           disabled={!page?.hasMore || !page.nextPage || loadingSearch}
@@ -881,32 +985,18 @@ export function CardSearchScreen() {
         </div>
       ) : null}
 
-      {pendingWarning ? (
-        <div className="builder-modal-backdrop" role="presentation">
-          <div className="builder-modal builder-modal--compact" role="alertdialog" aria-modal="true">
-            <div className="builder-modal__header">
-              <h2>
-                <ShieldAlert aria-hidden="true" /> Commander Rule Warning
-              </h2>
-              <button type="button" onClick={() => setPendingWarning(null)} aria-label="Cancel add">
-                x
-              </button>
-            </div>
-            <p className="foundation-summary">{pendingWarning.warning}</p>
-            <div className="form-actions">
-              <button type="button" onClick={() => void confirmPending("main")}>
-                Add Anyway
-              </button>
-              <button type="button" onClick={() => void confirmPending("maybeboard")}>
-                Send to Maybeboard
-              </button>
-              <button type="button" onClick={() => setPendingWarning(null)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <SearchAddToOverlay
+        open={addToOpen}
+        cards={addToCards}
+        context={context}
+        currentDeck={deck}
+        decks={decks}
+        requestedSection={requestedSection}
+        sourceQuery={committedQuery || rawInput}
+        initialDestination={addToDestination}
+        onClose={closeAddTo}
+        onComplete={completeAddTo}
+      />
 
       {selectedCard ? (
         <div className="builder-modal-backdrop" role="presentation">

@@ -196,6 +196,34 @@ a {
   font-size: 0.72rem;
 }
 
+.app-home-button {
+  display: grid;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  place-items: center;
+  border: 1px solid rgba(89, 234, 255, 0.34);
+  border-radius: 999px;
+  color: var(--cyan);
+  background:
+    radial-gradient(circle at 50% 35%, rgba(55, 234, 255, 0.18), transparent 1.2rem),
+    rgba(6, 15, 38, 0.74);
+  box-shadow: 0 0 18px rgba(55, 234, 255, 0.18);
+}
+
+.app-home-button svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.app-home-button:focus-visible,
+.app-home-button:hover {
+  border-color: var(--cyan);
+  color: var(--silver);
+  outline: none;
+  box-shadow: var(--shadow-cyan);
+}
+
 .route-surface {
   position: relative;
   z-index: 1;

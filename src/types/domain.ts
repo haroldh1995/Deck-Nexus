@@ -197,6 +197,7 @@ export interface SavedSearch {
 }
 
 export type FavoriteItemType =
+  | "card"
   | "deck"
   | "deck_group"
   | "tag"
@@ -204,7 +205,10 @@ export type FavoriteItemType =
   | "keyword"
   | "saved_search"
   | "commander"
-  | "owned_card_filter";
+  | "owned_card_filter"
+  | "wishlist"
+  | "upgrade_list"
+  | "custom_collection";
 
 export interface FavoriteItem {
   id: string;
@@ -783,4 +787,142 @@ export interface ScryfallCacheMeta {
   id: string;
   value: Record<string, unknown>;
   updatedAt: string;
+}
+
+export type WishlistPriority = "low" | "normal" | "high" | "essential";
+
+export interface WishlistEntry {
+  id: string;
+  scryfallId: string;
+  oracleId: string;
+  cardName: string;
+  preferredPrintingId?: string;
+  preferredSet?: string;
+  desiredQuantity: number;
+  preferredFoilStatus?: "foil" | "nonfoil" | "either";
+  preferredLanguage?: string;
+  priority: WishlistPriority;
+  intendedDeckIds: string[];
+  intendedRole: string;
+  intendedSection?: string;
+  goalMatches: string[];
+  notes: string;
+  tags: string[];
+  sourceSearchId?: string;
+  sourceQuery: string;
+  acquiredQuantity: number;
+  ownershipStatus: "missing" | "owned" | "partial";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpgradeList {
+  id: string;
+  name: string;
+  description: string;
+  relatedDeckId?: string;
+  goalId?: string;
+  bracketTarget?: Bracket;
+  tags: string[];
+  favorite: boolean;
+  showOnHome: boolean;
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpgradeListEntry {
+  id: string;
+  upgradeListId: string;
+  scryfallId: string;
+  oracleId: string;
+  cardName: string;
+  quantity: number;
+  suggestedReplacementCardId?: string;
+  role: string;
+  intendedSection?: string;
+  goalMatches: string[];
+  bracketImpact: number;
+  ownedStatus: "owned" | "missing" | "partial";
+  priority: WishlistPriority;
+  notes: string;
+  sourceSearchId?: string;
+  sourceQuery: string;
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomCollection {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  favorite: boolean;
+  showOnHome: boolean;
+  icon: string;
+  associatedDeckIds: string[];
+  sortMode: "custom" | "name" | "recent" | "quantity";
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomCollectionEntry {
+  id: string;
+  collectionId: string;
+  scryfallId: string;
+  oracleId: string;
+  cardName: string;
+  quantity: number;
+  notes: string;
+  tags: string[];
+  customStatus: string;
+  ownedStatus: "owned" | "missing" | "partial";
+  sourceSearchId?: string;
+  sourceQuery: string;
+  customOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SearchSelectionSession {
+  id: string;
+  query: string;
+  selectedScryfallIds: string[];
+  context: string;
+  deckId?: string;
+  destinationSection?: string;
+  pageState: Record<string, unknown>;
+  scrollPosition: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DestinationAction {
+  id: string;
+  actionType: string;
+  selectedCardIds: string[];
+  destinationType: string;
+  destinationId?: string;
+  status: "pending" | "completed" | "undone" | "failed";
+  conflicts: string[];
+  undoData: Record<string, unknown>;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface SearchUndoTransaction {
+  id: string;
+  label: string;
+  actionId?: string;
+  undoType:
+    | "delete_deck_cards"
+    | "restore_owned_card"
+    | "delete_records"
+    | "delete_deck"
+    | "composite";
+  payload: Record<string, unknown>;
+  createdAt: string;
+  expiresAt?: string;
 }

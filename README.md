@@ -11,13 +11,14 @@ The current build establishes the Commander-focused app foundation:
 - Commander-only deck model and deck creation flow.
 - Deck Library with local saved decks and deletion.
 - Deck Builder editing with Commander color identity warnings, maybeboard/cuts, bracket tracker foundation, and local persistence.
-- Local Card Search with Commander-aware badges, owned/deck scopes, deck-aware add actions, and manual outside-identity warnings.
+- Live Scryfall Card Search with universal Add To workflows, multi-select, deck-aware warnings, owned registration, Wishlist, Upgrade Lists, Custom Collections, and undo.
 - Owned Cards registry with quantities, exact printing fields, tags, notes, favorites, storage location, and duplicate/share status.
 - Scanner UI with persistent batches, batch review, simulated scan engine, Automatic Feeder Mode, Stacking Feeder Mode, tray-full prompts, and local recovery.
 - Analyzer, Recommendation Panel, Smart Build review foundations, Maybeboard/Cuts history controls, decision timeline, and local version-result storage.
 - Settings saved locally, including reduced motion, static home controls, glow intensity, text size, high contrast, device tilt parallax opt-in, and Home performance modes.
 - Strong TypeScript domain models for decks, owned cards, tags, scanner data, imports, analysis, exports, backups, and future smart-build results.
 - Route shell for the full initial surface area.
+- A small top-right Home button on every non-Home route returns directly to the Home Screen while protecting unfinished scanner batches.
 
 ## Dynamic Hologram Home
 
@@ -52,6 +53,10 @@ Home layout:
 The app is deployed to GitHub Pages at `https://haroldh1995.github.io/Deck-Nexus/`.
 
 The active workflow `.github/workflows/deploy-pages.yml` runs `npm ci`, lint, unit tests, and `npm run build -- --mode github-pages`, uploads `dist`, and deploys it through GitHub Pages. Source changes are not considered complete until the branch is pushed and the live Pages URL is verified against the new build.
+
+## Global Navigation
+
+Every non-Home screen includes a small unlabeled top-right Home button with the accessible label `Return to Home`. It uses the app router rather than a browser reload, is hidden on the Home route, and keeps the previous route in normal browser history. Scanner routes are protected: if a recoverable batch exists, Home shows an unfinished-batch prompt with Save Batch and Go Home, Review Batch, and Continue Scanning options so scan data is not lost.
 
 ## Local-First Rules
 
@@ -101,7 +106,17 @@ The Card Search route is now a live Scryfall-backed, local-first search surface.
 - Manual search can show cards outside the active commander's identity, but adding one to Main Deck uses the soft Commander warning flow with Add Anyway, Send to Maybeboard, and Cancel.
 - The Deck Builder Search glyph opens this route with the active `deckId`; scanner correction preserves the active batch and returns to review, and import correction preserves unresolved import context.
 - Selecting an autocomplete suggestion fills the field and resolves the card inside Search. It does not open Card Detail, add a card, change routes, open Scanner, or alter decks automatically.
-- Result actions are explicit: View Card, Add to Main Deck, Add + Return, Add to Maybeboard, Register Owned, Select for Scanner Correction, and Select for Import Correction depending on context.
+- Result actions are explicit and context-aware. Global Search defaults to View Card, deck Search defaults to Add to Current Deck, owned Search defaults to Register Owned, commander Search defaults to Start New Deck, scanner correction defaults to Use This Match, and import correction defaults to Resolve Entry.
+- Every Scryfall result exposes `Add To...` as a secondary action. One card or multiple selected cards can be deliberately added to Current Deck, Another Existing Deck, New Deck, Owned Cards, Wishlist, a deck Maybeboard, a deck Cuts directory, an Upgrade List, Favorites, a Custom Collection, or a New Custom Collection.
+- `Add To...` opens an in-route overlay. It does not navigate automatically, reset the query, clear filters, clear selected cards, reset result position, open Card Detail, or add anything before confirmation.
+- Multi-select mode supports selecting visible results, clearing selection, and batch Add To with a selected-card count.
+- New Deck from Search asks how selected cards should be used, validates commander eligibility, and can create the deck while staying in Search by default.
+- Existing deck destinations rank compatible decks first but keep incompatible decks selectable with explicit Commander rule review.
+- Owned Cards registration uses exact Scryfall printing data already available in the result, updates owned badges through local persistence, and stays in Search.
+- Wishlist is a first-class planning list, not a marketplace. It stores desired quantity, priority, intended deck data, notes, tags, source query, and ownership state without prices or vendor links.
+- Upgrade Lists and Custom Collections are local directories that can be created from Search, favorited, and revisited from the Library organization links.
+- Successful destination actions show a confirmation with Undo and View Destination. Undo restores persisted data such as deck additions, owned-card changes, wishlist quantity merges, favorites, list entries, collections, and new decks where safe.
+- Search-state preservation includes raw input, committed query, filters, scope, result page, loaded results, result scroll position, selected cards, active deck context, scanner correction context, and import correction context.
 
 Search stability:
 
@@ -167,6 +182,16 @@ Feeder behavior:
 - Stacking Feeder Mode never relies on card removal detection. Too-close distortion is treated as the normal new-card-arrival cue.
 - If too-close/unreadable state exceeds the timeout, the scanner pauses with: “Tray may be full. Empty the catch tray, then resume scanning.” The batch queue remains preserved.
 - Tokens/extras can be marked separately and do not count toward Commander totals.
+
+## Search Directories
+
+Search-created directories are stored in IndexedDB and are separate relationships. A card can simultaneously be owned, wishlisted, favorited, in a custom collection, in an upgrade list, in a deck, in a Maybeboard, or in Cuts.
+
+- Wishlist entries track desired quantity, priority, intended deck IDs, intended role, tags, notes, source query, acquired quantity, and ownership state.
+- Upgrade Lists track name, description, related deck, goal/bracket metadata, tags, favorite state, Home visibility, archive state, and card entries with role, priority, suggested replacement, notes, and completion state.
+- Custom Collections track name, description, tags, favorite state, Home visibility, icon, associated decks, sort mode, archive state, and card entries with quantity, notes, tags, custom status, ownership state, and source query.
+- Favorites can store card favorites created from Search without duplicating existing favorite records.
+- The Deck Library header links to Wishlist, Upgrade Lists, and Custom Collections. These screens read the same IndexedDB stores populated by Search and include no commerce information.
 
 ## Analyzer, Recommendations, And Smart Build
 

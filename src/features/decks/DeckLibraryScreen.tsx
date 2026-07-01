@@ -17,6 +17,15 @@ export function DeckLibraryScreen() {
   return (
     <div className="screen">
       <PageHeader title="Deck Library">
+        <Link className="secondary-action" to="/wishlist">
+          Wishlist
+        </Link>
+        <Link className="secondary-action" to="/upgrade-lists">
+          Upgrades
+        </Link>
+        <Link className="secondary-action" to="/collections">
+          Collections
+        </Link>
         <Link className="secondary-action" to="/create">
           Create Deck
         </Link>

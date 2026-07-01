@@ -5,11 +5,14 @@ import type {
   BackupPackage,
   BracketAnalysis,
   Category,
+  CustomCollection,
+  CustomCollectionEntry,
   DecisionEvent,
   Deck,
   DeckAnalysis,
   DeckCard,
   DeckGroup,
+  DestinationAction,
   ExportHistory,
   FavoriteItem,
   ImportResult,
@@ -18,6 +21,8 @@ import type {
   SavedSearch,
   ScanBatch,
   ScanRecord,
+  SearchSelectionSession,
+  SearchUndoTransaction,
   SmartBuildResult,
   ScryfallAutocompleteCacheRecord,
   ScryfallBulkDataRecord,
@@ -25,6 +30,9 @@ import type {
   ScryfallCardCacheRecord,
   ScryfallSearchCacheRecord,
   Tag,
+  UpgradeList,
+  UpgradeListEntry,
+  WishlistEntry,
 } from "../types/domain";
 
 export class DeckNexusDatabase extends Dexie {
@@ -56,6 +64,14 @@ export class DeckNexusDatabase extends Dexie {
   scryfallSearches!: Table<ScryfallSearchCacheRecord, string>;
   scryfallBulkData!: Table<ScryfallBulkDataRecord, string>;
   scryfallCacheMeta!: Table<ScryfallCacheMeta, string>;
+  wishlist!: Table<WishlistEntry, string>;
+  upgradeLists!: Table<UpgradeList, string>;
+  upgradeListEntries!: Table<UpgradeListEntry, string>;
+  customCollections!: Table<CustomCollection, string>;
+  customCollectionEntries!: Table<CustomCollectionEntry, string>;
+  searchSelectionSessions!: Table<SearchSelectionSession, string>;
+  destinationActionHistory!: Table<DestinationAction, string>;
+  searchUndoTransactions!: Table<SearchUndoTransaction, string>;
 
   constructor() {
     super("deck-nexus-local");
@@ -100,6 +116,24 @@ export class DeckNexusDatabase extends Dexie {
       scryfallSearches: "&key, query, page, unique, sort, direction, updatedAt",
       scryfallBulkData: "&id, type, updatedAt, fetchedAt",
       scryfallCacheMeta: "&id, updatedAt",
+    });
+
+    this.version(3).stores({
+      wishlist:
+        "&id, scryfallId, oracleId, cardName, priority, ownershipStatus, updatedAt, createdAt, *intendedDeckIds, *tags",
+      upgradeLists:
+        "&id, name, relatedDeckId, bracketTarget, favorite, showOnHome, archived, updatedAt, createdAt, *tags",
+      upgradeListEntries:
+        "&id, upgradeListId, scryfallId, oracleId, cardName, priority, completed, updatedAt, createdAt",
+      customCollections:
+        "&id, name, favorite, showOnHome, archived, sortMode, updatedAt, createdAt, *tags",
+      customCollectionEntries:
+        "&id, collectionId, scryfallId, oracleId, cardName, customOrder, updatedAt, createdAt, *tags",
+      searchSelectionSessions:
+        "&id, query, context, deckId, updatedAt, createdAt, *selectedScryfallIds",
+      destinationActionHistory:
+        "&id, actionType, destinationType, destinationId, status, createdAt, completedAt, *selectedCardIds",
+      searchUndoTransactions: "&id, actionId, undoType, createdAt, expiresAt",
     });
   }
 }
