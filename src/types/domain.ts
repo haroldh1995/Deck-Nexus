@@ -98,6 +98,12 @@ export interface DeckCard {
   ownedQuantityAtAdd: number;
   missingQuantity: number;
   bracketImpact?: number;
+  source?: MaybeboardSource | string;
+  reason?: string;
+  goalMatches?: string[];
+  replacementCardId?: string;
+  previousSection?: DeckCardSection;
+  deckVersion?: string;
   cutReason?: string;
   addedAt: string;
   updatedAt: string;
@@ -377,6 +383,13 @@ export interface SmartBuildConfig {
   useCurrentDeckAsCore: boolean;
   protectedCardIds: string[];
   outputPreference: SmartBuildOutputPreference;
+  manaCurveGoal?: string;
+  existingDeckBehavior?:
+    | "keep_everything_fill"
+    | "keep_protected_only"
+    | "keep_commander_goals_only"
+    | "suggest_only"
+    | "create_new_version";
   createdAt: string;
 }
 
@@ -422,6 +435,11 @@ export interface SmartBuildResult {
   cutCards?: SmartBuildCard[];
   missingCards?: SmartBuildCard[];
   summary?: string;
+  roleBreakdown?: Record<string, number>;
+  manaCurve?: ManaCurveSummary;
+  legalityStatus?: string;
+  bracketFit?: string;
+  goalAlignment?: string;
   applied?: boolean;
   rejectedOutsideColorIdentity: SmartBuildSuggestion[];
   createdAt: string;
@@ -570,6 +588,9 @@ export interface DeckVersion {
   label: string;
   beforeCardIds: string[];
   afterCardIds: string[];
+  beforeCards?: DeckCard[];
+  afterCards?: DeckCard[];
+  summary?: string;
   source: "smart_build" | "manual" | "import" | "scanner";
   createdAt: string;
 }

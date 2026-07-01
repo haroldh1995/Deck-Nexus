@@ -99,6 +99,130 @@ function isInBracket(deck: Deck, card: CatalogCard): boolean {
   return deck.bracketLock.bracket === "bracket_5" || card.bracketImpact < 0.5;
 }
 
+function isVoltronGoal(deck: Deck): boolean {
+  return deck.goals.some((goal) => normalize(goal.name).includes("voltron"));
+}
+
+function isTopVoltronGoal(deck: Deck): boolean {
+  const topGoal = [...deck.goals].sort((left, right) => left.priority - right.priority)[0];
+  return Boolean(topGoal && normalize(topGoal.name).includes("voltron"));
+}
+
+const voltronPriorityRoles = new Set([
+  "equipment",
+  "aura",
+  "voltron",
+  "protection",
+  "evasion",
+  "power boost",
+  "double strike",
+  "trample",
+  "flying",
+  "menace",
+  "hexproof",
+  "indestructible",
+  "ward",
+  "haste",
+  "attack trigger",
+  "combat damage",
+  "commander recast",
+]);
+
+function roleMatchesGoal(card: CatalogCard, deck: Deck): string[] {
+  return deck.goals
+    .map((goal) => goal.name)
+    .filter((goal) =>
+      card.roles.some((role) => normalize(goal).includes(normalize(role))) ||
+      (normalize(goal).includes("voltron") &&
+        card.roles.some((role) => voltronPriorityRoles.has(normalize(role)))),
+    );
+}
+
+function tabMatchesRecommendation({
+  card,
+  deck,
+  tab,
+  ownedQuantity,
+}: {
+  card: CatalogCard;
+  deck: Deck;
+  tab: DeckRecommendation["tab"];
+  ownedQuantity: number;
+}): boolean {
+  const roles = new Set(card.roles.map(normalize));
+  const typeLine = normalize(card.typeLine);
+
+  switch (tab) {
+    case "owned_first":
+      return ownedQuantity > 0;
+    case "role_fixes":
+      return ["ramp", "draw", "removal", "interaction", "protection"].some((role) =>
+        roles.has(role),
+      );
+    case "goal_support":
+      return roleMatchesGoal(card, deck).length > 0 || isVoltronGoal(deck);
+    case "goal_specific":
+      return isVoltronGoal(deck)
+        ? card.roles.some((role) => voltronPriorityRoles.has(normalize(role)))
+        : roleMatchesGoal(card, deck).length > 0;
+    case "mana_curve":
+      return card.manaValue <= 3 || typeLine.includes("land");
+    case "staples":
+      return roles.has("staple") || roles.has("fixing");
+    case "replacements":
+      return ["interaction", "removal", "protection", "draw", "ramp"].some((role) =>
+        roles.has(role),
+      );
+    case "wild":
+      return true;
+    case "best_fits":
+      return true;
+  }
+}
+
+function scoreCatalogCard({
+  deck,
+  card,
+  ownedQuantity,
+  tab,
+}: {
+  deck: Deck;
+  card: CatalogCard;
+  ownedQuantity: number;
+  tab: DeckRecommendation["tab"];
+}): number {
+  const roles = new Set(card.roles.map(normalize));
+  const goalMatches = roleMatchesGoal(card, deck).length;
+  let score = 20 + goalMatches * 12 + Math.max(0, 5 - card.manaValue);
+
+  if (ownedQuantity > 0) {
+    score += tab === "owned_first" ? 30 : 10;
+  }
+
+  if (roles.has("staple")) {
+    score += 4;
+  }
+
+  if (tab === "mana_curve" && card.manaValue <= 2) {
+    score += 8;
+  }
+
+  if (isTopVoltronGoal(deck)) {
+    for (const role of card.roles) {
+      if (voltronPriorityRoles.has(normalize(role))) {
+        score += 10;
+      }
+    }
+  }
+
+  if (roles.has("fast mana") && deck.bracketLock.enabled && !deck.bracketLock.allowFastMana) {
+    score -= 100;
+  }
+
+  score -= card.bracketImpact * 8;
+  return score;
+}
+
 export function analyzeDeck(deck: Deck, ownedCards: readonly OwnedCard[] = []): DeckAnalysis {
   const now = nowIso();
   const mainCards = getMainDeckCards(deck.cards);
@@ -227,6 +351,13 @@ function recommendationReason(deck: Deck, card: CatalogCard): string {
     return "Supports the Commander Voltron goal with protection, evasion, or power pressure.";
   }
 
+  if (
+    goalNames.some((goal) => goal.includes("voltron")) &&
+    card.roles.some((role) => voltronPriorityRoles.has(normalize(role)))
+  ) {
+    return "Fits the Commander Voltron package by improving protection, evasion, power, or combat pressure.";
+  }
+
   if (card.roles.includes("ramp")) {
     return "Improves mana development while staying inside commander color identity.";
   }
@@ -261,53 +392,84 @@ export function getDeckRecommendations({
     .filter((card) => catalogAllowedForDeck(deck, card))
     .filter((card) => !alreadyKnown(deck, card))
     .filter((card) => isInBracket(deck, card))
-    .filter((card) => !excluded.has(normalize(card.name)))
-    .filter((card) => !ownedOnly || getOwnedQuantity(card.name, ownedCards) > 0)
-    .map<DeckRecommendation>((card) => ({
-      id: createId("recommendation"),
-      deckId: deck.id,
-      scryfallId: card.scryfallId,
-      oracleId: card.oracleId,
-      name: card.name,
-      manaCost: card.manaCost,
-      typeLine: card.typeLine,
-      colorIdentity: card.colorIdentity,
-      roleTags: card.roles,
-      reason: recommendationReason(deck, card),
-      synergyReason: recommendationReason(deck, card),
-      goalMatches: deck.goals
-        .map((goal) => goal.name)
-        .filter((goal) => card.roles.some((role) => normalize(goal).includes(normalize(role)))),
-      ownedQuantity: getOwnedQuantity(card.name, ownedCards),
-      bracketFit: isInBracket(deck, card) ? "In selected bracket constraints" : "Review bracket pressure",
-      tab,
-      createdAt: nowIso(),
+    .filter((card) => !excluded.has(normalize(card.name)) && !excluded.has(normalize(card.oracleId)))
+    .map((card) => ({ card, ownedQuantity: getOwnedQuantity(card.name, ownedCards) }))
+    .filter(({ ownedQuantity }) => !ownedOnly || ownedQuantity > 0)
+    .filter(({ card, ownedQuantity }) =>
+      tabMatchesRecommendation({ card, deck, tab, ownedQuantity }),
+    )
+    .map(({ card, ownedQuantity }) => ({
+      recommendation: {
+        id: createId("recommendation"),
+        deckId: deck.id,
+        scryfallId: card.scryfallId,
+        oracleId: card.oracleId,
+        name: card.name,
+        manaCost: card.manaCost,
+        typeLine: card.typeLine,
+        colorIdentity: card.colorIdentity,
+        roleTags: card.roles,
+        reason: recommendationReason(deck, card),
+        synergyReason: recommendationReason(deck, card),
+        goalMatches: roleMatchesGoal(card, deck),
+        ownedQuantity,
+        bracketFit: isInBracket(deck, card)
+          ? "In selected bracket constraints"
+          : "Review bracket pressure",
+        tab,
+        createdAt: nowIso(),
+      } satisfies DeckRecommendation,
+      score: scoreCatalogCard({ deck, card, ownedQuantity, tab }),
     }))
     .sort((left, right) => {
-      const ownedDelta = right.ownedQuantity - left.ownedQuantity;
+      const scoreDelta = right.score - left.score;
+      if (scoreDelta !== 0) {
+        return scoreDelta;
+      }
+
+      const ownedDelta = right.recommendation.ownedQuantity - left.recommendation.ownedQuantity;
       if (ownedDelta !== 0) {
         return ownedDelta;
       }
 
-      return right.roleTags.length - left.roleTags.length || left.name.localeCompare(right.name);
-    });
+      return (
+        right.recommendation.roleTags.length - left.recommendation.roleTags.length ||
+        left.recommendation.name.localeCompare(right.recommendation.name)
+      );
+    })
+    .map(({ recommendation }) => recommendation);
 }
 
 export function createSmartBuildConfig({
   deck,
   mode,
   ownedCards = [],
+  outputPreference,
+  doNotSuggest = [],
+  useCurrentDeckAsCore = true,
+  protectedCardIds,
+  ownershipPreference,
+  manaCurveGoal,
+  existingDeckBehavior,
 }: {
   deck: Deck;
   mode: SmartBuildMode;
   ownedCards?: readonly OwnedCard[];
+  outputPreference?: SmartBuildConfig["outputPreference"];
+  doNotSuggest?: readonly string[];
+  useCurrentDeckAsCore?: boolean;
+  protectedCardIds?: readonly string[];
+  ownershipPreference?: SmartBuildConfig["ownershipPreference"];
+  manaCurveGoal?: string;
+  existingDeckBehavior?: SmartBuildConfig["existingDeckBehavior"];
 }): SmartBuildConfig {
   const ownedPreference =
-    mode === "owned_only"
+    ownershipPreference ??
+    (mode === "owned_only"
       ? "owned_only"
       : mode === "owned_first_missing_upgrades"
         ? "owned_first"
-        : deck.ownershipPreference;
+        : deck.ownershipPreference);
 
   return {
     id: createId("smart-build-config"),
@@ -318,10 +480,21 @@ export function createSmartBuildConfig({
     goals: deck.goals,
     bracketLock: deck.bracketLock,
     ownershipPreference: ownedPreference,
-    doNotSuggest: [],
-    useCurrentDeckAsCore: true,
-    protectedCardIds: deck.cards.filter((card) => card.protected).map((card) => card.id),
-    outputPreference: mode === "owned_only" && ownedCards.length === 0 ? "upgrade_list_only" : "apply_after_review",
+    doNotSuggest: [...doNotSuggest],
+    useCurrentDeckAsCore,
+    protectedCardIds:
+      protectedCardIds?.length
+        ? [...protectedCardIds]
+        : deck.cards.filter((card) => card.protected).map((card) => card.id),
+    outputPreference:
+      outputPreference ??
+      (mode === "owned_only" && ownedCards.length === 0
+        ? "upgrade_list_only"
+        : "apply_after_review"),
+    manaCurveGoal,
+    existingDeckBehavior:
+      existingDeckBehavior ??
+      (mode === "rebuild_existing" ? "suggest_only" : "keep_everything_fill"),
     createdAt: nowIso(),
   };
 }
@@ -361,8 +534,10 @@ export function runSmartBuild({
     config.mode === "bracket_locked"
       ? "best_fits"
       : config.mode === "owned_first_missing_upgrades"
-        ? "owned_first"
-        : "goal_support";
+        ? "best_fits"
+        : isVoltronGoal(deck)
+          ? "goal_specific"
+          : "goal_support";
   const recommendations = getDeckRecommendations({
     deck,
     ownedCards,
@@ -370,9 +545,54 @@ export function runSmartBuild({
     ownedOnly,
     doNotSuggest: config.doNotSuggest,
   });
-  const openSlots = Math.max(0, 100 - getMainDeckCount(deck.cards));
-  const proposalLimit = config.mode === "rebuild_existing" ? 20 : Math.min(20, Math.max(6, openSlots || 10));
+  const mainDeckCards = getMainDeckCards(deck.cards);
+  const coreCards =
+    config.existingDeckBehavior === "keep_protected_only"
+      ? mainDeckCards.filter((card) => card.protected || card.section === "commander")
+      : config.existingDeckBehavior === "keep_commander_goals_only"
+        ? mainDeckCards.filter((card) => card.section === "commander")
+        : config.useCurrentDeckAsCore
+          ? mainDeckCards
+          : mainDeckCards.filter((card) => card.section === "commander");
+  const openSlots = Math.max(0, 100 - coreCards.reduce((total, card) => total + card.quantity, 0));
+  const proposalLimit =
+    config.mode === "rebuild_existing" ? 20 : Math.min(20, Math.max(6, openSlots || 10));
   const proposedCards = recommendations.slice(0, proposalLimit).map(recommendationToSmartBuildCard);
+  const roleBreakdown = proposedCards.reduce<Record<string, number>>((totals, card) => {
+    for (const role of card.roleTags) {
+      totals[role] = (totals[role] ?? 0) + card.quantity;
+    }
+    return totals;
+  }, {});
+  const proposedManaCurve = proposedCards.reduce<Record<string, number>>((totals, card) => {
+    const value = estimateManaValue(card.manaCost);
+    const bucket = value >= 7 ? "7+" : String(value);
+    totals[bucket] = (totals[bucket] ?? 0) + card.quantity;
+    return totals;
+  }, {});
+  const cutCandidates =
+    config.mode === "rebuild_existing"
+      ? mainDeckCards
+          .filter((card) => !card.protected && card.section !== "commander")
+          .filter((card) => card.roleTags.length === 0 || estimateManaValue(card.manaCost) >= 5)
+          .slice(0, Math.min(10, proposedCards.length))
+          .map<SmartBuildCard>((card) => ({
+            id: card.id,
+            scryfallId: card.scryfallId,
+            oracleId: card.oracleId,
+            name: card.name,
+            manaCost: card.manaCost,
+            typeLine: card.typeLine ?? "",
+            quantity: card.quantity,
+            reason: "Suggested cut for review only; Smart Build will not remove it automatically.",
+            colorIdentity: card.colorIdentity ?? [],
+            targetSection: "cuts",
+            roleTags: card.roleTags,
+            ownedQuantity: card.ownedQuantityAtAdd,
+            bracketFit: "Review replacement",
+            goalMatches: [],
+          }))
+      : [];
   const suggestions = proposedCards.map((card) => ({
     id: createId("smart-suggestion"),
     scryfallId: card.scryfallId,
@@ -394,8 +614,7 @@ export function runSmartBuild({
     goals: deck.goals,
     suggestions,
     proposedCards,
-    keptCards: deck.cards
-      .filter((card) => card.protected || card.section === "commander")
+    keptCards: coreCards
       .map((card) => ({
         id: card.id,
         scryfallId: card.scryfallId,
@@ -412,12 +631,52 @@ export function runSmartBuild({
         bracketFit: "Existing card",
         goalMatches: [],
       })),
-    cutCards: [],
+    cutCards: cutCandidates,
     missingCards: proposedCards.filter((card) => card.ownedQuantity <= 0),
     summary:
-      "Smart Build created a review-only Commander proposal. Nothing is overwritten until applied.",
+      `Smart Build created a review-only ${config.mode.replace(/_/g, " ")} proposal. Nothing is overwritten until applied.`,
+    roleBreakdown,
+    manaCurve: {
+      averageManaValue:
+        proposedCards.length > 0
+          ? Number(
+              (
+                proposedCards.reduce(
+                  (total, card) => total + estimateManaValue(card.manaCost),
+                  0,
+                ) / proposedCards.length
+              ).toFixed(2),
+            )
+          : 0,
+      buckets: proposedManaCurve,
+    },
+    legalityStatus:
+      proposedCards.every((card) =>
+        isWithinCommanderColorIdentity(config.colorIdentity, card.colorIdentity),
+      )
+        ? "Legal within commander color identity"
+        : "Needs color-identity review",
+    bracketFit: config.bracketLock.enabled
+      ? `Constrained by ${formatBracket(config.bracketLock.bracket)}`
+      : "Bracket lock disabled",
+    goalAlignment: isVoltronGoal(deck)
+      ? "Commander Voltron priorities emphasize equipment, auras, protection, evasion, haste, and combat pressure."
+      : "Suggestions are weighted by saved deck goals, role gaps, ownership, and mana curve.",
     applied: false,
-    rejectedOutsideColorIdentity: [],
+    rejectedOutsideColorIdentity: localCardCatalog
+      .filter((card) => card.commanderLegal && !card.banned)
+      .filter((card) => !isWithinCommanderColorIdentity(deck.colorIdentity, card.colorIdentity))
+      .slice(0, 10)
+      .map((card) => ({
+        id: createId("smart-rejected"),
+        scryfallId: card.scryfallId,
+        oracleId: card.oracleId,
+        name: card.name,
+        quantity: 1,
+        reason: "Rejected automatically because it is outside commander color identity.",
+        colorIdentity: card.colorIdentity,
+        targetSection: "maybeboard",
+      })),
     createdAt: nowIso(),
   };
 }

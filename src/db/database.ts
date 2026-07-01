@@ -11,6 +11,7 @@ import type {
   Deck,
   DeckAnalysis,
   DeckCard,
+  DeckVersion,
   DeckGroup,
   DestinationAction,
   ExportHistory,
@@ -18,6 +19,8 @@ import type {
   ImportResult,
   OwnedCard,
   OwnedPrinting,
+  RecommendationFeedback,
+  ReplacementRecord,
   SavedSearch,
   ScanBatch,
   ScanRecord,
@@ -55,6 +58,9 @@ export class DeckNexusDatabase extends Dexie {
   importResults!: Table<ImportResult, string>;
   exportHistory!: Table<ExportHistory, string>;
   decisionEvents!: Table<DecisionEvent, string>;
+  recommendationFeedback!: Table<RecommendationFeedback, string>;
+  replacementRecords!: Table<ReplacementRecord, string>;
+  deckVersions!: Table<DeckVersion, string>;
   settings!: Table<AppSettings, string>;
   backups!: Table<BackupPackage, string>;
   appMigrations!: Table<AppMigration, string>;
@@ -134,6 +140,12 @@ export class DeckNexusDatabase extends Dexie {
       destinationActionHistory:
         "&id, actionType, destinationType, destinationId, status, createdAt, completedAt, *selectedCardIds",
       searchUndoTransactions: "&id, actionId, undoType, createdAt, expiresAt",
+    });
+
+    this.version(4).stores({
+      recommendationFeedback: "&id, deckId, oracleId, strategy, type, createdAt",
+      replacementRecords: "&id, deckId, removedCardId, replacementCardId, createdAt",
+      deckVersions: "&id, deckId, source, createdAt",
     });
   }
 }

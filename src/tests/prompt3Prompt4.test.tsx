@@ -4,16 +4,24 @@ import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsProvider } from "../app/SettingsContext";
-import { localCardCatalog } from "../data/cardCatalog";
+import { findCatalogCardByName, localCardCatalog } from "../data/cardCatalog";
 import { resetDatabaseForTests } from "../db/database";
 import {
   addDeckCard,
   addScanRecord,
   createBlankCommanderDeck,
+  getDeck,
   getRecoverableScanBatch,
+  listDeckVersions,
+  listDecisionEvents,
   listOwnedCards,
+  listRecommendationFeedback,
   listScanRecords,
+  moveDeckCard,
+  recordDecisionEvent,
   saveScanBatch,
+  saveDeckVersionFromDecks,
+  saveRecommendationFeedback,
   upsertOwnedCard,
 } from "../db/repositories";
 import { AnalyzerScreen } from "../features/analyzer/AnalyzerScreen";
@@ -24,7 +32,7 @@ import {
   runSmartBuild,
 } from "../features/analyzer/deckAnalysis";
 import { CardSearchScreen } from "../features/cards/CardSearchScreen";
-import { searchCards } from "../features/cards/cardSearch";
+import { catalogCardToManualInput, searchCards } from "../features/cards/cardSearch";
 import type { ManualCardInput } from "../features/decks/builderTypes";
 import { OwnedCardsScreen } from "../features/owned/OwnedCardsScreen";
 import { ScanCardsScreen } from "../features/scanner/ScanCardsScreen";
@@ -264,7 +272,7 @@ describe("Prompt 4 analyzer, recommendations, and Smart Build", () => {
     });
     const result = runSmartBuild({ deck, config });
     expect(result.proposedCards?.length).toBeGreaterThan(0);
-    expect(result.rejectedOutsideColorIdentity).toHaveLength(0);
+    expect(result.rejectedOutsideColorIdentity.some((card) => card.name === "Lightning Bolt")).toBe(true);
     expect(result.proposedCards?.every((card) => !card.colorIdentity.includes("R"))).toBe(true);
   });
 
@@ -275,7 +283,172 @@ describe("Prompt 4 analyzer, recommendations, and Smart Build", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Recommendations" }));
     expect(await screen.findByText("Best Fits")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("tab", { name: "Smart Build" }));
-    await userEvent.click(screen.getByRole("button", { name: /Generate Smart Build Review/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Generate Smart Build Review/i }));
     expect(await screen.findByText("Build Summary")).toBeInTheDocument();
+  });
+
+  it("keeps every Smart Build mode inside commander identity and honors do-not-suggest", async () => {
+    const deck = await createTatyovaDeck();
+
+    for (const mode of [
+      "owned_only",
+      "owned_first_missing_upgrades",
+      "ideal_goal_based",
+      "bracket_locked",
+      "rebuild_existing",
+    ] as const) {
+      const config = createSmartBuildConfig({
+        deck,
+        mode,
+        doNotSuggest: ["Sol Ring", "oracle-sol-ring"],
+      });
+      const result = runSmartBuild({ deck, config });
+      expect(result.proposedCards?.every((card) => !card.colorIdentity.includes("R"))).toBe(true);
+      expect(result.proposedCards?.some((card) => card.name === "Sol Ring")).toBe(false);
+      expect(result.rejectedOutsideColorIdentity.some((card) => card.name === "Lightning Bolt")).toBe(true);
+    }
+  });
+
+  it("applies Smart Build only after review and creates version history", async () => {
+    const deck = await createTatyovaDeck();
+    const config = createSmartBuildConfig({ deck, mode: "ideal_goal_based" });
+    const result = runSmartBuild({ deck, config });
+    let nextDeck = deck;
+
+    for (const smartCard of result.proposedCards?.slice(0, 2) ?? []) {
+      const catalogCard = findCatalogCardByName(smartCard.name);
+      expect(catalogCard).toBeTruthy();
+      nextDeck = await addDeckCard(
+        deck.id,
+        catalogCardToManualInput({
+          card: catalogCard!,
+          ownedQuantity: smartCard.ownedQuantity,
+          destination: "main",
+        }),
+        "main",
+      );
+    }
+
+    await saveDeckVersionFromDecks({
+      beforeDeck: deck,
+      afterDeck: nextDeck,
+      label: "Smart Build test apply",
+      source: "smart_build",
+      summary: result.summary,
+    });
+    await recordDecisionEvent({
+      deckId: deck.id,
+      type: "smart_build_applied",
+      message: "Smart Build applied after review.",
+      payload: { proposedCards: result.proposedCards?.map((card) => card.name) ?? [] },
+    });
+
+    const versions = await listDeckVersions(deck.id);
+    const events = await listDecisionEvents(deck.id);
+    expect(versions).toHaveLength(1);
+    expect(events.some((event) => event.type === "smart_build_applied")).toBe(true);
+  });
+
+  it("saves Smart Build as a new deck without altering the original", async () => {
+    const deck = await createTatyovaDeck();
+    const config = createSmartBuildConfig({ deck, mode: "ideal_goal_based" });
+    const result = runSmartBuild({ deck, config });
+    const nextDeck = await createBlankCommanderDeck({
+      name: `${deck.name} Smart Build`,
+      commanderName: deck.commanderNames.join(" / "),
+      bracketLock: deck.bracketLock,
+      ownershipPreference: deck.ownershipPreference,
+      goals: deck.goals.map((goal) => goal.name),
+    });
+
+    for (const smartCard of result.proposedCards?.slice(0, 2) ?? []) {
+      const catalogCard = findCatalogCardByName(smartCard.name);
+      if (catalogCard) {
+        await addDeckCard(
+          nextDeck.id,
+          catalogCardToManualInput({
+            card: catalogCard,
+            ownedQuantity: smartCard.ownedQuantity,
+            destination: "main",
+          }),
+          "main",
+        );
+      }
+    }
+    await recordDecisionEvent({
+      deckId: nextDeck.id,
+      type: "smart_build_saved_as_new_deck",
+      message: "Smart Build saved as a new deck without altering the original.",
+      payload: { sourceDeckId: deck.id },
+    });
+
+    const original = await getDeck(deck.id);
+    const events = await listDecisionEvents();
+    expect(original?.cards.map((card) => card.name)).toEqual(deck.cards.map((card) => card.name));
+    expect(events.some((event) => event.type === "smart_build_saved_as_new_deck")).toBe(true);
+  });
+
+  it("sends Smart Build suggestions to Maybeboard without counting toward the deck total", async () => {
+    const deck = await createTatyovaDeck();
+    const config = createSmartBuildConfig({ deck, mode: "owned_first_missing_upgrades" });
+    const result = runSmartBuild({ deck, config });
+    let updated = deck;
+
+    for (const smartCard of result.proposedCards?.slice(0, 2) ?? []) {
+      const catalogCard = findCatalogCardByName(smartCard.name);
+      if (catalogCard) {
+        updated = await addDeckCard(
+          deck.id,
+          catalogCardToManualInput({
+            card: catalogCard,
+            ownedQuantity: smartCard.ownedQuantity,
+            destination: "maybeboard",
+          }),
+          "maybeboard",
+        );
+      }
+    }
+
+    expect(updated.maybeboard.length).toBeGreaterThan(0);
+    expect(analyzeDeck(updated).cardCount).toBe(1);
+  });
+
+  it("persists recommendation feedback and filters future suggestions", async () => {
+    const deck = await createTatyovaDeck();
+    const recommendation = getDeckRecommendations({ deck })[0];
+    await saveRecommendationFeedback({
+      deckId: deck.id,
+      oracleId: recommendation.oracleId,
+      strategy: recommendation.roleTags[0],
+      type: "never_suggest_card",
+    });
+
+    const feedback = await listRecommendationFeedback(deck.id);
+    const filtered = getDeckRecommendations({
+      deck,
+      doNotSuggest: feedback.map((entry) => entry.oracleId).filter(Boolean) as string[],
+    });
+    expect(feedback.some((entry) => entry.type === "never_suggest_card")).toBe(true);
+    expect(filtered.some((entry) => entry.oracleId === recommendation.oracleId)).toBe(false);
+  });
+
+  it("saves cut reasons, replacement history, and decision timeline events", async () => {
+    let deck = await createTatyovaDeck();
+    deck = await addDeckCard(deck.id, manualCard("Cultivate", "Sorcery", ["G"], ["ramp"]));
+    deck = await moveDeckCard(deck.id, deck.cards.find((card) => card.name === "Cultivate")?.id ?? "", "cuts", "Manual cut");
+
+    renderWithAppProviders(<AnalyzerScreen />, `/analyzer?deckId=${deck.id}&tab=overview`);
+    await screen.findByRole("heading", { name: "Analyzer" });
+    await userEvent.click(screen.getByRole("tab", { name: "Cuts/Replacements" }));
+    await userEvent.selectOptions(screen.getByLabelText("Cut reason"), "Low synergy");
+    await userEvent.click(screen.getByRole("button", { name: "Edit Cut Reason" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Timeline" }));
+
+    await waitFor(async () => {
+      const updated = await getDeck(deck.id);
+      expect(updated?.cuts[0]?.cutReason).toBe("Low synergy");
+      const events = await listDecisionEvents(deck.id);
+      expect(events.some((event) => event.type === "cut_reason_updated")).toBe(true);
+    });
   });
 });

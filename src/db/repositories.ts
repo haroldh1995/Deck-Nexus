@@ -18,6 +18,11 @@ import type {
   SmartBuildResult,
   DeckAnalysis,
   DecisionEvent,
+  DeckVersion,
+  RecommendationFeedback,
+  ReplacementRecord,
+  UpgradeList,
+  UpgradeListEntry,
 } from "../types/domain";
 import { createId, nowIso } from "../utils/ids";
 import type { AddDestination, ManualCardInput } from "../features/decks/builderTypes";
@@ -1044,4 +1049,269 @@ export async function recordDecisionEvent(
   await db.decisionEvents.add(event);
   dispatchLocalEvent("deck-nexus:decks-updated");
   return event;
+}
+
+export async function saveRecommendationFeedback(
+  input: Omit<RecommendationFeedback, "id" | "createdAt"> & {
+    id?: string;
+    createdAt?: string;
+  },
+): Promise<RecommendationFeedback> {
+  const feedback: RecommendationFeedback = {
+    id: input.id ?? createId("recommendation-feedback"),
+    deckId: input.deckId,
+    oracleId: input.oracleId,
+    strategy: input.strategy,
+    type: input.type,
+    createdAt: input.createdAt ?? nowIso(),
+  };
+
+  await db.recommendationFeedback.put(feedback);
+  dispatchLocalEvent("deck-nexus:recommendations-updated");
+  return feedback;
+}
+
+export async function listRecommendationFeedback(
+  deckId?: string,
+): Promise<RecommendationFeedback[]> {
+  if (!deckId) {
+    return db.recommendationFeedback.orderBy("createdAt").reverse().toArray();
+  }
+
+  return db.recommendationFeedback
+    .where("deckId")
+    .equals(deckId)
+    .reverse()
+    .sortBy("createdAt");
+}
+
+export async function saveReplacementRecord(
+  input: Omit<ReplacementRecord, "id" | "createdAt"> & {
+    id?: string;
+    createdAt?: string;
+  },
+): Promise<ReplacementRecord> {
+  const record: ReplacementRecord = {
+    id: input.id ?? createId("replacement"),
+    deckId: input.deckId,
+    removedCardId: input.removedCardId,
+    replacementCardId: input.replacementCardId,
+    reason: input.reason,
+    createdAt: input.createdAt ?? nowIso(),
+  };
+
+  await db.replacementRecords.put(record);
+  await recordDecisionEvent({
+    deckId: record.deckId,
+    type: "replacement_recorded",
+    message: "Replacement relationship recorded locally.",
+    payload: {
+      removedCardId: record.removedCardId,
+      replacementCardId: record.replacementCardId,
+      reason: record.reason,
+    },
+  });
+  return record;
+}
+
+export async function listReplacementRecords(deckId: string): Promise<ReplacementRecord[]> {
+  return db.replacementRecords
+    .where("deckId")
+    .equals(deckId)
+    .reverse()
+    .sortBy("createdAt");
+}
+
+function allDeckCardsForVersion(deck: Deck): DeckCard[] {
+  return [...deck.cards, ...deck.maybeboard, ...deck.cuts].map((card) => ({ ...card }));
+}
+
+export async function saveDeckVersion({
+  deckId,
+  label,
+  beforeCards,
+  afterCards,
+  source,
+  summary,
+}: {
+  deckId: string;
+  label: string;
+  beforeCards: readonly DeckCard[];
+  afterCards: readonly DeckCard[];
+  source: DeckVersion["source"];
+  summary?: string;
+}): Promise<DeckVersion> {
+  const version: DeckVersion = {
+    id: createId("deck-version"),
+    deckId,
+    label,
+    beforeCardIds: beforeCards.map((card) => card.id),
+    afterCardIds: afterCards.map((card) => card.id),
+    beforeCards: beforeCards.map((card) => ({ ...card })),
+    afterCards: afterCards.map((card) => ({ ...card })),
+    source,
+    summary,
+    createdAt: nowIso(),
+  };
+
+  await db.deckVersions.put(version);
+  dispatchLocalEvent("deck-nexus:versions-updated");
+  return version;
+}
+
+export async function saveDeckVersionFromDecks({
+  beforeDeck,
+  afterDeck,
+  label,
+  source,
+  summary,
+}: {
+  beforeDeck: Deck;
+  afterDeck: Deck;
+  label: string;
+  source: DeckVersion["source"];
+  summary?: string;
+}): Promise<DeckVersion> {
+  return saveDeckVersion({
+    deckId: beforeDeck.id,
+    label,
+    beforeCards: allDeckCardsForVersion(beforeDeck),
+    afterCards: allDeckCardsForVersion(afterDeck),
+    source,
+    summary,
+  });
+}
+
+export async function listDeckVersions(deckId: string): Promise<DeckVersion[]> {
+  return db.deckVersions.where("deckId").equals(deckId).reverse().sortBy("createdAt");
+}
+
+export async function restoreDeckVersion(
+  versionId: string,
+  side: "before" | "after" = "before",
+): Promise<Deck> {
+  const version = await db.deckVersions.get(versionId);
+
+  if (!version) {
+    throw new Error("Deck version was not found.");
+  }
+
+  const deck = await getDeck(version.deckId);
+
+  if (!deck) {
+    throw new Error("Deck was not found.");
+  }
+
+  const restoredCards = side === "before" ? version.beforeCards : version.afterCards;
+
+  if (!restoredCards) {
+    throw new Error("This deck version does not include restorable card snapshots.");
+  }
+
+  const now = nowIso();
+  const nextDeck = updateCommanderState({
+    ...deck,
+    cards: restoredCards
+      .filter((card) => card.section === "main" || card.section === "commander")
+      .map((card) => ({ ...card, deckId: deck.id, updatedAt: now })),
+    maybeboard: restoredCards
+      .filter((card) => card.section === "maybeboard")
+      .map((card) => ({ ...card, deckId: deck.id, updatedAt: now })),
+    cuts: restoredCards
+      .filter((card) => card.section === "cuts")
+      .map((card) => ({ ...card, deckId: deck.id, updatedAt: now })),
+    updatedAt: now,
+  });
+
+  await db.transaction(
+    "rw",
+    db.decks,
+    db.deckCards,
+    db.maybeboardCards,
+    db.cutCards,
+    db.decisionEvents,
+    async () => {
+      await db.deckCards.where("deckId").equals(deck.id).delete();
+      await db.maybeboardCards.where("deckId").equals(deck.id).delete();
+      await db.cutCards.where("deckId").equals(deck.id).delete();
+      await db.deckCards.bulkPut(nextDeck.cards);
+      await db.maybeboardCards.bulkPut(nextDeck.maybeboard);
+      await db.cutCards.bulkPut(nextDeck.cuts);
+      await db.decks.put(nextDeck);
+      await db.decisionEvents.add({
+        id: createId("decision"),
+        deckId: deck.id,
+        type: "deck_version_restored",
+        message: `${version.label} restored locally.`,
+        payload: { versionId: version.id, side },
+        createdAt: now,
+      });
+    },
+  );
+
+  dispatchLocalEvent("deck-nexus:decks-updated");
+  return nextDeck;
+}
+
+export async function createUpgradeListFromSmartBuildResult(
+  result: SmartBuildResult,
+  listName = "Smart Build Upgrade List",
+): Promise<UpgradeList> {
+  const now = nowIso();
+  const list: UpgradeList = {
+    id: createId("upgrade-list"),
+    name: listName.trim() || "Smart Build Upgrade List",
+    description: "Created from a reviewed Smart Build result.",
+    relatedDeckId: result.deckId,
+    goalId: result.goals[0]?.id,
+    bracketTarget: result.config?.bracketLock.bracket,
+    tags: ["smart-build"],
+    favorite: false,
+    showOnHome: false,
+    archived: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const entries: UpgradeListEntry[] = (result.proposedCards ?? []).map((card) => ({
+    id: createId("upgrade-entry"),
+    upgradeListId: list.id,
+    scryfallId: card.scryfallId,
+    oracleId: card.oracleId,
+    cardName: card.name,
+    quantity: card.quantity,
+    suggestedReplacementCardId: undefined,
+    role: card.roleTags[0] ?? "",
+    intendedSection: card.targetSection,
+    goalMatches: card.goalMatches,
+    bracketImpact: card.bracketFit.includes("Review") ? 1 : 0,
+    ownedStatus: card.ownedQuantity > 0 ? "owned" : "missing",
+    priority: card.goalMatches.length > 0 ? "high" : "normal",
+    notes: card.reason,
+    sourceQuery: `Smart Build ${result.mode ?? result.config?.mode ?? ""}`.trim(),
+    completed: false,
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  await db.transaction(
+    "rw",
+    db.upgradeLists,
+    db.upgradeListEntries,
+    db.decisionEvents,
+    async () => {
+      await db.upgradeLists.put(list);
+      await db.upgradeListEntries.bulkPut(entries);
+      await db.decisionEvents.add({
+        id: createId("decision"),
+        deckId: result.deckId,
+        type: "smart_build_upgrade_list_created",
+        message: `${entries.length} Smart Build suggestions saved to an Upgrade List.`,
+        payload: { listId: list.id, resultId: result.id, entryCount: entries.length },
+        createdAt: now,
+      });
+    },
+  );
+
+  dispatchLocalEvent("deck-nexus:directories-updated");
+  return list;
 }

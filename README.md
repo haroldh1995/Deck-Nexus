@@ -14,7 +14,7 @@ The current build establishes the Commander-focused app foundation:
 - Live Scryfall Card Search with universal Add To workflows, multi-select, deck-aware warnings, owned registration, Wishlist, Upgrade Lists, Custom Collections, and undo.
 - Owned Cards registry with quantities, exact printing fields, tags, notes, favorites, storage location, and duplicate/share status.
 - Scanner UI with persistent batches, batch review, simulated scan engine, Automatic Feeder Mode, Stacking Feeder Mode, tray-full prompts, and local recovery.
-- Analyzer, Recommendation Panel, Smart Build review foundations, Maybeboard/Cuts history controls, decision timeline, and local version-result storage.
+- Analyzer, Recommendation Panel, Smart Build setup/review/apply flows, Maybeboard/Cuts history controls, decision timeline, recommendation feedback, replacement records, and restorable local deck versions.
 - Settings saved locally, including reduced motion, static home controls, glow intensity, text size, high contrast, device tilt parallax opt-in, and Home performance modes.
 - Strong TypeScript domain models for decks, owned cards, tags, scanner data, imports, analysis, exports, backups, and future smart-build results.
 - Route shell for the full initial surface area.
@@ -195,15 +195,41 @@ Search-created directories are stored in IndexedDB and are separate relationship
 
 ## Analyzer, Recommendations, And Smart Build
 
-Analyzer and Smart Build are local-first foundations with Commander safeguards.
+Analyzer, Recommendations, and Smart Build are local-first Commander planning tools. They never show prices, never use marketplace links, and automatic suggestions stay inside commander color identity.
 
-- Analyzer checks Commander count, commander-zone presence, singleton basics exceptions, color identity, bracket pressure, role balance, mana curve, ownership summary, and missing-card status.
-- Health labels include Excellent, Healthy, Needs Work, Incomplete, Illegal, Above Bracket, Below Bracket, and Needs Review where applicable.
-- Recommendation tabs include Best Fits, Owned First, Role Fixes, Goal Support, Commander Voltron / Goal-Specific, Mana Curve Fixes, Staples, Replacements, and Wild Within-Color.
-- Recommendations are filtered to Commander color identity and bracket constraints, show owned quantity and role tags, and explain why each card is suggested.
-- Smart Build modes include Owned Cards Only, Owned First + Missing Upgrades, Ideal Goal-Based Build, Bracket-Locked Build, and Rebuild Existing Deck.
-- Smart Build creates a review-only result before applying. It can apply to Main after review, save as a new deck, or send suggestions to Maybeboard. It records local Smart Build results and decision events.
-- Maybeboard and Cuts stay separate from the seven main workspace sections, do not count toward 100, and include restore/move controls and cut-reason history fields.
+Analyzer:
+
+- Checks commander-zone validity, paired commander color identity, singleton/basic-land exceptions, 100-card count including the commander zone, color-identity conflicts, bracket pressure, role balance, mana curve, ownership summary, duplicate/share warnings, and missing-card status.
+- Excludes Maybeboard, Cuts, tokens, and extras from Commander count.
+- Uses health states such as Excellent, Healthy, Needs Work, Incomplete, Illegal, Above Bracket, Below Bracket, and Needs Review.
+- Saves analysis snapshots locally and links analysis issues to Recommendations, Maybeboard, and Cuts workflows.
+
+Recommend Panel:
+
+- Tabs include Best Fits, Owned First, Role Fixes, Goal Support, Commander Voltron / Goal-Specific, Mana Curve Fixes, Staples, Replacements, and Wild Within-Color.
+- Filters include Owned only, Not owned, Legal only, In bracket, Role, Mana value, Card type, Goal match, Commander synergy, Not already in deck, Not in maybeboard, and Favorites.
+- Recommendation cards show name, mana cost, type line, role badges, owned quantity, bracket fit, goal matches, and an explanation.
+- Actions include Add to Main, Send to Maybeboard, Replace Existing, View Details, Find Similar, Compare, Favorite, Not Interested, Never Suggest This Card, and Never Suggest This Strategy.
+- Feedback is persisted locally in IndexedDB and is fed back into future recommendation filtering.
+
+Smart Build:
+
+- Modes include Owned Cards Only, Owned First + Missing Upgrades, Ideal Goal-Based Build, Bracket-Locked Build, and Rebuild Existing Deck.
+- Setup controls include commander zone, ordered goals, goal priority, mana curve goal, bracket lock, ownership preference, do-not-suggest rules, use-current-deck-as-core, protected cards, output preference, and existing-deck behavior.
+- Existing-deck behavior options are Keep everything and fill missing slots, Keep protected cards only, Keep commander and goals only, Suggest changes without applying, and Create new deck version.
+- Commander Voltron goals prioritize equipment, auras, protection, evasion, power boosts, double strike, trample, flying, menace, hexproof, indestructible, ward, haste, combat-damage triggers, attack triggers, commander recast support, and cards that amplify the commander plan.
+- Smart Build always creates a review screen before applying. The review shows proposed decklist, cards added, review-only cuts, kept cards, missing cards, owned cards used, unowned cards, role breakdown, mana curve, legality status, bracket fit, goal alignment, and why each card was chosen.
+- Review actions include Apply Build, Save as New Deck, Send Suggestions to Maybeboard, Create Upgrade List Only, Review Card by Card, Export Preview, and Cancel.
+- Applying a Smart Build creates before/after `DeckVersion` snapshots, saves the `SmartBuildResult`, and records decision events. Restoring, comparing, and duplicating versions are available from Version History.
+
+Maybeboard, Cuts, Timeline, and Versions:
+
+- Maybeboard entries track source, notes/reason, role tags, goal matches, ownership state, and remain excluded from Commander count.
+- Maybeboard actions include Move to Main Deck, Move to Cuts, View Details, Find Similar, Compare, Mark Protected, Edit Tags/Notes, Confirm Ownership, Scan Copy, and Remove from Maybeboard.
+- Cuts store rejected or removed cards with cut reason, notes, possible replacement links, previous section/version metadata, and local history.
+- Cut reasons include Too high mana value, Low synergy, Off-theme, Role overlap, Above Bracket Lock, Not owned, Better replacement found, Too many of this role, Mana curve issue, Commander color issue, Testing cut, Manual cut, and Other.
+- Cuts actions include Restore to Main Deck, Move to Maybeboard, View Details, Edit Cut Reason, Find Similar, Compare with Replacement, and Delete From Cuts.
+- Decision Timeline records adds, maybeboard moves, cuts, restores, replacements, Smart Build applies, imports, scanner batches, ownership confirmations, bracket changes, and goal changes, with filters for each event family.
 
 ## Scripts
 
