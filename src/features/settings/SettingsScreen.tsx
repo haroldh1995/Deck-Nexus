@@ -2,6 +2,12 @@ import { HolographicPanel } from "../../components/HolographicPanel";
 import { PageHeader } from "../../components/PageHeader";
 import { StatusPill } from "../../components/StatusPill";
 import { useSettings } from "../../app/useSettings";
+import { useState } from "react";
+import {
+  deleteScryfallOfflineCardDatabase,
+  downloadScryfallOfflineCardDatabase,
+  getScryfallBulkDataMetadata,
+} from "../../services/scryfall";
 import type {
   Bracket,
   BracketLock,
@@ -33,7 +39,58 @@ const bracketPermissionControls: {
 
 export function SettingsScreen() {
   const { settings, updateSettings } = useSettings();
+  const [scryfallStatus, setScryfallStatus] = useState("Scryfall cache is ready.");
+  const [scryfallBusy, setScryfallBusy] = useState(false);
   const bracketLock = settings.defaultBracketLock;
+
+  async function refreshScryfallBulkMetadata() {
+    setScryfallBusy(true);
+    try {
+      const records = await getScryfallBulkDataMetadata();
+      setScryfallStatus(`${records.length} Scryfall bulk-data records refreshed.`);
+      await updateSettings({ scryfallCacheUpdatedAt: new Date().toISOString() });
+    } catch (error) {
+      setScryfallStatus(error instanceof Error ? error.message : "Unable to refresh Scryfall metadata.");
+    } finally {
+      setScryfallBusy(false);
+    }
+  }
+
+  async function downloadOfflineCardDatabase() {
+    setScryfallBusy(true);
+    try {
+      const result = await downloadScryfallOfflineCardDatabase({ type: "default_cards" });
+      await updateSettings({
+        scryfallOfflineDatabaseDownloaded: true,
+        scryfallOfflineDatabaseSize: result.compressedSize,
+        scryfallOfflineDatabaseUpdatedAt: result.updatedAt ?? new Date().toISOString(),
+        scryfallCacheUpdatedAt: new Date().toISOString(),
+      });
+      setScryfallStatus(`${result.cardCount} Scryfall cards cached for offline search.`);
+    } catch (error) {
+      setScryfallStatus(error instanceof Error ? error.message : "Offline database download failed.");
+    } finally {
+      setScryfallBusy(false);
+    }
+  }
+
+  async function deleteOfflineCardDatabase() {
+    setScryfallBusy(true);
+    try {
+      await deleteScryfallOfflineCardDatabase();
+      await updateSettings({
+        scryfallOfflineDatabaseDownloaded: false,
+        scryfallOfflineDatabaseSize: undefined,
+        scryfallOfflineDatabaseUpdatedAt: undefined,
+        scryfallCacheUpdatedAt: new Date().toISOString(),
+      });
+      setScryfallStatus("Scryfall offline cache deleted. Decks and owned cards were preserved.");
+    } catch (error) {
+      setScryfallStatus(error instanceof Error ? error.message : "Unable to delete Scryfall cache.");
+    } finally {
+      setScryfallBusy(false);
+    }
+  }
 
   return (
     <div className="screen">
@@ -188,6 +245,66 @@ export function SettingsScreen() {
                 <option value="allow_missing">Allow missing cards</option>
               </select>
             </label>
+          </div>
+        </HolographicPanel>
+
+        <HolographicPanel>
+          <div className="settings-section">
+            <h2>Scryfall Data</h2>
+            <label className="toggle-row">
+              <input
+                checked={settings.scryfallLiveSearchEnabled}
+                onChange={(event) =>
+                  void updateSettings({
+                    scryfallLiveSearchEnabled: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              <span>Use live Scryfall search when online</span>
+            </label>
+            <label className="toggle-row">
+              <input
+                checked={settings.scryfallBulkDownloadWifiOnly}
+                onChange={(event) =>
+                  void updateSettings({
+                    scryfallBulkDownloadWifiOnly: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              <span>Prefer Wi-Fi for offline card database downloads</span>
+            </label>
+            <p className="settings-note">
+              Card data and images are provided by Scryfall. Deckstate stores cached card
+              records locally for speed and offline use, but it does not store or display
+              prices or marketplace links.
+            </p>
+            <p className="settings-note">
+              Offline database:{" "}
+              {settings.scryfallOfflineDatabaseDownloaded
+                ? `downloaded${settings.scryfallOfflineDatabaseUpdatedAt ? ` on ${new Date(settings.scryfallOfflineDatabaseUpdatedAt).toLocaleDateString()}` : ""}`
+                : "not downloaded"}
+            </p>
+            {settings.scryfallOfflineDatabaseSize ? (
+              <p className="settings-note">
+                Download size: {(settings.scryfallOfflineDatabaseSize / 1024 / 1024).toFixed(1)} MB compressed.
+              </p>
+            ) : null}
+            <p className="settings-note" role="status">
+              {scryfallStatus}
+            </p>
+            <div className="form-actions">
+              <button type="button" disabled={scryfallBusy} onClick={() => void refreshScryfallBulkMetadata()}>
+                Refresh Bulk Metadata
+              </button>
+              <button type="button" disabled={scryfallBusy} onClick={() => void downloadOfflineCardDatabase()}>
+                {settings.scryfallOfflineDatabaseDownloaded ? "Update Offline Card Database" : "Download Offline Card Database"}
+              </button>
+              <button type="button" disabled={scryfallBusy} onClick={() => void deleteOfflineCardDatabase()}>
+                Delete Offline Card Database
+              </button>
+            </div>
           </div>
         </HolographicPanel>
 

@@ -19,6 +19,11 @@ import type {
   ScanBatch,
   ScanRecord,
   SmartBuildResult,
+  ScryfallAutocompleteCacheRecord,
+  ScryfallBulkDataRecord,
+  ScryfallCacheMeta,
+  ScryfallCardCacheRecord,
+  ScryfallSearchCacheRecord,
   Tag,
 } from "../types/domain";
 
@@ -45,6 +50,12 @@ export class DeckNexusDatabase extends Dexie {
   settings!: Table<AppSettings, string>;
   backups!: Table<BackupPackage, string>;
   appMigrations!: Table<AppMigration, string>;
+  scryfallCards!: Table<ScryfallCardCacheRecord, string>;
+  scryfallOracleCards!: Table<ScryfallCardCacheRecord, string>;
+  scryfallAutocomplete!: Table<ScryfallAutocompleteCacheRecord, string>;
+  scryfallSearches!: Table<ScryfallSearchCacheRecord, string>;
+  scryfallBulkData!: Table<ScryfallBulkDataRecord, string>;
+  scryfallCacheMeta!: Table<ScryfallCacheMeta, string>;
 
   constructor() {
     super("deck-nexus-local");
@@ -78,6 +89,17 @@ export class DeckNexusDatabase extends Dexie {
       settings: "&id, updatedAt",
       backups: "&id, name, schemaVersion, createdAt",
       appMigrations: "&id, name, appliedAt",
+    });
+
+    this.version(2).stores({
+      scryfallCards:
+        "&id, oracleId, name, setCode, collectorNumber, updatedAt, lastFetchedAt, *card.colorIdentity, *card.keywords",
+      scryfallOracleCards:
+        "&id, oracleId, name, setCode, collectorNumber, updatedAt, lastFetchedAt",
+      scryfallAutocomplete: "&key, query, updatedAt",
+      scryfallSearches: "&key, query, page, unique, sort, direction, updatedAt",
+      scryfallBulkData: "&id, type, updatedAt, fetchedAt",
+      scryfallCacheMeta: "&id, updatedAt",
     });
   }
 }

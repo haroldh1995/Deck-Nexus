@@ -283,8 +283,11 @@ export function catalogCardToManualInput({
   requestedSection?: BuilderSectionId;
 }): ManualCardInput {
   return {
+    scryfallId: card.scryfallId,
+    oracleId: card.oracleId,
     name: card.name,
     manaCost: card.manaCost,
+    manaValue: card.manaValue,
     typeLine: card.typeLine,
     oracleText: card.oracleText,
     colorIdentity: card.colorIdentity,

@@ -19,11 +19,19 @@ export type SectionHealth = "normal" | "attention" | "serious" | "protected";
 export type AddDestination = "main" | "maybeboard" | "cuts";
 
 export interface ManualCardInput {
+  scryfallId?: string;
+  oracleId?: string;
   name: string;
   manaCost?: string;
+  manaValue?: number;
   typeLine: string;
   oracleText?: string;
   colorIdentity: CommanderColor[];
+  imageUri?: string;
+  setCode?: string;
+  setName?: string;
+  collectorNumber?: string;
+  legalities?: Record<string, string>;
   roleTags: string[];
   customTags: string[];
   notes?: string;

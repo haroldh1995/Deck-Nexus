@@ -87,16 +87,49 @@ Controls and accessibility:
 
 ## Card Search
 
-The Card Search route is a real local-first search surface backed by `src/data/cardCatalog.ts` and `src/features/cards/cardSearch.ts`.
+The Card Search route is now a live Scryfall-backed, local-first search surface. Live Scryfall API data is authoritative when the browser is online; IndexedDB cache makes previously viewed cards, autocomplete names, and cached search results available offline. The seeded local catalog remains only as a final fallback for tests and first-run offline use.
 
-- Supports partial names, single-word and multi-word queries, exact phrase matching, type/subtype search, oracle text search, keyword/role search, and fuzzy-helper scoring.
+- Uses Scryfall `/cards/autocomplete` for predictive card-name suggestions after a short debounce.
+- Uses `/cards/search` for full search, advanced Scryfall syntax, filters, commander legality, pagination, and structured result pages.
+- Uses `/cards/named` with `exact` and `fuzzy` for selected suggestions, misspellings, import correction, scanner correction, and exact typed names.
+- Uses `/cards/:id` for known-card hydration and `/cards/collection` for batched identifier resolution.
+- Uses `/bulk-data` metadata for optional offline card database setup. Large offline downloads remain explicit user actions.
+- Supports partial names, single-word and multi-word queries, exact phrase matching, type/subtype search, oracle text search, keyword ability search, and Scryfall advanced syntax such as `t:creature`, `o:"draw a card"`, `id:wu`, `legal:commander`, `mv<=2`, and `set:mh3`.
 - Search scopes include All Cards, Owned Cards, Current Deck, Maybeboard, Cuts, Commander Candidates, and Cached Cards Only.
 - Result views include Compact, Image/Card Tile, and Grid.
-- Badges distinguish Owned, Missing, In Deck, Legal, Outside Identity, Commander Legal, Not Commander Legal, Duplicate, Banned, Synergy Pick, High Power, cEDH Relevant, and Manual Search Result.
+- Badges distinguish Owned, Missing, In Deck, Legal, Outside Identity, Commander Legal, Not Commander Legal, Duplicate, and Manual Search Result.
 - Manual search can show cards outside the active commander's identity, but adding one to Main Deck uses the soft Commander warning flow with Add Anyway, Send to Maybeboard, and Cancel.
-- The Deck Builder Search glyph opens this route with the active `deckId`; scanner/import correction and Find Similar can build on the same module.
+- The Deck Builder Search glyph opens this route with the active `deckId`; scanner correction preserves the active batch and returns to review, and import correction preserves unresolved import context.
+- Selecting an autocomplete suggestion fills the field and resolves the card inside Search. It does not open Card Detail, add a card, change routes, open Scanner, or alter decks automatically.
+- Result actions are explicit: View Card, Add to Main Deck, Add + Return, Add to Maybeboard, Register Owned, Select for Scanner Correction, and Select for Import Correction depending on context.
 
-The current search provider uses a seeded local card cache so tests and offline usage work without network access. The service shape is prepared for a future public Scryfall provider without introducing prices or marketplace data.
+Search stability:
+
+- The search input remains mounted while typing so mobile keyboards are not repeatedly dismissed.
+- Autocomplete renders as an overlay below the input and does not push the page, move the header, or snap the viewport.
+- Previous results remain visible while a new live request is in flight.
+- Card image slots reserve a fixed aspect ratio before images load.
+- The result region scrolls independently while the search header and status row remain stable.
+
+Scryfall request management:
+
+- All Scryfall traffic goes through `src/services/scryfall`, not direct component fetches.
+- The request queue deduplicates identical in-flight requests, cancels stale autocomplete work, and spaces card API requests at Scryfall's documented 500ms pacing for search/name/autocomplete calls.
+- 429 and temporary server errors use controlled retry/backoff and respect `Retry-After` when provided.
+- Background cache refresh never has priority over the active typed search.
+
+Cache and offline behavior:
+
+- IndexedDB stores normalized Scryfall cards, Oracle-card cache entries, autocomplete results, search result pages, bulk-data metadata, and cache metadata.
+- Cached results can render immediately while live results refresh.
+- Offline mode displays an offline/cached data status and does not pretend results are live.
+- Reconnecting restores live search without requiring a full app reload.
+
+No-price policy:
+
+- Deck Nexus maps Scryfall Card objects into a normalized domain model and intentionally drops `prices` and `purchase_uris`.
+- The UI never displays USD, EUR, TIX, TCGplayer, Cardmarket, Cardhoarder, vendor links, marketplace values, or collection values.
+- Card data and images are attributed to Scryfall without implying endorsement.
 
 ## Owned Cards
 
@@ -175,4 +208,4 @@ public/assets  App assets
 
 ## Current Deferred Work
 
-Live camera capture, OCR, image fingerprinting, remote Scryfall querying, EDHREC-compatible external datasets, full import/export tooling, groups/tags management depth, backup/restore flows, and goldfish/test-play simulation remain future work. The current implementations are local-first, no-price, no-marketplace foundations designed to deepen without required login or commerce links.
+Live camera capture, OCR, image fingerprinting, EDHREC-compatible external datasets, full import/export tooling, groups/tags management depth, backup/restore flows, and goldfish/test-play simulation remain future work. The current implementations are local-first, no-price, no-marketplace foundations designed to deepen without required login or commerce links.

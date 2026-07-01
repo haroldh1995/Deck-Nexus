@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsProvider } from "../app/SettingsContext";
 import { localCardCatalog } from "../data/cardCatalog";
 import { resetDatabaseForTests } from "../db/database";
@@ -78,6 +78,7 @@ function renderWithAppProviders(ui: ReactElement, route = "/") {
 describe("Prompt 3 card search and owned registry", () => {
   beforeEach(async () => {
     await resetDatabaseForTests();
+    vi.restoreAllMocks();
   });
 
   it("searches partial names, exact phrases, types, oracle text, and keyword roles", async () => {
@@ -106,10 +107,53 @@ describe("Prompt 3 card search and owned registry", () => {
 
   it("renders Card Search and warns before manual outside-color main-deck add", async () => {
     const deck = await createTatyovaDeck();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/cards/autocomplete")) {
+        return new Response(
+          JSON.stringify({ object: "catalog", total_values: 1, data: ["Lightning Bolt"] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          object: "list",
+          total_cards: 1,
+          has_more: false,
+          data: [
+            {
+              object: "card",
+              id: "scryfall-lightning-bolt",
+              oracle_id: "oracle-lightning-bolt",
+              name: "Lightning Bolt",
+              lang: "en",
+              uri: "https://api.scryfall.com/cards/scryfall-lightning-bolt",
+              layout: "normal",
+              mana_cost: "{R}",
+              cmc: 1,
+              type_line: "Instant",
+              oracle_text: "Lightning Bolt deals 3 damage to any target.",
+              color_identity: ["R"],
+              colors: ["R"],
+              keywords: [],
+              legalities: { commander: "legal" },
+              games: ["paper"],
+              set: "lea",
+              set_name: "Limited Edition Alpha",
+              collector_number: "161",
+              rarity: "common",
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
 
     renderWithAppProviders(<CardSearchScreen />, `/search?deckId=${deck.id}`);
     await screen.findByRole("heading", { name: "Card Search" });
-    await userEvent.type(screen.getByLabelText("Search card name"), "Lightning Bolt");
+    await userEvent.type(screen.getByLabelText("Search Scryfall cards"), "Lightning Bolt");
+    await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
+    await screen.findByRole("heading", { name: "Lightning Bolt" }, { timeout: 2500 });
     await userEvent.click(await screen.findByRole("button", { name: "Add to Main" }));
 
     expect(await screen.findByText(/outside your commander's color identity/i)).toBeInTheDocument();

@@ -79,9 +79,15 @@ export interface DeckCard {
   oracleId: string;
   name: string;
   manaCost?: string;
+  manaValue?: number;
   typeLine?: string;
   oracleText?: string;
   colorIdentity?: CommanderColor[];
+  imageUri?: string;
+  setCode?: string;
+  setName?: string;
+  collectorNumber?: string;
+  legalities?: Record<string, string>;
   quantity: number;
   section: DeckCardSection;
   categories: string[];
@@ -146,9 +152,12 @@ export interface OwnedCard {
   scryfallId: string;
   name: string;
   manaCost?: string;
+  manaValue?: number;
   typeLine?: string;
   oracleText?: string;
   colorIdentity?: CommanderColor[];
+  imageUri?: string;
+  legalities?: Record<string, string>;
   quantityOwned: number;
   printings: OwnedPrinting[];
   tags: string[];
@@ -639,7 +648,139 @@ export interface AppSettings {
   defaultBracketLock: BracketLock;
   defaultOwnershipPreference: OwnershipPreference;
   scannerBatchPersistence: boolean;
+  scryfallLiveSearchEnabled: boolean;
+  scryfallBulkDownloadWifiOnly: boolean;
+  scryfallOfflineDatabaseDownloaded: boolean;
+  scryfallOfflineDatabaseSize?: number;
+  scryfallOfflineDatabaseUpdatedAt?: string;
+  scryfallCacheUpdatedAt?: string;
   homeOrbitOrder: string[];
   homeOrbitHiddenIds: string[];
+  updatedAt: string;
+}
+
+export interface DeckstateCardImageUris {
+  small?: string;
+  normal?: string;
+  large?: string;
+  png?: string;
+  artCrop?: string;
+  borderCrop?: string;
+}
+
+export interface DeckstateCardFace {
+  name: string;
+  manaCost?: string;
+  typeLine?: string;
+  oracleText?: string;
+  colors?: CommanderColor[];
+  imageUris?: DeckstateCardImageUris;
+}
+
+export interface DeckstateScryfallCard {
+  id: string;
+  oracleId: string;
+  name: string;
+  lang: string;
+  releasedAt?: string;
+  apiUri: string;
+  scryfallUri?: string;
+  layout: string;
+  highresImage?: boolean;
+  imageStatus?: string;
+  imageUris?: DeckstateCardImageUris;
+  manaCost?: string;
+  manaValue: number;
+  typeLine: string;
+  oracleText?: string;
+  power?: string;
+  toughness?: string;
+  loyalty?: string;
+  defense?: string;
+  colors: CommanderColor[];
+  colorIdentity: CommanderColor[];
+  keywords: string[];
+  legalities: Record<string, string>;
+  games: string[];
+  reserved?: boolean;
+  foil?: boolean;
+  nonfoil?: boolean;
+  oversized?: boolean;
+  promo?: boolean;
+  reprint?: boolean;
+  variation?: boolean;
+  setId?: string;
+  setCode: string;
+  setName: string;
+  setType?: string;
+  collectorNumber: string;
+  rarity: string;
+  artist?: string;
+  borderColor?: string;
+  frame?: string;
+  fullArt?: boolean;
+  textless?: boolean;
+  booster?: boolean;
+  storySpotlight?: boolean;
+  cardFaces: DeckstateCardFace[];
+  allParts?: {
+    id: string;
+    component: string;
+    name: string;
+    typeLine: string;
+    uri: string;
+  }[];
+  lastFetchedAt: string;
+}
+
+export interface ScryfallCardCacheRecord {
+  id: string;
+  oracleId: string;
+  name: string;
+  setCode: string;
+  collectorNumber: string;
+  card: DeckstateScryfallCard;
+  source: "live" | "bulk";
+  updatedAt: string;
+  lastFetchedAt: string;
+}
+
+export interface ScryfallAutocompleteCacheRecord {
+  key: string;
+  query: string;
+  suggestions: string[];
+  updatedAt: string;
+}
+
+export interface ScryfallSearchCacheRecord {
+  key: string;
+  query: string;
+  page: number;
+  unique: string;
+  sort: string;
+  direction: string;
+  cardIds: string[];
+  totalCards?: number;
+  hasMore: boolean;
+  nextPage?: string;
+  updatedAt: string;
+}
+
+export interface ScryfallBulkDataRecord {
+  id: string;
+  type: string;
+  name: string;
+  description?: string;
+  downloadUri?: string;
+  contentType?: string;
+  contentEncoding?: string;
+  compressedSize?: number;
+  updatedAt: string;
+  fetchedAt: string;
+}
+
+export interface ScryfallCacheMeta {
+  id: string;
+  value: Record<string, unknown>;
   updatedAt: string;
 }

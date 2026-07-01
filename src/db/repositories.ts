@@ -48,9 +48,12 @@ export type OwnedCardInput = {
   oracleId?: string;
   scryfallId?: string;
   manaCost?: string;
+  manaValue?: number;
   typeLine?: string;
   oracleText?: string;
   colorIdentity?: CommanderColor[];
+  imageUri?: string;
+  legalities?: Record<string, string>;
   tags?: string[];
   notes?: string;
   favorite?: boolean;
@@ -222,13 +225,19 @@ export function createDeckCardFromInput(
   return {
     id: createId("card"),
     deckId,
-    scryfallId: createId("local-scryfall"),
-    oracleId: createId("local-oracle"),
+    scryfallId: input.scryfallId ?? createId("local-scryfall"),
+    oracleId: input.oracleId ?? createId("local-oracle"),
     name: input.name.trim(),
     manaCost: input.manaCost?.trim(),
+    manaValue: input.manaValue,
     typeLine: input.typeLine.trim(),
     oracleText: input.oracleText?.trim(),
     colorIdentity: input.colorIdentity,
+    imageUri: input.imageUri,
+    setCode: input.setCode,
+    setName: input.setName,
+    collectorNumber: input.collectorNumber,
+    legalities: input.legalities,
     quantity: 1,
     section: cardSection,
     categories,
@@ -741,7 +750,7 @@ function createOwnedPrintingFromInput(
     foil: printing.foil ?? false,
     condition: printing.condition ?? "unspecified",
     quantityOwned: printing.quantityOwned ?? input.quantityOwned,
-    imageUri: printing.imageUri ?? "",
+    imageUri: printing.imageUri ?? input.imageUri ?? "",
     lastScannedAt: printing.lastScannedAt,
   };
 }
@@ -768,9 +777,12 @@ export async function upsertOwnedCard(input: OwnedCardInput): Promise<OwnedCard>
     scryfallId: input.scryfallId ?? existing?.scryfallId ?? createId("owned-scryfall"),
     name: normalizedName,
     manaCost: input.manaCost ?? existing?.manaCost,
+    manaValue: input.manaValue ?? existing?.manaValue,
     typeLine: input.typeLine ?? existing?.typeLine,
     oracleText: input.oracleText ?? existing?.oracleText,
     colorIdentity: input.colorIdentity ?? existing?.colorIdentity ?? [],
+    imageUri: input.imageUri ?? existing?.imageUri,
+    legalities: input.legalities ?? existing?.legalities,
     quantityOwned: Math.max(0, input.quantityOwned),
     printings,
     tags: input.tags ?? existing?.tags ?? [],

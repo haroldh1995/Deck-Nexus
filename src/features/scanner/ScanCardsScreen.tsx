@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Camera, CheckCircle2, Pause, Play, RotateCcw, ScanLine, ShieldAlert, Trash2 } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { HolographicPanel } from "../../components/HolographicPanel";
 import { PageHeader } from "../../components/PageHeader";
 import { StatusPill } from "../../components/StatusPill";
@@ -9,6 +9,7 @@ import {
   addDeckCard,
   addScanRecord,
   applyScanBatchToOwned,
+  getScanBatch,
   getRecoverableScanBatch,
   listScanRecords,
   saveScanBatch,
@@ -36,6 +37,7 @@ import {
 
 export function ScanCardsScreen() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { decks } = useDecks();
   const [mode, setMode] = useState<ScannerMode>(
     (searchParams.get("mode") as ScannerMode | null) ?? "batch",
@@ -65,6 +67,21 @@ export function ScanCardsScreen() {
     let mounted = true;
 
     async function recoverBatch() {
+      const requestedBatchId = searchParams.get("batchId");
+      if (requestedBatchId) {
+        const requestedBatch = await getScanBatch(requestedBatchId);
+        if (mounted && requestedBatch) {
+          setBatch(requestedBatch);
+          setMode(requestedBatch.mode ?? "batch");
+          setDestination(requestedBatch.destination ?? "owned_cards");
+          setDeckId(requestedBatch.deckId ?? searchParams.get("deckId") ?? "");
+          await refreshRecords(requestedBatch.id);
+          setReviewOpen(searchParams.get("review") === "1");
+          setShowRecovery(false);
+          return;
+        }
+      }
+
       const recoverable = await getRecoverableScanBatch();
       if (mounted && recoverable) {
         setBatch(recoverable);
@@ -481,6 +498,16 @@ export function ScanCardsScreen() {
                     </button>
                     <button type="button" onClick={() => updateScanRecord(record.id, { status: "removed" }).then(() => refreshRecords(record.batchId))}>
                       Remove
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/search?context=scanner&batchId=${record.batchId}&recordId=${record.id}&q=${encodeURIComponent(record.name)}`,
+                        )
+                      }
+                    >
+                      Correct with Search
                     </button>
                   </article>
                 ))

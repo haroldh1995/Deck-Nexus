@@ -250,12 +250,15 @@ test.describe("Deck Nexus local-first flow", () => {
 
     await page.goto("/search");
     await expect(page.getByRole("heading", { name: "Card Search" })).toBeVisible();
-    await page.getByLabel("Search card name").fill("Counterspell");
+    await page.getByLabel("Search Scryfall cards").fill("Countersp");
+    await expect(page.getByRole("option", { name: "Counterspell" })).toBeVisible();
+    await page.getByRole("option", { name: "Counterspell" }).click();
     await expect(page.getByRole("heading", { name: "Counterspell" })).toBeVisible();
+    await expect(page).toHaveURL(/\/search$/);
     await page
       .locator(".search-result-card")
       .filter({ hasText: "Counterspell" })
-      .getByRole("button", { name: "Add Owned" })
+      .getByRole("button", { name: "Register Owned" })
       .click();
 
     await page.goto("/owned");
