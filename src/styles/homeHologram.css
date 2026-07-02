@@ -493,10 +493,12 @@
   border: 1px solid rgba(124, 243, 255, 0.8);
   border-radius: 7px;
   color: #effcff;
+  background-color: #030718;
   background:
-    linear-gradient(140deg, rgba(255, 255, 255, 0.18), transparent 30%),
-    radial-gradient(circle at 50% 24%, rgba(96, 236, 255, 0.26), transparent 42%),
-    linear-gradient(180deg, rgba(8, 29, 73, 0.82), rgba(5, 8, 31, 0.94));
+    linear-gradient(140deg, rgba(255, 255, 255, 0.13), transparent 31%),
+    radial-gradient(circle at 50% 22%, rgba(69, 222, 255, 0.18), transparent 45%),
+    linear-gradient(180deg, #0a1c47 0%, #061437 48%, #030718 100%),
+    #030718;
   box-shadow:
     0 0 calc(13px * var(--card-glow, 0.6) * var(--glow-boost)) rgba(45, 232, 255, 0.55),
     inset 0 0 18px rgba(45, 232, 255, 0.1);
@@ -528,14 +530,16 @@
   inset: 3px;
   z-index: 0;
   border-radius: 5px;
+  background-color: #030819;
   background:
-    linear-gradient(140deg, rgba(255, 255, 255, 0.12), transparent 32%),
-    radial-gradient(circle at 50% 24%, rgba(72, 226, 255, 0.2), transparent 46%),
-    linear-gradient(180deg, rgba(4, 18, 50, 0.9), rgba(3, 6, 25, 0.97));
+    linear-gradient(140deg, rgba(255, 255, 255, 0.1), transparent 32%),
+    radial-gradient(circle at 50% 24%, rgba(66, 218, 255, 0.16), transparent 47%),
+    linear-gradient(180deg, #071a43 0%, #04112f 54%, #030819 100%),
+    #030819;
   box-shadow:
     inset 0 0 18px rgba(45, 232, 255, 0.1),
     inset 0 -18px 28px rgba(2, 5, 22, 0.42);
-  opacity: clamp(0.72, calc(0.62 + var(--card-presence, 1) * 0.28), 0.96);
+  opacity: 1;
   pointer-events: none;
 }
 
@@ -571,7 +575,6 @@
   z-index: 1;
   border-radius: inherit;
   background: linear-gradient(90deg, transparent, rgba(214, 252, 255, 0.32), transparent);
-  mix-blend-mode: screen;
   animation: card-edge-sweep 4.4s ease-in-out infinite;
 }
 
@@ -708,10 +711,12 @@
 
 .home-orbit-card.is-focused {
   border-color: rgba(236, 254, 255, 0.96);
+  background-color: #030718;
   background:
-    linear-gradient(140deg, rgba(255, 255, 255, 0.23), transparent 30%),
-    radial-gradient(circle at 50% 24%, rgba(96, 236, 255, 0.34), transparent 42%),
-    linear-gradient(180deg, rgba(8, 31, 80, 0.9), rgba(5, 8, 31, 0.97));
+    linear-gradient(140deg, rgba(255, 255, 255, 0.16), transparent 31%),
+    radial-gradient(circle at 50% 23%, rgba(90, 235, 255, 0.22), transparent 43%),
+    linear-gradient(180deg, #0b2257 0%, #06163c 50%, #030718 100%),
+    #030718;
   box-shadow:
     0 0 calc(18px * var(--glow-boost)) rgba(45, 232, 255, 0.78),
     0 0 calc(30px * var(--glow-boost)) rgba(111, 83, 255, 0.4),
@@ -720,10 +725,12 @@
 
 .home-orbit-card.is-focused .home-orbit-card__surface,
 .home-orbit-card.is-front-candidate .home-orbit-card__surface {
+  background-color: #030819;
   background:
-    linear-gradient(140deg, rgba(255, 255, 255, 0.16), transparent 30%),
-    radial-gradient(circle at 50% 24%, rgba(91, 235, 255, 0.24), transparent 45%),
-    linear-gradient(180deg, rgba(5, 23, 63, 0.98), rgba(2, 5, 23, 1));
+    linear-gradient(140deg, rgba(255, 255, 255, 0.13), transparent 30%),
+    radial-gradient(circle at 50% 24%, rgba(91, 235, 255, 0.2), transparent 45%),
+    linear-gradient(180deg, #071f52 0%, #041335 55%, #030819 100%),
+    #030819;
   opacity: 1;
 }
 
@@ -749,10 +756,6 @@
 
 .home-orbit-card.is-rear {
   pointer-events: none;
-}
-
-.home-orbit-card.is-rear .home-orbit-card__surface {
-  opacity: 0.48;
 }
 
 .home-orbit-card.is-rear .home-orbit-card__copy,

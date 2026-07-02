@@ -48,6 +48,13 @@ test.describe("interaction performance and responsive motion", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await expect(page.getByTestId("home-hologram-scene")).toBeVisible();
+    await expect
+      .poll(() =>
+        page
+          .locator('.home-orbit-card[aria-current="true"]')
+          .evaluate((node) => getComputedStyle(node).opacity),
+      )
+      .toBe("1");
 
     const layering = await page.evaluate(() => {
       const selected = document.querySelector<HTMLElement>(
@@ -67,8 +74,25 @@ test.describe("interaction performance and responsive motion", () => {
         : null;
 
       return {
+        cardOpacity: getComputedStyle(selected!).opacity,
+        cardBackgroundColor: getComputedStyle(selected!).backgroundColor,
         selectedLayer: selected?.dataset.cardLayer ?? "",
         selectedZ: Number(getComputedStyle(selected!).zIndex),
+        surfaceBackgroundColor: selected
+          ? getComputedStyle(
+              selected.querySelector(".home-orbit-card__surface")!,
+            ).backgroundColor
+          : "",
+        surfaceOpacity: selected
+          ? getComputedStyle(
+              selected.querySelector(".home-orbit-card__surface")!,
+            ).opacity
+          : "",
+        edgeBlendMode: selected
+          ? getComputedStyle(
+              selected.querySelector(".home-orbit-card__edge")!,
+            ).mixBlendMode
+          : "",
         crystalPointerEvents: crystal
           ? getComputedStyle(crystal).pointerEvents
           : "",
@@ -84,6 +108,11 @@ test.describe("interaction performance and responsive motion", () => {
     });
 
     expect(layering.selectedLayer).toBe("front-orbit-cards");
+    expect(layering.cardOpacity).toBe("1");
+    expect(layering.cardBackgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(layering.surfaceBackgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(layering.surfaceOpacity).toBe("1");
+    expect(layering.edgeBlendMode).toBe("normal");
     expect(layering.selectedZ).toBeGreaterThan(layering.crystalZ);
     expect(layering.selectedZ).toBeGreaterThan(layering.beamZ);
     expect(layering.crystalPointerEvents).toBe("none");
