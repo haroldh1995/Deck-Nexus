@@ -523,6 +523,22 @@
     opacity 80ms linear;
 }
 
+.home-orbit-card__surface {
+  position: absolute;
+  inset: 3px;
+  z-index: 0;
+  border-radius: 5px;
+  background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.12), transparent 32%),
+    radial-gradient(circle at 50% 24%, rgba(72, 226, 255, 0.2), transparent 46%),
+    linear-gradient(180deg, rgba(4, 18, 50, 0.9), rgba(3, 6, 25, 0.97));
+  box-shadow:
+    inset 0 0 18px rgba(45, 232, 255, 0.1),
+    inset 0 -18px 28px rgba(2, 5, 22, 0.42);
+  opacity: clamp(0.72, calc(0.62 + var(--card-presence, 1) * 0.28), 0.96);
+  pointer-events: none;
+}
+
 .home-orbit-card::before,
 .home-orbit-card::after,
 .home-orbit-card__edge,
@@ -535,6 +551,7 @@
 
 .home-orbit-card::before {
   inset: 7px;
+  z-index: 2;
   border: 1px solid rgba(178, 246, 255, 0.48);
   border-radius: 5px;
   box-shadow: inset 0 0 16px rgba(134, 104, 255, 0.26);
@@ -542,6 +559,7 @@
 
 .home-orbit-card::after {
   inset: -2px;
+  z-index: 2;
   border: 1px solid rgba(169, 113, 255, 0.72);
   border-radius: 8px;
   opacity: 0.52;
@@ -550,6 +568,7 @@
 
 .home-orbit-card__edge {
   inset: 0;
+  z-index: 1;
   border-radius: inherit;
   background: linear-gradient(90deg, transparent, rgba(214, 252, 255, 0.32), transparent);
   mix-blend-mode: screen;
@@ -558,6 +577,7 @@
 
 .home-orbit-card__corner {
   position: absolute;
+  z-index: 3;
   width: 20px;
   height: 20px;
   border-color: rgba(218, 252, 255, 0.78);
@@ -591,6 +611,7 @@
 
 .home-orbit-card__scan {
   inset: 0;
+  z-index: 1;
   background: repeating-linear-gradient(
     180deg,
     transparent 0 8px,
@@ -602,6 +623,7 @@
 
 .home-orbit-card__icon-shell {
   position: relative;
+  z-index: 4;
   display: grid;
   place-items: center;
   width: clamp(3rem, calc(var(--card-width) * 0.44), 4.9rem);
@@ -634,6 +656,7 @@
 
 .home-orbit-card__copy {
   position: relative;
+  z-index: 4;
   display: grid;
   gap: 0.2rem;
   opacity: clamp(0.36, calc((var(--card-presence, 1) - 0.28) * 3.2), 1);
@@ -653,6 +676,7 @@
 
 .home-orbit-card__action {
   position: relative;
+  z-index: 4;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -669,6 +693,7 @@
 
 .home-orbit-card__back-rune {
   inset: 12%;
+  z-index: 3;
   display: none;
   place-items: center;
 }
@@ -693,6 +718,15 @@
     inset 0 0 24px rgba(233, 252, 255, 0.14);
 }
 
+.home-orbit-card.is-focused .home-orbit-card__surface,
+.home-orbit-card.is-front-candidate .home-orbit-card__surface {
+  background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 50% 24%, rgba(91, 235, 255, 0.24), transparent 45%),
+    linear-gradient(180deg, rgba(5, 23, 63, 0.98), rgba(2, 5, 23, 1));
+  opacity: 1;
+}
+
 .home-orbit-card.is-tap-target:not(.is-focused) {
   border-color: rgba(180, 249, 255, 0.9);
   box-shadow:
@@ -715,6 +749,10 @@
 
 .home-orbit-card.is-rear {
   pointer-events: none;
+}
+
+.home-orbit-card.is-rear .home-orbit-card__surface {
+  opacity: 0.48;
 }
 
 .home-orbit-card.is-rear .home-orbit-card__copy,

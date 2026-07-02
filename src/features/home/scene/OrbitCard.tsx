@@ -40,6 +40,7 @@ export const OrbitCard = memo(function OrbitCard({
       } as CSSProperties}
       type="button"
     >
+      <span className="home-orbit-card__surface" aria-hidden="true" />
       <span className="home-orbit-card__edge" aria-hidden="true" />
       <span className="home-orbit-card__corner home-orbit-card__corner--tl" />
       <span className="home-orbit-card__corner home-orbit-card__corner--tr" />

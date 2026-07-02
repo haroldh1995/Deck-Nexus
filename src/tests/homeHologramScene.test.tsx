@@ -105,8 +105,13 @@ describe("HomeHologramScene", () => {
     expect(orbitLayer).toContainElement(rearCard);
     expect(focusedCard).toHaveAttribute("data-depth", "front");
     expect(rearCard).toHaveAttribute("data-depth", "rear");
+    expect(focusedCard).toHaveAttribute("data-card-layer", "front-orbit-cards");
+    expect(rearCard).toHaveAttribute("data-card-layer", "rear-orbit-cards");
     expect(Number(focusedCard.style.zIndex)).toBeGreaterThan(54);
     expect(Number(rearCard.style.zIndex)).toBeLessThan(54);
+    expect(
+      focusedCard.querySelector(".home-orbit-card__surface"),
+    ).not.toBeNull();
   });
 
   it("opens the focused command card route", async () => {
@@ -208,6 +213,8 @@ describe("HomeHologramScene", () => {
       }),
     ).not.toBeInTheDocument();
     expect(document.querySelector(".central-crystal")?.tagName).toBe("DIV");
+    expect(document.querySelector(".central-beam")?.getAttribute("aria-hidden"))
+      .toBe("true");
   });
 
   it("drags from the scene surface without navigating", async () => {

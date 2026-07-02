@@ -42,6 +42,56 @@ test.describe("interaction performance and responsive motion", () => {
     expect(overflow.vertical).toBeLessThanOrEqual(2);
   });
 
+  test("keeps the selected Home card above the core and beam", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await expect(page.getByTestId("home-hologram-scene")).toBeVisible();
+
+    const layering = await page.evaluate(() => {
+      const selected = document.querySelector<HTMLElement>(
+        '.home-orbit-card[aria-current="true"]',
+      );
+      const crystal = document.querySelector<HTMLElement>(".central-crystal");
+      const beam = document.querySelector<HTMLElement>(".central-beam");
+      const icon = selected?.querySelector<HTMLElement>(
+        ".home-orbit-card__icon-shell",
+      );
+      const iconRect = icon?.getBoundingClientRect();
+      const hit = iconRect
+        ? document.elementFromPoint(
+            iconRect.left + iconRect.width / 2,
+            iconRect.top + iconRect.height / 2,
+          )
+        : null;
+
+      return {
+        selectedLayer: selected?.dataset.cardLayer ?? "",
+        selectedZ: Number(getComputedStyle(selected!).zIndex),
+        crystalPointerEvents: crystal
+          ? getComputedStyle(crystal).pointerEvents
+          : "",
+        crystalZ: crystal ? Number(getComputedStyle(crystal).zIndex) : 0,
+        beamPointerEvents: beam ? getComputedStyle(beam).pointerEvents : "",
+        beamZ: beam ? Number(getComputedStyle(beam).zIndex) : 0,
+        hitCardId: hit?.closest<HTMLElement>(".home-orbit-card")?.dataset
+          .cardId ?? "",
+        selectedCardId: selected?.dataset.cardId ?? "",
+        surfaceCount: selected?.querySelectorAll(".home-orbit-card__surface")
+          .length ?? 0,
+      };
+    });
+
+    expect(layering.selectedLayer).toBe("front-orbit-cards");
+    expect(layering.selectedZ).toBeGreaterThan(layering.crystalZ);
+    expect(layering.selectedZ).toBeGreaterThan(layering.beamZ);
+    expect(layering.crystalPointerEvents).toBe("none");
+    expect(layering.beamPointerEvents).toBe("none");
+    expect(layering.hitCardId).toBe(layering.selectedCardId);
+    expect(layering.surfaceCount).toBe(1);
+  });
+
   test("starts route navigation from Home within the interaction budget", async ({
     page,
   }) => {
