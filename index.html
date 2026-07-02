@@ -26,33 +26,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      (function () {
-        if (!window.location.hostname.endsWith("github.io")) {
-          return;
-        }
-
-        window.setTimeout(function () {
-          if (window.__DECK_NEXUS_BOOTSTRAPPED__) {
-            return;
-          }
-
-          var githubPagesBase = "/Deck-Nexus/";
-          var fallbackCss = githubPagesBase + "assets/deck-nexus-app.css";
-          var fallbackJs = githubPagesBase + "assets/deck-nexus-app.js";
-
-          if (!document.querySelector('link[href="' + fallbackCss + '"]')) {
-            var stylesheet = document.createElement("link");
-            stylesheet.rel = "stylesheet";
-            stylesheet.href = fallbackCss;
-            document.head.appendChild(stylesheet);
-          }
-
-          import(fallbackJs).catch(function (error) {
-            console.error("Deck Nexus GitHub Pages fallback failed.", error);
-          });
-        }, 350);
-      })();
-    </script>
   </body>
 </html>
