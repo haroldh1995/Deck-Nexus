@@ -3,12 +3,16 @@ import { homeSceneRouteOrder } from "../features/home/scene/homeSceneConstants";
 import {
   applyOrbitFriction,
   calculateMagneticSettleStep,
+  calculateTapTargetStep,
   calculateOrbitTransforms,
   calculateResponsiveSceneScale,
   getDepthSortedOrbitTransforms,
   getNearestOrbitIndex,
+  getOrbitAngularDistanceFromFront,
+  getPositionSelectedOrbitIndex,
   getPointerDragIntent,
   getRotationForIndex,
+  getShortestOrbitTargetRotation,
   normalizeAngle,
   shortestAngleDistance,
 } from "../features/home/scene/orbitMath";
@@ -27,6 +31,60 @@ describe("home hologram scene math", () => {
     expect(shortestAngleDistance(350, 10)).toBe(20);
     expect(getNearestOrbitIndex(360, 12)).toBe(0);
     expect(getNearestOrbitIndex(getRotationForIndex(3, 12), 12)).toBe(3);
+  });
+
+  it("selects the card closest to front-center with hysteresis", () => {
+    expect(
+      getOrbitAngularDistanceFromFront({
+        index: 1,
+        itemCount: 12,
+        rotation: -30,
+      }),
+    ).toBe(0);
+
+    expect(
+      getPositionSelectedOrbitIndex({
+        currentIndex: 0,
+        hysteresisDegrees: 3.5,
+        itemCount: 12,
+        rotation: -14,
+      }),
+    ).toBe(0);
+
+    expect(
+      getPositionSelectedOrbitIndex({
+        currentIndex: 0,
+        hysteresisDegrees: 3.5,
+        itemCount: 12,
+        rotation: -19,
+      }),
+    ).toBe(1);
+  });
+
+  it("calculates shortest tap-to-cycle target movement", () => {
+    expect(
+      getShortestOrbitTargetRotation({
+        currentRotation: 350,
+        targetRotation: 0,
+      }),
+    ).toBe(360);
+
+    const step = calculateTapTargetStep({
+      currentRotation: 0,
+      deltaMilliseconds: 16.67,
+      targetRotation: -90,
+    });
+
+    expect(step.nextRotation).toBeLessThan(0);
+    expect(step.nextRotation).toBeGreaterThan(-90);
+    expect(step.settled).toBe(false);
+    expect(
+      calculateTapTargetStep({
+        currentRotation: -89.96,
+        deltaMilliseconds: 16.67,
+        targetRotation: -90,
+      }).settled,
+    ).toBe(true);
   });
 
   it("calculates card transforms with front, side, and rear depth states", () => {

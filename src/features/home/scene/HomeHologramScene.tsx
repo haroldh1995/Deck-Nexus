@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type MouseEvent,
   type PointerEvent,
   useCallback,
   useEffect,
@@ -9,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
+import { preloadAppRoute } from "../../../app/routePreloaders";
 import { AppIcon } from "../../../components/AppIcon";
 import type { HomeOrbitItem } from "../../../types/navigation";
 import {
@@ -138,7 +140,39 @@ export function HomeHologramScene({
     };
   }, []);
 
+  useEffect(() => {
+    if (!focusedCard || cards.length <= 0 || typeof window === "undefined") {
+      return;
+    }
+
+    const preloadVisibleRoutes = () => {
+      const routeIndexes = new Set([
+        orbit.focusedIndex,
+        (orbit.focusedIndex + 1) % cards.length,
+        (orbit.focusedIndex - 1 + cards.length) % cards.length,
+      ]);
+
+      for (const index of routeIndexes) {
+        const route = cards[index]?.route;
+        if (route) {
+          preloadAppRoute(route);
+        }
+      }
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      const idleHandle = window.requestIdleCallback(preloadVisibleRoutes, {
+        timeout: 700,
+      });
+      return () => window.cancelIdleCallback(idleHandle);
+    }
+
+    const timer = window.setTimeout(preloadVisibleRoutes, 180);
+    return () => window.clearTimeout(timer);
+  }, [cards, focusedCard, orbit.focusedIndex]);
+
   function openCard(card: HomeHologramCard) {
+    orbit.beginRouteOpening();
     orbit.setQuickActionCardId(null);
     markIntroPlayed();
     navigate(card.route);
@@ -155,6 +189,43 @@ export function HomeHologramScene({
     }
 
     orbit.focusIndex(index);
+  }
+
+  function handleSceneClickCapture(event: MouseEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+    const protectedAction = target.closest<HTMLElement>(
+      ".home-core-status__actions a, .home-quick-actions button",
+    );
+    if (protectedAction) {
+      return;
+    }
+
+    const directCardElement = target.closest<HTMLElement>(".home-orbit-card");
+    const directCardId = directCardElement?.dataset.cardId;
+    const directIndex = directCardId
+      ? cards.findIndex((card) => card.id === directCardId)
+      : -1;
+    const tappedIndex = directIndex >= 0
+      ? directIndex
+      : orbit.getCardIndexAtPoint(event);
+    if (tappedIndex === null) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const tappedCard = cards[tappedIndex];
+    if (!tappedCard || orbit.isClickSuppressed()) {
+      return;
+    }
+
+    if (focusedCard?.id === tappedCard.id) {
+      openCard(tappedCard);
+      return;
+    }
+
+    orbit.focusIndex(tappedIndex);
   }
 
   function handleScenePointerDown(event: PointerEvent<HTMLElement>) {
@@ -236,11 +307,14 @@ export function HomeHologramScene({
         ref={registerParallaxSurface}
         onKeyDown={(event) =>
           orbit.handleKeyDown(event, () => {
-            if (focusedCard) {
-              openCard(focusedCard);
+            const activationCard = cards[orbit.getActivationIndex()] ??
+              focusedCard;
+            if (activationCard) {
+              openCard(activationCard);
             }
           })
         }
+        onClickCapture={handleSceneClickCapture}
         onPointerCancel={(event) => orbit.endPointerDrag(event)}
         onPointerDown={handleScenePointerDown}
         onPointerMove={(event) => orbit.movePointerDrag(event)}
@@ -297,7 +371,6 @@ export function HomeHologramScene({
 
         <CentralCrystalAssembly
           active={orbit.dragging || orbit.settling}
-          onResetFocus={() => orbit.focusIndex(0)}
         />
 
         <div className="home-core-status" aria-live="polite">
@@ -378,7 +451,7 @@ export function HomeHologramScene({
 
         <div className="sr-only" aria-live="polite">
           {focusedCard
-            ? `${focusedCard.label} focused, ${orbit.focusedIndex + 1} of ${
+            ? `${focusedCard.label} selected, ${orbit.focusedIndex + 1} of ${
                 cards.length
               }.`
             : "Command orbit ready"}

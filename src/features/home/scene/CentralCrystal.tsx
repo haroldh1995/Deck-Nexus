@@ -1,25 +1,13 @@
 export function CentralCrystalAssembly({
   active,
-  onResetFocus,
 }: {
   active: boolean;
-  onResetFocus: () => void;
 }) {
   return (
-    <button
-      aria-label="Return command orbit to Create Deck"
+    <div
+      aria-hidden="true"
       className={`central-crystal${active ? " central-crystal--active" : ""}`}
-      onClick={onResetFocus}
-      type="button"
     >
-      <svg className="central-crystal__rune" viewBox="0 0 180 180">
-        <circle cx="90" cy="90" r="76" />
-        <circle cx="90" cy="90" r="54" />
-        <path d="M90 14 L102 52 L90 74 L78 52 Z" />
-        <path d="M90 166 L102 128 L90 106 L78 128 Z" />
-        <path d="M14 90 L52 78 L74 90 L52 102 Z" />
-        <path d="M166 90 L128 78 L106 90 L128 102 Z" />
-      </svg>
       <span className="central-crystal__glow" aria-hidden="true" />
       <svg className="central-crystal__body" viewBox="0 0 120 168">
         <defs>
@@ -43,6 +31,6 @@ export function CentralCrystalAssembly({
         <path className="central-crystal__edge" d="M60 4 L60 164" />
       </svg>
       <span className="central-crystal__refraction" aria-hidden="true" />
-    </button>
+    </div>
   );
 }

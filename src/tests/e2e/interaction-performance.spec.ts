@@ -7,6 +7,8 @@ test.describe("interaction performance and responsive motion", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await expect(page.getByTestId("home-hologram-scene")).toBeVisible();
+    await expect(page.locator(".home-center-cursor, .selection-reticle, .orbit-cursor, .focus-target"))
+      .toHaveCount(0);
 
     const sceneBox = await page.getByTestId("home-hologram-scene").boundingBox();
     expect(sceneBox).not.toBeNull();
@@ -64,6 +66,47 @@ test.describe("interaction performance and responsive motion", () => {
 
     expect(delay).toBeLessThan(220);
     await expect(page).toHaveURL(/\/create$/);
+  });
+
+  test("selects a visible off-center card before one-tap opening the centered card", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await expect(page.getByTestId("orbit-card-create-deck")).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+
+    const libraryCard = page.getByTestId("orbit-card-deck-library");
+    const libraryBox = await libraryCard.boundingBox();
+    expect(libraryBox).not.toBeNull();
+    await page.mouse.click(
+      libraryBox!.x + libraryBox!.width / 2,
+      libraryBox!.y + libraryBox!.height / 2,
+    );
+    await expect(page).toHaveURL(/\/$/);
+    await expect(libraryCard).toHaveAttribute("aria-current", "true", {
+      timeout: 1200,
+    });
+
+    const delay = await page.evaluate(async () => {
+      const card = document.querySelector(
+        '[data-testid="orbit-card-deck-library"]',
+      );
+      const started = performance.now();
+      (card as HTMLButtonElement | null)?.click();
+      while (
+        location.pathname !== "/library" &&
+        performance.now() - started < 2000
+      ) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+      return performance.now() - started;
+    });
+
+    expect(delay).toBeLessThan(220);
+    await expect(page).toHaveURL(/\/library$/);
   });
 
   test("keeps Home focus and readability through portrait and landscape reflow", async ({

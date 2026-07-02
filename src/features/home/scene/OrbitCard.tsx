@@ -24,7 +24,7 @@ export const OrbitCard = memo(function OrbitCard({
       ref={cardRef}
       aria-current={focused ? "true" : undefined}
       aria-label={`${card.label}. ${card.subtitle}. ${index + 1} of ${total}. ${
-        focused ? "Open this command." : "Focus this command."
+        focused ? "Open this command." : "Select this command."
       }`}
       className={`home-orbit-card${focused ? " is-focused" : ""}${
         reducedMotion ? " is-reduced" : ""

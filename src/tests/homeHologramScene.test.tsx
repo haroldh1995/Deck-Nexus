@@ -192,7 +192,22 @@ describe("HomeHologramScene", () => {
       permanentHomeOrbitItems.length,
     );
     expect(document.querySelector(".home-overlay-carousel")).toBeNull();
+    expect(document.querySelector(".home-center-cursor")).toBeNull();
+    expect(document.querySelector(".selection-reticle")).toBeNull();
+    expect(document.querySelector(".orbit-cursor")).toBeNull();
+    expect(document.querySelector(".focus-target")).toBeNull();
     expect(document.querySelector(".bottom-command-bar")).toBeNull();
+  });
+
+  it("keeps the central nexus decorative so it cannot steal card taps", () => {
+    renderScene();
+
+    expect(
+      screen.queryByRole("button", {
+        name: /Return command orbit to Create Deck/i,
+      }),
+    ).not.toBeInTheDocument();
+    expect(document.querySelector(".central-crystal")?.tagName).toBe("DIV");
   });
 
   it("drags from the scene surface without navigating", async () => {
@@ -231,11 +246,47 @@ describe("HomeHologramScene", () => {
     const deckLibraryCard = screen.getByTestId("orbit-card-deck-library");
     await user.click(deckLibraryCard);
 
-    expect(deckLibraryCard).toHaveAttribute("aria-current", "true");
+    await waitFor(() =>
+      expect(deckLibraryCard).toHaveAttribute("aria-current", "true"),
+    );
     expect(screen.getByTestId("location")).toHaveTextContent("/");
 
     await user.click(deckLibraryCard);
     expect(screen.getByTestId("location")).toHaveTextContent("/library");
+  });
+
+  it("keeps slight finger jitter as a tap and only navigates when the centered card is tapped", async () => {
+    const user = userEvent.setup();
+    renderScene({
+      settings: {
+        ...baseSettings,
+        reducedMotion: true,
+      },
+    });
+
+    const searchCard = screen.getByTestId("orbit-card-card-search");
+    fireEvent.pointerDown(searchCard, {
+      clientX: 120,
+      clientY: 220,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(searchCard, {
+      clientX: 123,
+      clientY: 222,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(searchCard, {
+      clientX: 123,
+      clientY: 222,
+      pointerId: 1,
+    });
+    await user.click(searchCard);
+
+    expect(searchCard).toHaveAttribute("aria-current", "true");
+    expect(screen.getByTestId("location")).toHaveTextContent("/");
+
+    await user.click(searchCard);
+    expect(screen.getByTestId("location")).toHaveTextContent("/search");
   });
 
   it("includes dynamic favorite cards in the same command system", () => {

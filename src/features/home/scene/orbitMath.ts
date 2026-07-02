@@ -35,12 +35,82 @@ export function getNearestOrbitIndex(
   return Object.is(nearestIndex, -0) ? 0 : nearestIndex;
 }
 
+export function getOrbitAngularDistanceFromFront({
+  index,
+  itemCount,
+  rotation,
+}: {
+  index: number;
+  itemCount: number;
+  rotation: number;
+}): number {
+  if (itemCount <= 0) {
+    return 0;
+  }
+
+  const cardAngle = normalizeAngle((index / itemCount) * 360 + rotation);
+  return Math.abs(shortestAngleDistance(cardAngle, 0));
+}
+
+export function getPositionSelectedOrbitIndex({
+  currentIndex,
+  hysteresisDegrees = 3.5,
+  itemCount,
+  rotation,
+}: {
+  currentIndex: number;
+  hysteresisDegrees?: number;
+  itemCount: number;
+  rotation: number;
+}): number {
+  if (itemCount <= 0) {
+    return 0;
+  }
+
+  const nearestIndex = getNearestOrbitIndex(rotation, itemCount);
+  const normalizedCurrent =
+    ((currentIndex % itemCount) + itemCount) % itemCount;
+
+  if (nearestIndex === normalizedCurrent) {
+    return nearestIndex;
+  }
+
+  const currentDistance = getOrbitAngularDistanceFromFront({
+    index: normalizedCurrent,
+    itemCount,
+    rotation,
+  });
+  const nearestDistance = getOrbitAngularDistanceFromFront({
+    index: nearestIndex,
+    itemCount,
+    rotation,
+  });
+
+  return nearestDistance + hysteresisDegrees < currentDistance
+    ? nearestIndex
+    : normalizedCurrent;
+}
+
 export function getRotationForIndex(index: number, itemCount: number): number {
   if (itemCount <= 0) {
     return 0;
   }
 
   return -index * (360 / itemCount);
+}
+
+export function getShortestOrbitTargetRotation({
+  currentRotation,
+  targetRotation,
+}: {
+  currentRotation: number;
+  targetRotation: number;
+}): number {
+  return currentRotation +
+    shortestAngleDistance(
+      normalizeAngle(currentRotation),
+      normalizeAngle(targetRotation),
+    );
 }
 
 export function calculateResponsiveSceneScale({
@@ -223,6 +293,34 @@ export function calculateMagneticSettleStep({
     nextRotation: currentRotation + delta * strength,
     delta,
     settled: Math.abs(delta) < settleEpsilon,
+  };
+}
+
+export function calculateTapTargetStep({
+  currentRotation,
+  deltaMilliseconds,
+  reducedMotion = false,
+  targetRotation,
+}: {
+  currentRotation: number;
+  deltaMilliseconds: number;
+  reducedMotion?: boolean;
+  targetRotation: number;
+}): {
+  delta: number;
+  nextRotation: number;
+  settled: boolean;
+} {
+  const delta = targetRotation - currentRotation;
+  const distance = Math.abs(delta);
+  const duration = reducedMotion ? 90 : clamp(150 + distance * 1.25, 170, 360);
+  const alpha = 1 - Math.exp(-deltaMilliseconds / Math.max(duration * 0.28, 1));
+  const nextRotation = currentRotation + delta * clamp(alpha, 0, 1);
+
+  return {
+    delta,
+    nextRotation,
+    settled: distance < 0.12,
   };
 }
 

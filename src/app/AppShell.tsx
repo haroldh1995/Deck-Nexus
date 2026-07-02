@@ -2,7 +2,6 @@ import {
   lazy,
   Suspense,
   useCallback,
-  useEffect,
   useState,
   type CSSProperties,
 } from "react";
@@ -13,6 +12,7 @@ import { permanentHomeRoutes } from "../data/routes";
 import { getRecoverableScanBatch, updateScanBatch } from "../db/repositories";
 import { FoundationScreen } from "../features/foundation/FoundationScreen";
 import type { ScanBatch } from "../types/domain";
+import { preloadAppRoute } from "./routePreloaders";
 import { useSettings } from "./useSettings";
 
 const HomeScreen = lazy(async () => ({
@@ -46,21 +46,6 @@ const DeckBuilderScreen = lazy(async () => ({
   default: (await import("../features/decks/DeckBuilderScreen")).DeckBuilderScreen,
 }));
 
-const routePreloaders: Record<string, () => Promise<unknown>> = {
-  "/": () => import("../features/home/HomeScreen"),
-  "/analyzer": () => import("../features/analyzer/AnalyzerScreen"),
-  "/collections": () => import("../features/directories/CardDirectoriesScreen"),
-  "/create": () => import("../features/decks/CreateDeckScreen"),
-  "/deck-builder": () => import("../features/decks/DeckBuilderScreen"),
-  "/library": () => import("../features/decks/DeckLibraryScreen"),
-  "/owned": () => import("../features/owned/OwnedCardsScreen"),
-  "/scan": () => import("../features/scanner/ScanCardsScreen"),
-  "/search": () => import("../features/cards/CardSearchScreen"),
-  "/settings": () => import("../features/settings/SettingsScreen"),
-  "/upgrade-lists": () => import("../features/directories/CardDirectoriesScreen"),
-  "/wishlist": () => import("../features/directories/CardDirectoriesScreen"),
-};
-
 function RouteLoading() {
   return (
     <div className="route-loading-shell" role="status" aria-live="polite">
@@ -75,37 +60,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const isHomeRoute = location.pathname === "/";
   const [protectedBatch, setProtectedBatch] = useState<ScanBatch | null>(null);
-  const preloadRoute = useCallback((path: string) => {
-    const preload = routePreloaders[path];
-    if (preload) {
-      void preload();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isHomeRoute) {
-      return;
-    }
-
-    const preload = () => {
-      for (const route of permanentHomeRoutes) {
-        preloadRoute(route.path);
-      }
-    };
-
-    if (typeof window.requestIdleCallback === "function") {
-      const idleHandle = window.requestIdleCallback(preload, { timeout: 1800 });
-      return () => {
-        window.cancelIdleCallback(idleHandle);
-      };
-    }
-
-    const timer = window.setTimeout(preload, 900);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [isHomeRoute, preloadRoute]);
+  const preloadRoute = useCallback((path: string) => preloadAppRoute(path), []);
 
   const textScale =
     settings.textSize === "large"
