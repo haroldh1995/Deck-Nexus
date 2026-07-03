@@ -166,18 +166,19 @@ export function useOrbitPhysics({
       const zIndex = selectedFrontCard
         ? Math.max(transform.zIndex, 112)
         : transform.zIndex;
-      const opacity = selectedFrontCard ? 1 : transform.opacity;
+      const cardLayerOpacity = 1;
 
       element.style.transform = `translate3d(calc(-50% + ${transform.x}px), ${transform.y}px, ${transform.z}px) rotateY(${transform.rotationY}deg) rotateX(${transform.rotationX}deg) scale(${transform.scale})`;
       element.style.zIndex = String(zIndex);
-      element.style.opacity = String(opacity);
+      element.style.opacity = String(cardLayerOpacity);
       element.style.pointerEvents = transform.frontness > 0.16 ||
         transform.id === focusedIdRef.current ||
         transform.id === cardsRef.current[tapTargetIndexRef.current ?? -1]?.id
         ? "auto"
         : "none";
       element.style.setProperty("--card-glow", String(transform.glow));
-      element.style.setProperty("--card-opacity", String(opacity));
+      element.style.setProperty("--card-opacity", String(cardLayerOpacity));
+      element.style.setProperty("--card-depth-opacity", String(transform.opacity));
       element.style.setProperty("--card-presence", String(transform.frontness));
       element.dataset.depth = transform.rear ? "rear" : "front";
       element.dataset.cardLayer = transform.rear

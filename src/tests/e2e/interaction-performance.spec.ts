@@ -55,6 +55,17 @@ test.describe("interaction performance and responsive motion", () => {
           .evaluate((node) => getComputedStyle(node).opacity),
       )
       .toBe("1");
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Array.from(
+            document.querySelectorAll<HTMLElement>(".home-orbit-card"),
+          )
+            .filter((card) => card.dataset.interactive === "true")
+            .every((card) => getComputedStyle(card).opacity === "1"),
+        ),
+      )
+      .toBe(true);
 
     const layering = await page.evaluate(() => {
       const selected = document.querySelector<HTMLElement>(
@@ -62,6 +73,9 @@ test.describe("interaction performance and responsive motion", () => {
       );
       const crystal = document.querySelector<HTMLElement>(".central-crystal");
       const beam = document.querySelector<HTMLElement>(".central-beam");
+      const orbitStage = document.querySelector<HTMLElement>(
+        ".orbit-stage--continuous",
+      );
       const icon = selected?.querySelector<HTMLElement>(
         ".home-orbit-card__icon-shell",
       );
@@ -76,8 +90,12 @@ test.describe("interaction performance and responsive motion", () => {
       return {
         cardOpacity: getComputedStyle(selected!).opacity,
         cardBackgroundColor: getComputedStyle(selected!).backgroundColor,
+        cardMixBlendMode: getComputedStyle(selected!).mixBlendMode,
         selectedLayer: selected?.dataset.cardLayer ?? "",
         selectedZ: Number(getComputedStyle(selected!).zIndex),
+        orbitStageZ: orbitStage
+          ? Number(getComputedStyle(orbitStage).zIndex)
+          : 0,
         surfaceBackgroundColor: selected
           ? getComputedStyle(
               selected.querySelector(".home-orbit-card__surface")!,
@@ -88,11 +106,41 @@ test.describe("interaction performance and responsive motion", () => {
               selected.querySelector(".home-orbit-card__surface")!,
             ).opacity
           : "",
+        surfaceMixBlendMode: selected
+          ? getComputedStyle(
+              selected.querySelector(".home-orbit-card__surface")!,
+            ).mixBlendMode
+          : "",
+        surfaceBackdropFilter: selected
+          ? getComputedStyle(
+              selected.querySelector(".home-orbit-card__surface")!,
+            ).backdropFilter
+          : "",
         edgeBlendMode: selected
           ? getComputedStyle(
               selected.querySelector(".home-orbit-card__edge")!,
             ).mixBlendMode
           : "",
+        visibleCardOpacityFailures: Array.from(
+          document.querySelectorAll<HTMLElement>(".home-orbit-card"),
+        )
+          .filter((card) => card.dataset.interactive === "true")
+          .map((card) => ({
+            id: card.dataset.cardId ?? "",
+            rootOpacity: getComputedStyle(card).opacity,
+            surfaceOpacity: getComputedStyle(
+              card.querySelector(".home-orbit-card__surface")!,
+            ).opacity,
+            surfaceColor: getComputedStyle(
+              card.querySelector(".home-orbit-card__surface")!,
+            ).backgroundColor,
+          }))
+          .filter(
+            (card) =>
+              card.rootOpacity !== "1" ||
+              card.surfaceOpacity !== "1" ||
+              card.surfaceColor === "rgba(0, 0, 0, 0)",
+          ),
         crystalPointerEvents: crystal
           ? getComputedStyle(crystal).pointerEvents
           : "",
@@ -110,11 +158,17 @@ test.describe("interaction performance and responsive motion", () => {
     expect(layering.selectedLayer).toBe("front-orbit-cards");
     expect(layering.cardOpacity).toBe("1");
     expect(layering.cardBackgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(layering.cardMixBlendMode).toBe("normal");
     expect(layering.surfaceBackgroundColor).not.toBe("rgba(0, 0, 0, 0)");
     expect(layering.surfaceOpacity).toBe("1");
+    expect(layering.surfaceMixBlendMode).toBe("normal");
+    expect(layering.surfaceBackdropFilter).toBe("none");
     expect(layering.edgeBlendMode).toBe("normal");
+    expect(layering.visibleCardOpacityFailures).toEqual([]);
     expect(layering.selectedZ).toBeGreaterThan(layering.crystalZ);
     expect(layering.selectedZ).toBeGreaterThan(layering.beamZ);
+    expect(layering.orbitStageZ).toBeGreaterThan(layering.crystalZ);
+    expect(layering.orbitStageZ).toBeGreaterThan(layering.beamZ);
     expect(layering.crystalPointerEvents).toBe("none");
     expect(layering.beamPointerEvents).toBe("none");
     expect(layering.hitCardId).toBe(layering.selectedCardId);
@@ -196,6 +250,8 @@ test.describe("interaction performance and responsive motion", () => {
     await expect(page.getByTestId("home-hologram-scene")).toBeVisible();
     await page.getByTestId("home-hologram-scene").focus();
     await page.keyboard.press("ArrowRight");
+    await expect(page.locator('.home-orbit-card[aria-current="true"]'))
+      .toHaveAttribute("data-card-id", "deck-library");
 
     const focusedBefore = await page
       .locator('.home-orbit-card[aria-current="true"]')

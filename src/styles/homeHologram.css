@@ -467,7 +467,7 @@
 }
 
 .orbit-stage--continuous {
-  z-index: auto;
+  z-index: 96;
 }
 
 .orbit-stage--rear {
@@ -505,31 +505,30 @@
   cursor: pointer;
   pointer-events: auto;
   backface-visibility: hidden;
+  isolation: isolate;
   contain: layout paint style;
   opacity: var(--card-opacity, 0);
   transform: translate3d(-50%, var(--home-orbit-center-y, 430px), 0) scale(0.54);
   transform-origin: 50% 55%;
   transform-style: preserve-3d;
-  will-change: transform, opacity;
+  will-change: transform;
   transition:
     border-color 120ms ease,
-    box-shadow 120ms ease,
-    opacity 80ms linear;
+    box-shadow 120ms ease;
   touch-action: manipulation;
 }
 
 .home-hologram-scene--interacting .home-orbit-card {
   transition:
     border-color 180ms ease,
-    box-shadow 180ms ease,
-    opacity 80ms linear;
+    box-shadow 180ms ease;
 }
 
 .home-orbit-card__surface {
   position: absolute;
-  inset: 3px;
+  inset: 1px;
   z-index: 0;
-  border-radius: 5px;
+  border-radius: 6px;
   background-color: #030819;
   background:
     linear-gradient(140deg, rgba(255, 255, 255, 0.1), transparent 32%),
@@ -540,6 +539,9 @@
     inset 0 0 18px rgba(45, 232, 255, 0.1),
     inset 0 -18px 28px rgba(2, 5, 22, 0.42);
   opacity: 1;
+  filter: none;
+  mix-blend-mode: normal;
+  backdrop-filter: none;
   pointer-events: none;
 }
 

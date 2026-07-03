@@ -109,6 +109,8 @@ describe("HomeHologramScene", () => {
     expect(rearCard).toHaveAttribute("data-card-layer", "rear-orbit-cards");
     expect(Number(focusedCard.style.zIndex)).toBeGreaterThan(54);
     expect(Number(rearCard.style.zIndex)).toBeLessThan(54);
+    expect(focusedCard.style.opacity).toBe("1");
+    expect(rearCard.style.opacity).toBe("1");
     expect(
       focusedCard.querySelector(".home-orbit-card__surface"),
     ).not.toBeNull();
