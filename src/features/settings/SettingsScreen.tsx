@@ -3,6 +3,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { StatusPill } from "../../components/StatusPill";
 import { useSettings } from "../../app/useSettings";
 import { useState } from "react";
+import { getEcosystemReadinessStatus } from "../../ecosystem";
 import {
   deleteScryfallOfflineCardDatabase,
   downloadScryfallOfflineCardDatabase,
@@ -46,6 +47,7 @@ export function SettingsScreen() {
   const [scryfallStatus, setScryfallStatus] = useState("Scryfall cache is ready.");
   const [scryfallBusy, setScryfallBusy] = useState(false);
   const bracketLock = settings.defaultBracketLock;
+  const ecosystemStatuses = getEcosystemReadinessStatus();
 
   async function refreshScryfallBulkMetadata() {
     setScryfallBusy(true);
@@ -249,6 +251,23 @@ export function SettingsScreen() {
                 <option value="allow_missing">Allow missing cards</option>
               </select>
             </label>
+          </div>
+        </HolographicPanel>
+
+        <HolographicPanel>
+          <div className="settings-section">
+            <h2>Ecosystem Readiness</h2>
+            {ecosystemStatuses.map((status) => (
+              <div className="settings-note" key={status.appId}>
+                <strong>{status.label}</strong>
+                <span> - {status.summary}</span>
+              </div>
+            ))}
+            <p className="settings-note">
+              Deck Nexus prepares local deck, collection, scanner, and analysis data.
+              BoardState will remain the rules authority when a bridge is implemented.
+              Hub profile, friends, notifications, and app-link sync are not connected yet.
+            </p>
           </div>
         </HolographicPanel>
 

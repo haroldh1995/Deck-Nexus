@@ -1,0 +1,33 @@
+# Integration Risk Register
+
+| Risk | Current status | Affected future prompt | Mitigation direction |
+| --- | --- | --- | --- |
+| Inconsistent deck IDs across apps | Deck IDs are local generated strings | Snapshot exports, bridge | Define stable export IDs and source app metadata. |
+| Mutable deck data without immutable snapshots | Decks and local versions are mutable/restorable | Immutable snapshots | Add snapshot IDs, hashes, schema version, created/exported timestamps. |
+| Commander zone representation ambiguity | Commander cards live in `cards` with `section: commander`; deck also stores commander IDs/names | Snapshot exports, rules bridge | Normalize commander zone in export contract and preserve partner/background metadata. |
+| Quantity ambiguity | `DeckCard.quantity` exists, Commander singleton checks are local guidance | Rules bridge | BoardState must validate quantities and exceptions. |
+| Unresolved imported cards | `unresolvedImports` and `ImportResult.unresolvedImports` exist | Snapshot exports | Block or annotate unresolved entries in snapshot readiness. |
+| Missing oracle/Scryfall IDs | Manual local entries can synthesize local IDs | Snapshot exports, rules bridge | Require confidence tier and unresolved state before BoardState export. |
+| Exact printing versus gameplay identity ambiguity | Deck cards and owned printings both store print data | Snapshot exports | Separate gameplay identity from preferred/owned printing metadata. |
+| Ownership state mixed with legality state | Deck cards include owned/missing counts | BoardState bridge | Keep ownership metadata out of gameplay legality input unless explicitly requested. |
+| Maybeboard/cuts mixed with deck model | Deck contains `cards`, `maybeboard`, and `cuts` arrays | Snapshot exports | Export only selected gameplay zones; include side planning zones separately. |
+| Local notes accidentally exported to gameplay | Notes exist on deck/card/list records | Snapshot exports, Hub | Add export privacy filters and explicit metadata flags. |
+| Local legality guidance differs from BoardState | Analyzer and bracket checks are local | Rules bridge | Display local guidance only; BoardState remains authority. |
+| Bracket estimates are not rules validation | Bracket analysis stores warnings and allowed flag | Rules bridge | Label bracket results as planning signals. |
+| Color identity edge cases | Local helpers cover common cases | Rules bridge | Delegate edge cases to BoardState validation. |
+| Partners/backgrounds/companions | Not fully modeled as authoritative zones | Rules bridge | Extend export contract with explicit supplemental commander roles. |
+| Attractions/stickers/dungeons/extras | Scanner has extra kinds; deck gameplay zones are not authoritative | Rules bridge | BoardState decides supported game objects. |
+| Banned/restricted freshness | Scryfall/legalities cache may become stale | Rules bridge | Include data timestamps; BoardState validates current rules. |
+| Commander-specific exceptions | Local classification is not exhaustive | Rules bridge | BoardState owns exception handling. |
+| No version hash | Current DeckVersion has IDs and card snapshots but no content hash | Immutable snapshots | Add deterministic hash in snapshot prompt. |
+| No schema version for snapshots | App has DB versions but no snapshot schema | Immutable snapshots | Add `schemaVersion` to snapshot contract. |
+| No migration path for snapshots | Not implemented | Immutable snapshots | Add snapshot migration/versioning utilities. |
+| Local profile only | No Hub identity | Hub adapters | Add local profile export status without claiming sync. |
+| No friend graph | Not implemented | Hub adapters | Hub owns friend graph. |
+| No notification routing | Not implemented | Hub adapters | Hub owns notifications. |
+| No app-link registry | Not implemented | Cross-app launch, Hub | Define app-link contract later. |
+| Service worker stale data | No service worker source found, but browser cache and Pages fallback assets can stale | Deployment | Verify deployed asset hashes after each prompt. |
+| IndexedDB migration risk | DB is at Dexie version 4 | All data prompts | Avoid destructive migrations; add stores only when necessary. |
+| Backup/restore conflict risk | Backup contents are opaque | Snapshot/Hub | Add schema-aware conflict policy later. |
+| GitHub Pages base-path risk | Vite base changes in `github-pages` mode | Deployment | Keep route and asset verification in release checks. |
+| Offline mode ambiguity | Scryfall cache/offline flags exist | Snapshot/export | Record data freshness and unresolved states in exports. |
