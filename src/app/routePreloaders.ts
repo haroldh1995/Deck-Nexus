@@ -4,6 +4,7 @@ const routePreloaders: Record<string, () => Promise<unknown>> = {
   "/collections": () => import("../features/directories/CardDirectoriesScreen"),
   "/create": () => import("../features/decks/CreateDeckScreen"),
   "/deck-builder": () => import("../features/decks/DeckBuilderScreen"),
+  "/export": () => import("../features/export/ExportScreen"),
   "/library": () => import("../features/decks/DeckLibraryScreen"),
   "/owned": () => import("../features/owned/OwnedCardsScreen"),
   "/scan": () => import("../features/scanner/ScanCardsScreen"),

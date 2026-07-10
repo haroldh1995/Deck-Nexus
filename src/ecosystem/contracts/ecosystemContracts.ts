@@ -17,6 +17,9 @@ export type DeckNexusCapability =
   | "local_scanner"
   | "local_deck_analysis"
   | "local_backup_restore"
+  | "canonical_snapshot_export"
+  | "collection_snapshot_export"
+  | "profile_snapshot_export"
   | "future_snapshot_source";
 
 export interface LinkedAppReadiness {
@@ -31,7 +34,7 @@ export interface BoardStateBridgeStatus {
   appId: "boardstate";
   status: Exclude<LinkedAppStatus, "connected">;
   rulesAuthority: "boardstate";
-  snapshotExportImplemented: false;
+  snapshotExportImplemented: boolean;
   liveValidationImplemented: false;
 }
 
@@ -44,7 +47,7 @@ export interface HubAdapterStatus {
 }
 
 export interface SnapshotReadinessStatus {
-  status: "not_started" | "schema_audit_complete" | "export_not_yet_implemented";
-  immutableSnapshotsImplemented: false;
+  status: "not_started" | "schema_audit_complete" | "export_ready";
+  immutableSnapshotsImplemented: boolean;
   schemaVersion?: string;
 }

@@ -37,20 +37,24 @@ describe("ecosystem readiness preparation", () => {
 
   it("keeps future BoardState, Hub, and snapshot work honest", () => {
     expect(boardStateBridgeStatus.liveValidationImplemented).toBe(false);
-    expect(boardStateBridgeStatus.snapshotExportImplemented).toBe(false);
+    expect(boardStateBridgeStatus.snapshotExportImplemented).toBe(true);
     expect(hubAdapterStatus.localProfileOnly).toBe(true);
     expect(hubAdapterStatus.friendsImplemented).toBe(false);
     expect(hubAdapterStatus.notificationsImplemented).toBe(false);
     expect(snapshotReadinessStatus.immutableSnapshotsImplemented).toBe(false);
+    expect(snapshotReadinessStatus.status).toBe("export_ready");
   });
 
   it("keeps the ecosystem audit documentation in the repository", () => {
     expect(Object.keys(ecosystemDocs)).toEqual(
       expect.arrayContaining([
         "../../docs/ecosystem/deck-nexus-current-state.md",
+        "../../docs/ecosystem/export-contracts.md",
         "../../docs/ecosystem/ownership-boundaries.md",
         "../../docs/ecosystem/integration-risk-register.md",
         "../../docs/ecosystem/implementation-sequence.md",
+        "../../docs/ecosystem/schema-reference.md",
+        "../../docs/ecosystem/versioning.md",
       ]),
     );
   });

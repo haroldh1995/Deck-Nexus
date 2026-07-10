@@ -16,6 +16,8 @@ Purpose: define local export contracts for Deck Nexus data.
 
 Deliverables: versioned schemas, export mappers, privacy filters, readiness validation.
 
+Status: implemented locally in Prompt 2 for deck, collection, profile, metadata, JSON, compressed JSON, ZIP package, Arena text, checksum, and compatibility utilities.
+
 Must not implement early: BoardState live validation or gameplay simulation.
 
 Dependencies: Prompt 1 audit and risk register.

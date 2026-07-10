@@ -23,7 +23,8 @@ This audit describes the current Deck Nexus web app as found in this repository.
 - Analyzer/Smart Build/Recommend: local analysis snapshots, recommendations, Smart Build proposals, maybeboard/cuts, version history, replacement records, and feedback.
 - Directories: wishlist, upgrade lists, and custom collections.
 - Settings: interface/accessibility, local data, scanner, Scryfall cache, bracket defaults, and ecosystem readiness status.
-- Foundation routes: Import, Groups, Tags, Test Deck, and Export currently show local schema/status placeholders where full UI is not implemented.
+- Export: canonical Deck Snapshot, Collection Snapshot, Profile Snapshot, JSON, compressed JSON, ZIP package, and Arena text exports generated from local data.
+- Foundation routes: Import, Groups, Tags, and Test Deck currently show local schema/status placeholders where full UI is not implemented.
 
 ## Route Inventory
 
@@ -41,7 +42,7 @@ This audit describes the current Deck Nexus web app as found in this repository.
 | `/groups` | Groups placeholder | group schema | none in route currently | Yes | No direct export | Hub organization later |
 | `/tags` | Tags placeholder | tag schema | none in route currently | Yes | Optional metadata later | Hub metadata later |
 | `/test` | Test Deck placeholder | deck schema | none in route currently | Yes | BoardState owns gameplay/dry run | No |
-| `/export` | Export placeholder | export schema | none in route currently | Yes | Snapshot export later | No |
+| `/export` | Export local snapshots and Arena text | decks, owned cards, settings | download/copy files only | Yes | Snapshot source later | Future package handoff later |
 | `/settings` | Settings | settings, Scryfall cache metadata, ecosystem status | settings, Scryfall cache controls | Yes | Capability status only | Capability status only |
 | `/wishlist` | Wishlist directory | wishlist | wishlist, favorites | Yes | No direct gameplay export | Future profile surface |
 | `/upgrade-lists` | Upgrade lists | upgrade lists | upgrade lists, entries | Yes | Planning data later | Future profile surface |
@@ -55,7 +56,7 @@ No current route should claim live BoardState validation, Hub connection, friend
 
 `Deck` includes `id`, `name`, `format`, `commanderIds`, `commanderNames`, `colorIdentity`, `cards`, `maybeboard`, `cuts`, `goals`, `tags`, `style`, `powerTarget`, `bracketLock`, `ownershipPreference`, `categoryStyle`, `notes`, `status`, optional `thumbnailCardId`, `originalImportText`, `unresolvedImports`, `createdFrom`, `createdAt`, and `updatedAt`.
 
-Current snapshot/version support exists as mutable local `DeckVersion` restore records, not immutable BoardState gameplay snapshots.
+Current snapshot/version support includes canonical local ecosystem exports and mutable local `DeckVersion` restore records. These are not BoardState gameplay snapshots and do not include gameplay state.
 
 ### Deck Card
 
@@ -108,8 +109,9 @@ Additional browser storage:
 
 ## Preparation Status
 
+- Canonical deck/collection/profile snapshot exports: implemented locally.
 - BoardState bridge: not implemented.
-- Immutable gameplay snapshots: not implemented.
+- Immutable gameplay snapshots for BoardState gameplay sessions: not implemented.
 - Hub adapter: not implemented.
 - Cross-app launch actions: not implemented.
 - Honest status surface: implemented in Settings as local readiness only.

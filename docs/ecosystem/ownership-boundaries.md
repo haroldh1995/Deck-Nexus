@@ -8,6 +8,7 @@
 - Scanner flows, scanner batches, correction, and recovery.
 - Card search and Scryfall caching.
 - Import/export preparation.
+- Canonical local deck, collection, and profile snapshot exports.
 - Analyzer, recommendations, Smart Build planning, maybeboard, cuts, versions, and replacement records.
 - Deck groups, tags, favorites, wishlist, upgrade lists, custom collections, backup/restore, settings, and local-first storage.
 - Future source data for immutable deck snapshots and BoardState/Hub contracts.
@@ -35,7 +36,7 @@
 
 Deck Nexus may prepare type-safe local contracts for:
 
-- Deck, card, owned-card, collection, and profile status exports.
+- Deck, card, owned-card, collection, and profile snapshot exports.
 - Future immutable deck snapshot exports.
 - BoardState bridge status.
 - Hub adapter status.
@@ -63,7 +64,7 @@ Acceptable current wording includes:
 
 - BoardState bridge not connected yet.
 - Prepared for BoardState export.
-- Snapshot export support coming in a later update.
+- Snapshot export support available locally.
 - Hub adapter planned.
 - Local profile only.
 - Local backup available.

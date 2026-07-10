@@ -4,12 +4,13 @@ import type {
   LinkedAppReadiness,
   SnapshotReadinessStatus,
 } from "../contracts/ecosystemContracts";
+import { CURRENT_SCHEMA_VERSION } from "../export";
 
 export const boardStateBridgeStatus: BoardStateBridgeStatus = {
   appId: "boardstate",
   status: "bridge_required",
   rulesAuthority: "boardstate",
-  snapshotExportImplemented: false,
+  snapshotExportImplemented: true,
   liveValidationImplemented: false,
 };
 
@@ -22,8 +23,9 @@ export const hubAdapterStatus: HubAdapterStatus = {
 };
 
 export const snapshotReadinessStatus: SnapshotReadinessStatus = {
-  status: "schema_audit_complete",
+  status: "export_ready",
   immutableSnapshotsImplemented: false,
+  schemaVersion: CURRENT_SCHEMA_VERSION,
 };
 
 export function getEcosystemReadinessStatus(): LinkedAppReadiness[] {
@@ -41,6 +43,9 @@ export function getEcosystemReadinessStatus(): LinkedAppReadiness[] {
         "local_scanner",
         "local_deck_analysis",
         "local_backup_restore",
+        "canonical_snapshot_export",
+        "collection_snapshot_export",
+        "profile_snapshot_export",
         "future_snapshot_source",
       ],
     },
@@ -49,7 +54,7 @@ export function getEcosystemReadinessStatus(): LinkedAppReadiness[] {
       label: "BoardState",
       status: boardStateBridgeStatus.status,
       summary:
-        "Not connected yet. BoardState remains the future rules authority and Advanced Gameplay destination.",
+        "Snapshot exports are locally ready. BoardState bridge validation is not connected yet.",
       capabilities: ["future_snapshot_source"],
     },
     {

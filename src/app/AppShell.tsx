@@ -42,6 +42,9 @@ const AnalyzerScreen = lazy(async () => ({
 const SettingsScreen = lazy(async () => ({
   default: (await import("../features/settings/SettingsScreen")).SettingsScreen,
 }));
+const ExportScreen = lazy(async () => ({
+  default: (await import("../features/export/ExportScreen")).ExportScreen,
+}));
 const DeckBuilderScreen = lazy(async () => ({
   default: (await import("../features/decks/DeckBuilderScreen")).DeckBuilderScreen,
 }));
@@ -175,13 +178,7 @@ export function AppShell() {
             />
             <Route
               path="/export"
-              element={
-                <FoundationScreen
-                  title="Export"
-                  status="Coming later"
-                  summary="Export history and default export format settings are already local-first."
-                />
-              }
+              element={<ExportScreen />}
             />
             <Route path="/settings" element={<SettingsScreen />} />
             <Route path="/deck-builder" element={<DeckBuilderScreen />} />
