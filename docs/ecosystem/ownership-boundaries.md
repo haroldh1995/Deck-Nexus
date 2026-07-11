@@ -38,11 +38,11 @@ Deck Nexus may prepare type-safe local contracts for:
 
 - Deck, card, owned-card, collection, and profile snapshot exports.
 - Future immutable deck snapshot exports.
-- BoardState bridge status.
+- BoardState validation requests, responses, transport status, and result storage.
 - Hub adapter status.
 - Versioning and readiness reporting.
 
-These contracts must remain local and honest until an actual bridge exists.
+These contracts must remain honest. A configured bridge may submit snapshots to BoardState, but Deck Nexus must still label unavailable, failed, test-only, or stale validation correctly.
 
 ## Forbidden False Claims
 
@@ -63,6 +63,7 @@ Deck Nexus must not display or imply:
 Acceptable current wording includes:
 
 - BoardState bridge not connected yet.
+- BoardState validation requires a configured bridge.
 - Prepared for BoardState export.
 - Snapshot export support available locally.
 - Hub adapter planned.
@@ -73,5 +74,5 @@ Acceptable current wording includes:
 ## Current Linked-App Status
 
 - Deck Nexus: local-ready web/PWA-style app.
-- BoardState: planned future consumer and rules authority; not connected.
+- BoardState: validation bridge architecture is present; no production endpoint is configured by default.
 - Hub: planned future ecosystem surface; not connected.

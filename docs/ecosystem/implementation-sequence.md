@@ -30,11 +30,13 @@ Purpose: connect future BoardState validation without moving rules authority int
 
 Deliverables: bridge client, request/response contracts, error states, honest status UI.
 
+Status: implemented in Prompt 3 as a production-safe, configurable bridge architecture with unavailable default status, deterministic test adapter, result persistence, stale detection, and Export-screen validation panel.
+
 Must not implement early: in-app rules engine or fake validation.
 
 Dependencies: snapshot export contracts.
 
-Validation: mocked bridge tests and clear not-connected behavior.
+Validation: bridge unit/component tests, full regression tests, production build, live not-connected behavior unless a real endpoint is configured.
 
 ## 4. Immutable Deck Snapshots for Advanced Gameplay and Dry Runs
 

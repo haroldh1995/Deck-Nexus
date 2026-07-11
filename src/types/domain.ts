@@ -978,3 +978,90 @@ export interface SearchUndoTransaction {
   createdAt: string;
   expiresAt?: string;
 }
+
+export type BoardStateValidationStatus =
+  | "valid"
+  | "invalid"
+  | "valid_with_warnings"
+  | "incomplete"
+  | "unsupported"
+  | "unavailable"
+  | "timeout"
+  | "transport_error"
+  | "malformed_response"
+  | "incompatible_schema"
+  | "stale"
+  | "canceled";
+
+export type BoardStateLegalityStatus =
+  | "legal"
+  | "illegal"
+  | "legal_with_warnings"
+  | "unknown"
+  | "not_validated";
+
+export interface BoardStateValidationIssueRecord {
+  issueId: string;
+  code: string;
+  severity: "error" | "warning" | "informational" | "unsupported";
+  category:
+    | "deck_size"
+    | "commander"
+    | "color_identity"
+    | "singleton"
+    | "banned_card"
+    | "restricted_card"
+    | "partner"
+    | "background"
+    | "companion"
+    | "format"
+    | "special_exception"
+    | "unknown_card"
+    | "unresolved_card"
+    | "malformed_snapshot"
+    | "unsupported_mechanic"
+    | "transport"
+    | "schema"
+    | "other";
+  title: string;
+  message: string;
+  affectedCardIds: string[];
+  affectedOracleIds: string[];
+  affectedScryfallIds: string[];
+  affectedSections: DeckCardSection[];
+  commanderRelated: boolean;
+  rulesReference?: string;
+  suggestedActionType?: string;
+  authoritative: boolean;
+  sourceAuthority: "boardstate" | "deck_nexus" | "boardstate_test_adapter";
+  metadata: Record<string, unknown>;
+}
+
+export interface BoardStateValidationResultRecord {
+  id: string;
+  deckId: string;
+  snapshotId: string;
+  snapshotVersion: string;
+  snapshotChecksum: string;
+  requestId?: string;
+  responseId?: string;
+  boardStateVersion?: string;
+  rulesVersion?: string;
+  status: BoardStateValidationStatus;
+  legalityStatus: BoardStateLegalityStatus;
+  issues: BoardStateValidationIssueRecord[];
+  warnings: BoardStateValidationIssueRecord[];
+  informationalFindings: BoardStateValidationIssueRecord[];
+  unsupportedChecks: string[];
+  validatedAt?: string;
+  receivedAt: string;
+  stale: boolean;
+  expiresAt?: string;
+  transportType: string;
+  errorSummary?: string;
+  schemaVersions: Record<string, string>;
+  authoritative: boolean;
+  sourceAuthority: "boardstate" | "deck_nexus" | "boardstate_test_adapter";
+  testOnly: boolean;
+  rawResponse?: Record<string, unknown>;
+}

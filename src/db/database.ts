@@ -3,6 +3,7 @@ import type {
   AppMigration,
   AppSettings,
   BackupPackage,
+  BoardStateValidationResultRecord,
   BracketAnalysis,
   Category,
   CustomCollection,
@@ -78,6 +79,7 @@ export class DeckNexusDatabase extends Dexie {
   searchSelectionSessions!: Table<SearchSelectionSession, string>;
   destinationActionHistory!: Table<DestinationAction, string>;
   searchUndoTransactions!: Table<SearchUndoTransaction, string>;
+  boardStateValidationResults!: Table<BoardStateValidationResultRecord, string>;
 
   constructor() {
     super("deck-nexus-local");
@@ -146,6 +148,11 @@ export class DeckNexusDatabase extends Dexie {
       recommendationFeedback: "&id, deckId, oracleId, strategy, type, createdAt",
       replacementRecords: "&id, deckId, removedCardId, replacementCardId, createdAt",
       deckVersions: "&id, deckId, source, createdAt",
+    });
+
+    this.version(5).stores({
+      boardStateValidationResults:
+        "&id, deckId, snapshotId, snapshotChecksum, requestId, responseId, status, legalityStatus, stale, receivedAt, validatedAt",
     });
   }
 }

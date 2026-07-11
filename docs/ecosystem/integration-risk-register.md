@@ -13,6 +13,10 @@
 | Maybeboard/cuts mixed with deck model | Deck contains `cards`, `maybeboard`, and `cuts` arrays | Snapshot exports | Export only selected gameplay zones; include side planning zones separately. |
 | Local notes accidentally exported to gameplay | Notes exist on deck/card/list records | Snapshot exports, Hub | Add export privacy filters and explicit metadata flags. |
 | Local legality guidance differs from BoardState | Analyzer and bracket checks are local | Rules bridge | Display local guidance only; BoardState remains authority. |
+| Validation result staleness | Prompt 3 ties results to snapshot checksums | Rules bridge, immutable snapshots | Continue checksum-based stale detection and avoid showing stale results as current. |
+| No production BoardState endpoint configured | Prompt 3 bridge uses unavailable status unless endpoint config exists | Rules bridge, deployment | Configure HTTPS endpoint or supported app bridge later; do not substitute test adapter in production. |
+| Test adapter leakage | Test adapter exists for deterministic automation | Rules bridge | Do not select test adapter from production config; mark test results non-authoritative. |
+| Response trust boundary | External responses can be malformed or hostile | Rules bridge | Validate schema, authority, request ID, checksum, status values, and render messages as text only. |
 | Bracket estimates are not rules validation | Bracket analysis stores warnings and allowed flag | Rules bridge | Label bracket results as planning signals. |
 | Color identity edge cases | Local helpers cover common cases | Rules bridge | Delegate edge cases to BoardState validation. |
 | Partners/backgrounds/companions | Not fully modeled as authoritative zones | Rules bridge | Extend export contract with explicit supplemental commander roles. |
@@ -27,7 +31,7 @@
 | No notification routing | Not implemented | Hub adapters | Hub owns notifications. |
 | No app-link registry | Not implemented | Cross-app launch, Hub | Define app-link contract later. |
 | Service worker stale data | No service worker source found, but browser cache and Pages fallback assets can stale | Deployment | Verify deployed asset hashes after each prompt. |
-| IndexedDB migration risk | DB is at Dexie version 4 | All data prompts | Avoid destructive migrations; add stores only when necessary. |
+| IndexedDB migration risk | DB is at Dexie version 5 after adding non-destructive BoardState validation result history | All data prompts | Avoid destructive migrations; add stores only when necessary. |
 | Backup/restore conflict risk | Backup contents are opaque | Snapshot/Hub | Add schema-aware conflict policy later. |
 | GitHub Pages base-path risk | Vite base changes in `github-pages` mode | Deployment | Keep route and asset verification in release checks. |
 | Offline mode ambiguity | Scryfall cache/offline flags exist | Snapshot/export | Record data freshness and unresolved states in exports. |

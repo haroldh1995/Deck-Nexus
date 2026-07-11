@@ -21,6 +21,7 @@ import {
   listOwnedCards,
 } from "../../db/repositories";
 import type { AppSettings, Deck, OwnedCard } from "../../types/domain";
+import { BoardStateValidationPanel } from "./BoardStateValidationPanel";
 
 function safeFileName(value: string): string {
   return value
@@ -240,6 +241,10 @@ export function ExportScreen() {
               BoardState bridge validation and Hub networking are not connected yet.
             </p>
           </div>
+        </HolographicPanel>
+
+        <HolographicPanel>
+          <BoardStateValidationPanel snapshot={selectedSnapshot} />
         </HolographicPanel>
       </div>
     </div>

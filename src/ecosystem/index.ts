@@ -16,3 +16,4 @@ export {
 } from "./status/ecosystemStatus";
 
 export * from "./export";
+export * from "./boardstate";

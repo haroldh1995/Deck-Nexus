@@ -49,6 +49,9 @@ describe("ecosystem readiness preparation", () => {
     expect(Object.keys(ecosystemDocs)).toEqual(
       expect.arrayContaining([
         "../../docs/ecosystem/deck-nexus-current-state.md",
+        "../../docs/ecosystem/boardstate-contracts.md",
+        "../../docs/ecosystem/boardstate-status-and-errors.md",
+        "../../docs/ecosystem/boardstate-validation-bridge.md",
         "../../docs/ecosystem/export-contracts.md",
         "../../docs/ecosystem/ownership-boundaries.md",
         "../../docs/ecosystem/integration-risk-register.md",

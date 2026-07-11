@@ -2,6 +2,7 @@ import { defaultAppSettings, defaultBracketLock } from "../data/defaults";
 import { db } from "./database";
 import type {
   AppSettings,
+  BoardStateValidationResultRecord,
   BracketLock,
   CommanderColor,
   Deck,
@@ -1184,6 +1185,63 @@ export async function saveDeckVersionFromDecks({
 
 export async function listDeckVersions(deckId: string): Promise<DeckVersion[]> {
   return db.deckVersions.where("deckId").equals(deckId).reverse().sortBy("createdAt");
+}
+
+export async function saveBoardStateValidationResult(
+  result: BoardStateValidationResultRecord,
+): Promise<BoardStateValidationResultRecord> {
+  await db.boardStateValidationResults.put(result);
+  dispatchLocalEvent("deck-nexus:boardstate-validation-updated");
+  return result;
+}
+
+export async function listBoardStateValidationResults(
+  deckId: string,
+): Promise<BoardStateValidationResultRecord[]> {
+  return db.boardStateValidationResults
+    .where("deckId")
+    .equals(deckId)
+    .reverse()
+    .sortBy("receivedAt");
+}
+
+export async function getLatestBoardStateValidationResult(
+  deckId: string,
+): Promise<BoardStateValidationResultRecord | undefined> {
+  const results = await listBoardStateValidationResults(deckId);
+  return results[0];
+}
+
+export async function getLatestSuccessfulBoardStateValidationResult(
+  deckId: string,
+): Promise<BoardStateValidationResultRecord | undefined> {
+  const results = await listBoardStateValidationResults(deckId);
+  return results.find(
+    (result) =>
+      !result.errorSummary &&
+      ["valid", "invalid", "valid_with_warnings", "incomplete", "unsupported"].includes(
+        result.status,
+      ),
+  );
+}
+
+export async function markStaleBoardStateValidationResults(
+  deckId: string,
+  currentSnapshotChecksum: string,
+): Promise<number> {
+  const results = await listBoardStateValidationResults(deckId);
+  const staleResults = results.filter(
+    (result) => result.snapshotChecksum !== currentSnapshotChecksum && !result.stale,
+  );
+  await Promise.all(
+    staleResults.map((result) =>
+      db.boardStateValidationResults.put({ ...result, stale: true }),
+    ),
+  );
+  if (staleResults.length > 0) {
+    dispatchLocalEvent("deck-nexus:boardstate-validation-updated");
+  }
+  return staleResults.length;
 }
 
 export async function restoreDeckVersion(

@@ -54,7 +54,7 @@ export function getEcosystemReadinessStatus(): LinkedAppReadiness[] {
       label: "BoardState",
       status: boardStateBridgeStatus.status,
       summary:
-        "Snapshot exports are locally ready. BoardState bridge validation is not connected yet.",
+        "Snapshot exports and bridge contracts are locally ready. Production BoardState validation requires a configured bridge.",
       capabilities: ["future_snapshot_source"],
     },
     {
