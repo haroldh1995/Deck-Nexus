@@ -21,41 +21,6 @@
         }
       })();
     </script>
-    <script>
-      (function () {
-        var isPagesSourceFallback =
-          window.location.hostname === "haroldh1995.github.io" &&
-          window.location.pathname.indexOf("/Deck-Nexus") === 0;
-        if (!isPagesSourceFallback) {
-          return;
-        }
-
-        window.setTimeout(function () {
-          var root = document.getElementById("root");
-          if (
-            !root ||
-            root.childElementCount > 0 ||
-            window.__DECK_NEXUS_BOOTSTRAPPED__ ||
-            document.querySelector('script[src*="/assets/index-"]')
-          ) {
-            return;
-          }
-
-          var base = "/Deck-Nexus/";
-          var stylesheet = document.createElement("link");
-          stylesheet.rel = "stylesheet";
-          stylesheet.crossOrigin = "anonymous";
-          stylesheet.href = base + "assets/index-OObljTrf.css";
-          document.head.appendChild(stylesheet);
-
-          var script = document.createElement("script");
-          script.type = "module";
-          script.crossOrigin = "anonymous";
-          script.src = base + "assets/index-BHoE6qh1.js";
-          document.body.appendChild(script);
-        }, 200);
-      })();
-    </script>
     <title>Deck Nexus</title>
   </head>
   <body>
