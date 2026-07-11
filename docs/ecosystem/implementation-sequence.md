@@ -44,6 +44,8 @@ Purpose: create immutable, versioned deck snapshot records for BoardState consum
 
 Deliverables: snapshot store, content hashes, schema version, exported-at timestamps, migration path.
 
+Status: implemented in Prompt 4 as a local immutable snapshot system with append-only persistence, read-only history/detail UI, deterministic gameplay and full checksums, snapshot comparison, archival state, duplication into a new mutable deck, and Advanced Gameplay/Dry Run export envelopes that do not launch BoardState.
+
 Must not implement early: Advanced Gameplay or Dry Run engine inside Deck Nexus.
 
 Dependencies: export schemas and bridge readiness.

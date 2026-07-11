@@ -51,7 +51,7 @@ const capabilities: ExportCapabilities = {
   compressedJson: true,
   zipPackage: true,
   arenaText: true,
-  immutableGameplaySnapshot: false,
+  immutableGameplaySnapshot: true,
   boardStateBridge: false,
   hubNetworking: false,
 };

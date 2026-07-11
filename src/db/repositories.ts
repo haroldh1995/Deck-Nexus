@@ -20,6 +20,7 @@ import type {
   DeckAnalysis,
   DecisionEvent,
   DeckVersion,
+  ImmutableDeckSnapshotRecord,
   RecommendationFeedback,
   ReplacementRecord,
   UpgradeList,
@@ -1242,6 +1243,64 @@ export async function markStaleBoardStateValidationResults(
     dispatchLocalEvent("deck-nexus:boardstate-validation-updated");
   }
   return staleResults.length;
+}
+
+export async function saveImmutableDeckSnapshotRecord(
+  snapshot: ImmutableDeckSnapshotRecord,
+): Promise<ImmutableDeckSnapshotRecord> {
+  const existing = await db.immutableDeckSnapshots.get(snapshot.snapshotId);
+
+  if (existing) {
+    throw new Error("Immutable snapshot already exists and cannot be overwritten.");
+  }
+
+  await db.immutableDeckSnapshots.add(snapshot);
+  dispatchLocalEvent("deck-nexus:snapshots-updated");
+  return snapshot;
+}
+
+export async function listImmutableDeckSnapshotsForDeck(
+  deckId: string,
+): Promise<ImmutableDeckSnapshotRecord[]> {
+  return db.immutableDeckSnapshots
+    .where("deckId")
+    .equals(deckId)
+    .reverse()
+    .sortBy("createdAt");
+}
+
+export async function getImmutableDeckSnapshotRecord(
+  snapshotId: string,
+): Promise<ImmutableDeckSnapshotRecord | undefined> {
+  return db.immutableDeckSnapshots.get(snapshotId);
+}
+
+export async function getNextImmutableSnapshotSequence(
+  deckId: string,
+): Promise<number> {
+  const snapshots = await listImmutableDeckSnapshotsForDeck(deckId);
+  return Math.max(0, ...snapshots.map((snapshot) => snapshot.snapshotSequenceNumber)) + 1;
+}
+
+export async function archiveImmutableDeckSnapshotRecord(
+  snapshotId: string,
+): Promise<ImmutableDeckSnapshotRecord> {
+  const snapshot = await db.immutableDeckSnapshots.get(snapshotId);
+
+  if (!snapshot) {
+    throw new Error("Immutable snapshot was not found.");
+  }
+
+  const next: ImmutableDeckSnapshotRecord = {
+    ...snapshot,
+    archivalState: "archived",
+    status: snapshot.status === "corrupted" ? snapshot.status : "archived",
+    archivedAt: nowIso(),
+  };
+
+  await db.immutableDeckSnapshots.put(next);
+  dispatchLocalEvent("deck-nexus:snapshots-updated");
+  return next;
 }
 
 export async function restoreDeckVersion(

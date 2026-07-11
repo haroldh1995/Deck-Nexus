@@ -3,7 +3,7 @@
 | Risk | Current status | Affected future prompt | Mitigation direction |
 | --- | --- | --- | --- |
 | Inconsistent deck IDs across apps | Deck IDs are local generated strings; exports now include source app and stable snapshot IDs | Bridge | Continue using source app metadata and add cross-app aliases later. |
-| Mutable deck data without immutable gameplay snapshots | Canonical local snapshots exist; BoardState gameplay snapshots are not implemented | Immutable snapshots | Add immutable snapshot store and exported-at distinction in Prompt 4. |
+| Mutable deck data without immutable gameplay snapshots | Prompt 4 adds append-only immutable snapshots with gameplay/full checksums and read-only history | Cross-app launch | Keep launch actions separate and never mutate old snapshots. |
 | Commander zone representation ambiguity | Commander cards live in `cards` with `section: commander`; deck also stores commander IDs/names | Snapshot exports, rules bridge | Normalize commander zone in export contract and preserve partner/background metadata. |
 | Quantity ambiguity | `DeckCard.quantity` exists, Commander singleton checks are local guidance | Rules bridge | BoardState must validate quantities and exceptions. |
 | Unresolved imported cards | `unresolvedImports` and `ImportResult.unresolvedImports` exist | Snapshot exports | Block or annotate unresolved entries in snapshot readiness. |
@@ -23,9 +23,9 @@
 | Attractions/stickers/dungeons/extras | Scanner has extra kinds; deck gameplay zones are not authoritative | Rules bridge | BoardState decides supported game objects. |
 | Banned/restricted freshness | Scryfall/legalities cache may become stale | Rules bridge | Include data timestamps; BoardState validates current rules. |
 | Commander-specific exceptions | Local classification is not exhaustive | Rules bridge | BoardState owns exception handling. |
-| No gameplay snapshot store | Export checksums exist, but immutable gameplay snapshot records are not stored | Immutable snapshots | Add stored immutable snapshot IDs and hashes in Prompt 4. |
+| No gameplay snapshot store | Prompt 4 adds `immutableDeckSnapshots` non-destructively at Dexie version 6 | Cross-app launch, Hub | Keep snapshot restore/launch contracts versioned and non-destructive. |
 | Snapshot schema evolution | Prompt 2 adds v1 schema/export/snapshot versions | Later prompts | Preserve compatibility utilities and add migrations only when needed. |
-| No migration path for snapshots | Not implemented | Immutable snapshots | Add snapshot migration/versioning utilities. |
+| No migration path for snapshots | Snapshot schema/format versions exist; destructive snapshot migrations are not implemented | Later versioning | Add explicit migration readers only when a new snapshot schema ships. |
 | Local profile only | No Hub identity | Hub adapters | Add local profile export status without claiming sync. |
 | No friend graph | Not implemented | Hub adapters | Hub owns friend graph. |
 | No notification routing | Not implemented | Hub adapters | Hub owns notifications. |

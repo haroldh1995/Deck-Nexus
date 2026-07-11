@@ -78,7 +78,7 @@ export interface ExportCapabilities {
   compressedJson: boolean;
   zipPackage: boolean;
   arenaText: boolean;
-  immutableGameplaySnapshot: false;
+  immutableGameplaySnapshot: boolean;
   boardStateBridge: false;
   hubNetworking: false;
 }

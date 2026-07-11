@@ -18,6 +18,7 @@ import type {
   ExportHistory,
   FavoriteItem,
   ImportResult,
+  ImmutableDeckSnapshotRecord,
   OwnedCard,
   OwnedPrinting,
   RecommendationFeedback,
@@ -80,6 +81,7 @@ export class DeckNexusDatabase extends Dexie {
   destinationActionHistory!: Table<DestinationAction, string>;
   searchUndoTransactions!: Table<SearchUndoTransaction, string>;
   boardStateValidationResults!: Table<BoardStateValidationResultRecord, string>;
+  immutableDeckSnapshots!: Table<ImmutableDeckSnapshotRecord, string>;
 
   constructor() {
     super("deck-nexus-local");
@@ -153,6 +155,11 @@ export class DeckNexusDatabase extends Dexie {
     this.version(5).stores({
       boardStateValidationResults:
         "&id, deckId, snapshotId, snapshotChecksum, requestId, responseId, status, legalityStatus, stale, receivedAt, validatedAt",
+    });
+
+    this.version(6).stores({
+      immutableDeckSnapshots:
+        "&snapshotId, deckId, snapshotSequenceNumber, status, archivalState, consumerIntent, createdAt, gameplayChecksum, fullChecksum, matchingValidationResultId",
     });
   }
 }

@@ -22,6 +22,7 @@ import {
 } from "../../db/repositories";
 import type { AppSettings, Deck, OwnedCard } from "../../types/domain";
 import { BoardStateValidationPanel } from "./BoardStateValidationPanel";
+import { ImmutableSnapshotsPanel } from "./ImmutableSnapshotsPanel";
 
 function safeFileName(value: string): string {
   return value
@@ -245,6 +246,10 @@ export function ExportScreen() {
 
         <HolographicPanel>
           <BoardStateValidationPanel snapshot={selectedSnapshot} />
+        </HolographicPanel>
+
+        <HolographicPanel>
+          <ImmutableSnapshotsPanel deck={selectedDeck} />
         </HolographicPanel>
       </div>
     </div>

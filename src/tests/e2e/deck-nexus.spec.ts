@@ -569,6 +569,7 @@ test.describe("Deck Nexus local-first flow", () => {
       colors: ["U"],
       roleTags: "interaction",
     });
+    await expect(page.getByText("Counterspell").first()).toBeVisible();
     await addCardToSection(page, "Sorceries", {
       name: "Cultivate",
       typeLine: "Sorcery",
@@ -718,5 +719,52 @@ test.describe("Deck Nexus local-first flow", () => {
     await page.getByRole("link", { name: /Library/ }).first().click();
     await page.getByRole("link", { name: "Open Deck" }).click();
     await expect(page.getByRole("heading", { name: "Builder Trial" })).toBeVisible();
+  });
+
+  test("creates immutable snapshots, compares live deck changes, and exports honest envelopes", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    await createBlankDeck(page, "Snapshot E2E Deck");
+    const deckBuilderUrl = page.url();
+    await addCardToSection(page, "Instants", {
+      name: "Counterspell",
+      typeLine: "Instant",
+      colors: ["U"],
+      roleTags: "interaction",
+    });
+
+    await page.goto("/export");
+    await page.getByTestId("create-immutable-snapshot").click();
+    await expect(page.getByTestId("snapshot-detail")).toContainText("Read-Only Snapshot Detail");
+    await expect(page.getByText(/No Edit Snapshot action/i)).toBeVisible();
+
+    await page.goto(deckBuilderUrl);
+    await addCardToSection(page, "Instants", {
+      name: "Opt",
+      typeLine: "Instant",
+      colors: ["U"],
+      roleTags: "cantrip",
+    });
+    await expect(page.getByText("Opt").first()).toBeVisible();
+
+    await page.goto("/export");
+    await page.getByTestId("compare-current-deck").click();
+    await expect(page.getByTestId("snapshot-comparison")).toContainText(
+      "Current deck has gameplay changes",
+    );
+
+    const advancedDownload = page.waitForEvent("download");
+    await page.getByTestId("advanced-gameplay-envelope").click();
+    await advancedDownload;
+    await expect(page.getByText(/Advanced Gameplay export package prepared locally/i)).toBeVisible();
+    await expect(page.getByText(/Advanced Gameplay launched/i)).toHaveCount(0);
+
+    const dryRunDownload = page.waitForEvent("download");
+    await page.getByTestId("dry-run-envelope").click();
+    await dryRunDownload;
+    await expect(page.getByText(/Dry Run export package prepared locally/i)).toBeVisible();
+    await expect(page.getByText(/Dry Run started/i)).toHaveCount(0);
   });
 });

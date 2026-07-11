@@ -11,7 +11,8 @@ export type DeckCreatedFrom =
   | "commander_search"
   | "deck_import"
   | "owned_cards"
-  | "backup_restore";
+  | "backup_restore"
+  | "snapshot_duplicate";
 
 export type DeckStyle =
   | "unspecified"
@@ -129,6 +130,9 @@ export interface Deck {
   notes: string;
   status: DeckStatus;
   thumbnailCardId?: string;
+  createdFromSnapshotId?: string;
+  sourceDeckId?: string;
+  sourceSnapshotChecksum?: string;
   originalImportText: string;
   unresolvedImports: string[];
   createdFrom: DeckCreatedFrom;
@@ -1064,4 +1068,29 @@ export interface BoardStateValidationResultRecord {
   sourceAuthority: "boardstate" | "deck_nexus" | "boardstate_test_adapter";
   testOnly: boolean;
   rawResponse?: Record<string, unknown>;
+}
+
+export interface ImmutableDeckSnapshotRecord {
+  snapshotId: string;
+  deckId: string;
+  deckName: string;
+  snapshotSequenceNumber: number;
+  snapshotSchemaVersion: string;
+  snapshotFormatVersion: string;
+  compatibilityVersion: string;
+  sourceApplication: "deck_nexus";
+  sourceApplicationVersion: string;
+  createdAt: string;
+  creationReason: string;
+  consumerIntent: string;
+  sourceDeckUpdatedAt: string;
+  gameplayChecksum: string;
+  fullChecksum: string;
+  metadataChecksum: string;
+  status: string;
+  archivalState: "active" | "archived" | "superseded";
+  archivedAt?: string;
+  supersededBySnapshotId?: string;
+  matchingValidationResultId?: string;
+  immutablePayload: Record<string, unknown>;
 }

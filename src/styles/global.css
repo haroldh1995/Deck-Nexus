@@ -818,6 +818,35 @@ a:active {
   color: var(--muted);
 }
 
+.snapshot-history,
+.snapshot-detail {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.snapshot-history h3,
+.snapshot-detail h3 {
+  margin: 0;
+  color: var(--silver);
+  font-size: 0.98rem;
+}
+
+.snapshot-row-button {
+  display: grid;
+  width: 100%;
+  gap: 0.25rem;
+  border: 0;
+  color: var(--silver);
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.snapshot-row-button[aria-current="true"] {
+  color: var(--cyan);
+}
+
 .form-grid {
   display: grid;
   gap: 0.86rem;
