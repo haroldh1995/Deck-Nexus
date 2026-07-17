@@ -1094,3 +1094,46 @@ export interface ImmutableDeckSnapshotRecord {
   matchingValidationResultId?: string;
   immutablePayload: Record<string, unknown>;
 }
+
+export type BoardStateHandoffStatus =
+  | "preparing"
+  | "validating_snapshot"
+  | "selecting_transport"
+  | "ready"
+  | "launching"
+  | "app_or_page_opened"
+  | "waiting_for_acknowledgment"
+  | "acknowledged"
+  | "imported"
+  | "session_created"
+  | "export_completed"
+  | "share_sheet_opened"
+  | "manual_import_required"
+  | "canceled"
+  | "timed_out"
+  | "failed"
+  | "incompatible"
+  | "import_unconfirmed";
+
+export interface BoardStateHandoffRecord {
+  id: string;
+  launchRequestId: string;
+  deckId: string;
+  snapshotId: string;
+  gameplayChecksum: string;
+  consumerIntent: string;
+  transportType: string;
+  createdAt: string;
+  launchedAt?: string;
+  acknowledgedAt?: string;
+  finalStatus: BoardStateHandoffStatus;
+  targetApplicationVersion?: string;
+  acknowledgmentData?: Record<string, unknown>;
+  sessionId?: string;
+  errorSummary?: string;
+  retryOfHandoffId?: string;
+  returnEventId?: string;
+  payloadSize: number;
+  importedConfirmed: boolean;
+  sessionCreatedConfirmed: boolean;
+}

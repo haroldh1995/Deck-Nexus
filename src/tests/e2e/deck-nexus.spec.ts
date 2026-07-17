@@ -766,5 +766,15 @@ test.describe("Deck Nexus local-first flow", () => {
     await dryRunDownload;
     await expect(page.getByText(/Dry Run export package prepared locally/i)).toBeVisible();
     await expect(page.getByText(/Dry Run started/i)).toHaveCount(0);
+
+    await expect(page.getByTestId("boardstate-handoff-panel")).toContainText(
+      "No real BoardState web import URL is configured",
+    );
+    await page.getByTestId("prepare-boardstate-handoff").click();
+    await expect(page.getByTestId("handoff-history")).toContainText("Import unconfirmed");
+    const packageDownload = page.waitForEvent("download");
+    await page.getByTestId("export-boardstate-package").click();
+    await packageDownload;
+    await expect(page.getByText(/BoardState file export completed/i)).toBeVisible();
   });
 });

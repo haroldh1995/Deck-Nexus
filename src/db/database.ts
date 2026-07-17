@@ -4,6 +4,7 @@ import type {
   AppSettings,
   BackupPackage,
   BoardStateValidationResultRecord,
+  BoardStateHandoffRecord,
   BracketAnalysis,
   Category,
   CustomCollection,
@@ -82,6 +83,7 @@ export class DeckNexusDatabase extends Dexie {
   searchUndoTransactions!: Table<SearchUndoTransaction, string>;
   boardStateValidationResults!: Table<BoardStateValidationResultRecord, string>;
   immutableDeckSnapshots!: Table<ImmutableDeckSnapshotRecord, string>;
+  boardStateHandoffs!: Table<BoardStateHandoffRecord, string>;
 
   constructor() {
     super("deck-nexus-local");
@@ -160,6 +162,11 @@ export class DeckNexusDatabase extends Dexie {
     this.version(6).stores({
       immutableDeckSnapshots:
         "&snapshotId, deckId, snapshotSequenceNumber, status, archivalState, consumerIntent, createdAt, gameplayChecksum, fullChecksum, matchingValidationResultId",
+    });
+
+    this.version(7).stores({
+      boardStateHandoffs:
+        "&id, launchRequestId, deckId, snapshotId, gameplayChecksum, consumerIntent, transportType, createdAt, launchedAt, acknowledgedAt, finalStatus, retryOfHandoffId",
     });
   }
 }

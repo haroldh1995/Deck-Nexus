@@ -58,11 +58,13 @@ Purpose: safely hand off prepared Deck Nexus data to BoardState or Hub.
 
 Deliverables: app-link contracts, launch affordances, unavailable states, base-path-safe links.
 
+Status: implemented in Prompt 5 as a production-safe BoardState handoff architecture with versioned launch requests, acknowledgment and return parsers, capability detection, transport registry, file/clipboard/share/manual fallbacks, local handoff history, and honest unconfirmed status when no real BoardState transport acknowledges import.
+
 Must not implement early: fake launch success or nonexistent URLs.
 
 Dependencies: snapshots and bridge status.
 
-Validation: unavailable-state tests and link contract tests.
+Validation: unavailable-state tests, transport tests, return-validation tests, full regression tests, and live fallback verification.
 
 ## 6. Hub-Ready Profile/Friend/Notification/Backup/App-Link Adapters
 

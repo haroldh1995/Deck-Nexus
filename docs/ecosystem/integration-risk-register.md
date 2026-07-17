@@ -29,7 +29,11 @@
 | Local profile only | No Hub identity | Hub adapters | Add local profile export status without claiming sync. |
 | No friend graph | Not implemented | Hub adapters | Hub owns friend graph. |
 | No notification routing | Not implemented | Hub adapters | Hub owns notifications. |
-| No app-link registry | Not implemented | Cross-app launch, Hub | Define app-link contract later. |
+| No app-link registry | Prompt 5 adds a Deck Nexus BoardState handoff registry; Hub app-link routing remains future work | Hub adapters | Reuse capability/status model in Prompt 6 without claiming Hub runtime. |
+| Direct BoardState launch unavailable | No real BoardState web URL, custom URI, Android package, or postMessage origin is configured by default | Cross-app launch, final audit | Keep direct launch unavailable and rely on file/manual fallback until a real contract is configured. |
+| False import/session success | Opening a URL, file download, clipboard copy, or share sheet could be misread as success | Cross-app launch | Handoff history records unconfirmed states unless BoardState acknowledgment verifies import or session creation. |
+| Return payload trust | Future BoardState returns could be malformed, stale, wrong-origin, or checksum mismatched | Cross-app launch | Validate schema, request ID, correlation ID, snapshot ID, gameplay checksum, source app, status, and return type. |
+| Oversized handoff payloads | Full snapshots can exceed URL, QR, or clipboard limits | Cross-app launch | Use payload-size checks and redirect large payloads to file/manual export. |
 | Service worker stale data | No service worker source found, but browser cache and Pages fallback assets can stale | Deployment | Verify deployed asset hashes after each prompt. |
 | IndexedDB migration risk | DB is at Dexie version 5 after adding non-destructive BoardState validation result history | All data prompts | Avoid destructive migrations; add stores only when necessary. |
 | Backup/restore conflict risk | Backup contents are opaque | Snapshot/Hub | Add schema-aware conflict policy later. |

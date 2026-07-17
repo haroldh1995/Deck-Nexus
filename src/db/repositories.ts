@@ -2,6 +2,7 @@ import { defaultAppSettings, defaultBracketLock } from "../data/defaults";
 import { db } from "./database";
 import type {
   AppSettings,
+  BoardStateHandoffRecord,
   BoardStateValidationResultRecord,
   BracketLock,
   CommanderColor,
@@ -1301,6 +1302,39 @@ export async function archiveImmutableDeckSnapshotRecord(
   await db.immutableDeckSnapshots.put(next);
   dispatchLocalEvent("deck-nexus:snapshots-updated");
   return next;
+}
+
+export async function saveBoardStateHandoffRecord(
+  handoff: BoardStateHandoffRecord,
+): Promise<BoardStateHandoffRecord> {
+  await db.boardStateHandoffs.put(handoff);
+  dispatchLocalEvent("deck-nexus:boardstate-handoff-updated");
+  return handoff;
+}
+
+export async function listBoardStateHandoffs(
+  deckId?: string,
+): Promise<BoardStateHandoffRecord[]> {
+  const records = deckId
+    ? await db.boardStateHandoffs.where("deckId").equals(deckId).toArray()
+    : await db.boardStateHandoffs.toArray();
+  return records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function listBoardStateHandoffsForSnapshot(
+  snapshotId: string,
+): Promise<BoardStateHandoffRecord[]> {
+  const records = await db.boardStateHandoffs
+    .where("snapshotId")
+    .equals(snapshotId)
+    .toArray();
+  return records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function getBoardStateHandoffRecord(
+  handoffId: string,
+): Promise<BoardStateHandoffRecord | undefined> {
+  return db.boardStateHandoffs.get(handoffId);
 }
 
 export async function restoreDeckVersion(

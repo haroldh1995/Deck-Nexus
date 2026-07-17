@@ -149,4 +149,21 @@ describe("immutable snapshots panel", () => {
       expect(screen.getByRole("heading", { name: "Deck Builder" })).toBeInTheDocument(),
     );
   });
+
+  it("shows honest BoardState handoff status, manual instructions, and unconfirmed history", async () => {
+    renderPanel(deck());
+    await userEvent.click(screen.getByTestId("create-immutable-snapshot"));
+    await screen.findByTestId("boardstate-handoff-panel");
+
+    expect(screen.getByText(/No real BoardState web import URL is configured/i)).toBeInTheDocument();
+    expect(screen.queryByText(/BoardState installed/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId("manual-import-steps")).toHaveTextContent(/will not mark the package imported/i);
+
+    await userEvent.click(screen.getByTestId("prepare-boardstate-handoff"));
+
+    expect(await screen.findByText(/BoardState package prepared locally/i)).toBeInTheDocument();
+    expect(await screen.findByTestId("handoff-history")).toHaveTextContent(/export completed/i);
+    expect(screen.getByTestId("handoff-history")).toHaveTextContent(/Import unconfirmed/i);
+    expect(screen.queryByText(/session created/i)).not.toBeInTheDocument();
+  });
 });

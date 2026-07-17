@@ -10,6 +10,7 @@
 - Import/export preparation.
 - Canonical local deck, collection, and profile snapshot exports.
 - Immutable local deck snapshot creation, history, verification, comparison, archival state, and future BoardState envelope export preparation.
+- BoardState handoff request creation, local fallback exports, unconfirmed handoff history, and optional acknowledgment/return validation.
 - Analyzer, recommendations, Smart Build planning, maybeboard, cuts, versions, and replacement records.
 - Deck groups, tags, favorites, wishlist, upgrade lists, custom collections, backup/restore, settings, and local-first storage.
 - Future source data for immutable deck snapshots and BoardState/Hub contracts.
@@ -40,6 +41,7 @@ Deck Nexus may prepare type-safe local contracts for:
 - Deck, card, owned-card, collection, and profile snapshot exports.
 - Future immutable deck snapshot exports.
 - Advanced Gameplay and Dry Run data envelopes that are explicit exports only, not launches.
+- BoardState launch, acknowledgment, return, and transport capability contracts.
 - BoardState validation requests, responses, transport status, and result storage.
 - Hub adapter status.
 - Versioning and readiness reporting.
@@ -71,6 +73,9 @@ Acceptable current wording includes:
 - Immutable snapshot created locally.
 - Prepared for Advanced Gameplay export.
 - Prepared for Dry Run export.
+- BoardState file export completed; import is not confirmed.
+- Manual BoardState import available.
+- Direct BoardState launch unavailable.
 - Hub adapter planned.
 - Local profile only.
 - Local backup available.
@@ -80,4 +85,5 @@ Acceptable current wording includes:
 
 - Deck Nexus: local-ready web/PWA-style app.
 - BoardState: validation bridge architecture is present; no production endpoint is configured by default.
+- BoardState handoff: local file/manual fallback available; direct launch is not configured or verified by default.
 - Hub: planned future ecosystem surface; not connected.
