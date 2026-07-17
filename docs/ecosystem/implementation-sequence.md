@@ -70,7 +70,9 @@ Validation: unavailable-state tests, transport tests, return-validation tests, f
 
 Purpose: prepare Deck Nexus for future Hub identity and routing.
 
-Deliverables: local profile adapter, backup metadata contracts, notification placeholders as unavailable, app registry contract.
+Deliverables: local profile adapter, backup metadata contracts, unavailable notification status contracts, app registry contract.
+
+Status: implemented in Prompt 6 as production-safe Hub compatibility contracts, local profile export/compare/import scaffolding, unavailable friend and remote-notification adapters, provider-independent backup status, app-link status, capability registry, and expanded Settings status surface.
 
 Must not implement early: friends, notifications, cloud sync, or profile sync.
 

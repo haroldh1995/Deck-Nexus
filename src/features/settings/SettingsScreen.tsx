@@ -3,7 +3,10 @@ import { PageHeader } from "../../components/PageHeader";
 import { StatusPill } from "../../components/StatusPill";
 import { useSettings } from "../../app/useSettings";
 import { useState } from "react";
-import { getEcosystemReadinessStatus } from "../../ecosystem";
+import {
+  getEcosystemReadinessStatus,
+  getEcosystemStatusSections,
+} from "../../ecosystem";
 import {
   deleteScryfallOfflineCardDatabase,
   downloadScryfallOfflineCardDatabase,
@@ -48,6 +51,7 @@ export function SettingsScreen() {
   const [scryfallBusy, setScryfallBusy] = useState(false);
   const bracketLock = settings.defaultBracketLock;
   const ecosystemStatuses = getEcosystemReadinessStatus();
+  const ecosystemSections = getEcosystemStatusSections(settings);
 
   async function refreshScryfallBulkMetadata() {
     setScryfallBusy(true);
@@ -257,6 +261,39 @@ export function SettingsScreen() {
         <HolographicPanel>
           <div className="settings-section">
             <h2>Ecosystem Readiness</h2>
+            <div className="ecosystem-status-grid" data-testid="ecosystem-status-grid">
+              {ecosystemSections.map((section) => (
+                <article className="ecosystem-status-card" key={section.id}>
+                  <h3>{section.label}</h3>
+                  <dl className="detail-list">
+                    <div>
+                      <dt>Status</dt>
+                      <dd>{section.status}</dd>
+                    </div>
+                    <div>
+                      <dt>Capability</dt>
+                      <dd>{section.capability}</dd>
+                    </div>
+                    <div>
+                      <dt>Availability</dt>
+                      <dd>{section.availability}</dd>
+                    </div>
+                    <div>
+                      <dt>Verification</dt>
+                      <dd>{section.verification}</dd>
+                    </div>
+                    <div>
+                      <dt>Current owner</dt>
+                      <dd>{section.currentOwner}</dd>
+                    </div>
+                    <div>
+                      <dt>Future owner</dt>
+                      <dd>{section.futureOwner}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
             {ecosystemStatuses.map((status) => (
               <div className="settings-note" key={status.appId}>
                 <strong>{status.label}</strong>

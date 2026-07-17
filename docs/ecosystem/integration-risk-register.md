@@ -27,15 +27,17 @@
 | Snapshot schema evolution | Prompt 2 adds v1 schema/export/snapshot versions | Later prompts | Preserve compatibility utilities and add migrations only when needed. |
 | No migration path for snapshots | Snapshot schema/format versions exist; destructive snapshot migrations are not implemented | Later versioning | Add explicit migration readers only when a new snapshot schema ships. |
 | Local profile only | No Hub identity | Hub adapters | Add local profile export status without claiming sync. |
-| No friend graph | Not implemented | Hub adapters | Hub owns friend graph. |
-| No notification routing | Not implemented | Hub adapters | Hub owns notifications. |
-| No app-link registry | Prompt 5 adds a Deck Nexus BoardState handoff registry; Hub app-link routing remains future work | Hub adapters | Reuse capability/status model in Prompt 6 without claiming Hub runtime. |
+| No friend graph | Prompt 6 exposes an unavailable empty friend adapter | Hub runtime | Hub owns friend graph, presence, and sharing policy. |
+| No notification routing | Prompt 6 exposes local-only notification status and no remote queue | Hub runtime | Hub owns remote notifications. |
+| No central backup provider | Prompt 6 reports only local file, JSON, and ZIP backup as active | Hub runtime | Add provider auth only when real Hub/provider flows exist. |
+| Hub capability misreporting | Prompt 6 capability registry distinguishes supported, configured, verified, available, and local-only | Final audit | Keep verified false for external Hub capabilities until a real Hub response exists. |
+| No app-link registry | Prompt 5 adds a Deck Nexus BoardState handoff registry; Prompt 6 adds future Hub app-link status | Hub runtime | Reuse capability/status model without claiming Hub runtime. |
 | Direct BoardState launch unavailable | No real BoardState web URL, custom URI, Android package, or postMessage origin is configured by default | Cross-app launch, final audit | Keep direct launch unavailable and rely on file/manual fallback until a real contract is configured. |
 | False import/session success | Opening a URL, file download, clipboard copy, or share sheet could be misread as success | Cross-app launch | Handoff history records unconfirmed states unless BoardState acknowledgment verifies import or session creation. |
 | Return payload trust | Future BoardState returns could be malformed, stale, wrong-origin, or checksum mismatched | Cross-app launch | Validate schema, request ID, correlation ID, snapshot ID, gameplay checksum, source app, status, and return type. |
 | Oversized handoff payloads | Full snapshots can exceed URL, QR, or clipboard limits | Cross-app launch | Use payload-size checks and redirect large payloads to file/manual export. |
 | Service worker stale data | No service worker source found, but browser cache and Pages fallback assets can stale | Deployment | Verify deployed asset hashes after each prompt. |
-| IndexedDB migration risk | DB is at Dexie version 5 after adding non-destructive BoardState validation result history | All data prompts | Avoid destructive migrations; add stores only when necessary. |
+| IndexedDB migration risk | DB has non-destructive stores for BoardState validation, immutable snapshots, and handoff history | All data prompts | Avoid destructive migrations; add stores only when necessary. |
 | Backup/restore conflict risk | Backup contents are opaque | Snapshot/Hub | Add schema-aware conflict policy later. |
 | GitHub Pages base-path risk | Vite base changes in `github-pages` mode | Deployment | Keep route and asset verification in release checks. |
 | Offline mode ambiguity | Scryfall cache/offline flags exist | Snapshot/export | Record data freshness and unresolved states in exports. |

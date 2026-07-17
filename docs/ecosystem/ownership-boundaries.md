@@ -33,6 +33,20 @@
 - App launching and app-link registry.
 - Cross-app presence.
 - Centralized sync/backup surfaces where built later.
+- Hub-managed profile, friend, notification, central backup, and app-link runtime authority.
+
+## Prompt 6 Hub Compatibility State
+
+Deck Nexus now owns local-only Hub preparation adapters:
+
+- Local profile adapter for settings-derived profile export and comparison.
+- Unavailable friend adapter with no fabricated users or presence.
+- Local-only notification adapter with no remote queue.
+- Backup adapter that reports only local file, JSON, and ZIP as active.
+- App-link adapter that reports BoardState direct launch only when a real transport is configured and still unverified until acknowledged.
+- Capability registry for supported, configured, verified, available, and local-only status.
+
+The Hub is not built or connected in production.
 
 ## Shared Contracts
 
@@ -43,7 +57,7 @@ Deck Nexus may prepare type-safe local contracts for:
 - Advanced Gameplay and Dry Run data envelopes that are explicit exports only, not launches.
 - BoardState launch, acknowledgment, return, and transport capability contracts.
 - BoardState validation requests, responses, transport status, and result storage.
-- Hub adapter status.
+- Hub profile, friend, notification, backup, app-link, capability, and adapter status contracts.
 - Versioning and readiness reporting.
 
 These contracts must remain honest. A configured bridge may submit snapshots to BoardState, but Deck Nexus must still label unavailable, failed, test-only, or stale validation correctly.
@@ -79,6 +93,8 @@ Acceptable current wording includes:
 - Hub adapter planned.
 - Local profile only.
 - Local backup available.
+- Hub friends unavailable.
+- Hub notifications unavailable.
 - Rules guidance is local planning only.
 
 ## Current Linked-App Status

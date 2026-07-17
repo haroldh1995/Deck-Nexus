@@ -41,7 +41,7 @@ describe("ecosystem readiness preparation", () => {
     expect(hubAdapterStatus.localProfileOnly).toBe(true);
     expect(hubAdapterStatus.friendsImplemented).toBe(false);
     expect(hubAdapterStatus.notificationsImplemented).toBe(false);
-    expect(snapshotReadinessStatus.immutableSnapshotsImplemented).toBe(false);
+    expect(snapshotReadinessStatus.immutableSnapshotsImplemented).toBe(true);
     expect(snapshotReadinessStatus.status).toBe("export_ready");
   });
 
@@ -52,6 +52,13 @@ describe("ecosystem readiness preparation", () => {
         "../../docs/ecosystem/boardstate-contracts.md",
         "../../docs/ecosystem/boardstate-status-and-errors.md",
         "../../docs/ecosystem/boardstate-validation-bridge.md",
+        "../../docs/ecosystem/hub-adapters.md",
+        "../../docs/ecosystem/profile-adapter.md",
+        "../../docs/ecosystem/friend-adapter.md",
+        "../../docs/ecosystem/notification-adapter.md",
+        "../../docs/ecosystem/backup-adapter.md",
+        "../../docs/ecosystem/capability-registry.md",
+        "../../docs/ecosystem/status-surface.md",
         "../../docs/ecosystem/export-contracts.md",
         "../../docs/ecosystem/ownership-boundaries.md",
         "../../docs/ecosystem/integration-risk-register.md",
@@ -78,6 +85,15 @@ describe("ecosystem readiness preparation", () => {
       .toBeVisible();
     expect(screen.getByText(/Hub profile, friends, notifications/))
       .toHaveTextContent("not connected yet");
+    expect(screen.getByTestId("ecosystem-status-grid")).toHaveTextContent(
+      "Local profile only",
+    );
+    expect(screen.getByTestId("ecosystem-status-grid")).toHaveTextContent(
+      "Friends",
+    );
+    expect(screen.getByTestId("ecosystem-status-grid")).toHaveTextContent(
+      "Cloud providers require setup and are not connected",
+    );
     expect(screen.queryByText(/Live BoardState sync/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Hub connected/i)).not.toBeInTheDocument();
   });

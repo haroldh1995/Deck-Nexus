@@ -5,6 +5,7 @@ import type {
   SnapshotReadinessStatus,
 } from "../contracts/ecosystemContracts";
 import { CURRENT_SCHEMA_VERSION } from "../export";
+import { getEcosystemStatusSections, hasVerifiedHubConnection } from "../hub";
 
 export const boardStateBridgeStatus: BoardStateBridgeStatus = {
   appId: "boardstate",
@@ -24,7 +25,7 @@ export const hubAdapterStatus: HubAdapterStatus = {
 
 export const snapshotReadinessStatus: SnapshotReadinessStatus = {
   status: "export_ready",
-  immutableSnapshotsImplemented: false,
+  immutableSnapshotsImplemented: true,
   schemaVersion: CURRENT_SCHEMA_VERSION,
 };
 
@@ -62,7 +63,7 @@ export function getEcosystemReadinessStatus(): LinkedAppReadiness[] {
       label: "Hub",
       status: hubAdapterStatus.status,
       summary:
-        "Hub is not connected yet. Deck Nexus currently uses local profile and settings only.",
+        "Hub is not connected yet. Deck Nexus has local profile, unavailable friends, local-only notifications, local backup, and future app-link adapters prepared.",
       capabilities: [],
     },
   ];
@@ -71,5 +72,7 @@ export function getEcosystemReadinessStatus(): LinkedAppReadiness[] {
 export function hasLiveExternalEcosystemConnection(): boolean {
   return getEcosystemReadinessStatus().some(
     (status) => status.appId !== "deck_nexus" && status.status === "connected",
-  );
+  ) || hasVerifiedHubConnection();
 }
+
+export { getEcosystemStatusSections };

@@ -777,4 +777,21 @@ test.describe("Deck Nexus local-first flow", () => {
     await packageDownload;
     await expect(page.getByText(/BoardState file export completed/i)).toBeVisible();
   });
+
+  test("shows Hub compatibility status without connected claims", async ({ page }) => {
+    await page.goto("/settings");
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+    await expect(page.getByTestId("ecosystem-status-grid")).toContainText(
+      "Local profile only",
+    );
+    await expect(page.getByTestId("ecosystem-status-grid")).toContainText(
+      "Friends",
+    );
+    await expect(page.getByTestId("ecosystem-status-grid")).toContainText(
+      "Cloud providers require setup and are not connected",
+    );
+    await expect(page.getByText(/Hub connected/i)).toHaveCount(0);
+    await expect(page.getByText(/Friends online/i)).toHaveCount(0);
+    await expect(page.getByText(/Notifications active/i)).toHaveCount(0);
+  });
 });

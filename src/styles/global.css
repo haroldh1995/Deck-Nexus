@@ -818,6 +818,23 @@ a:active {
   color: var(--muted);
 }
 
+.ecosystem-status-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ecosystem-status-card {
+  border: 1px solid rgba(119, 234, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(6, 17, 36, 0.82);
+  padding: 0.75rem;
+}
+
+.ecosystem-status-card h3 {
+  margin: 0 0 0.55rem;
+  font-size: 0.94rem;
+}
+
 .snapshot-history,
 .snapshot-detail,
 .boardstate-handoff,
