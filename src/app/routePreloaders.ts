@@ -15,6 +15,10 @@ const routePreloaders: Record<string, () => Promise<unknown>> = {
 };
 
 export function preloadAppRoute(path: string): void {
+  if (import.meta.env.MODE === "test") {
+    return;
+  }
+
   const preload = routePreloaders[path];
   if (preload) {
     void preload();
