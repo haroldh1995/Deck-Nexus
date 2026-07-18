@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { defaultBracketLock } from "../data/defaults";
 import { resetDatabaseForTests } from "../db/database";
@@ -90,6 +90,19 @@ function renderPanel(sourceDeck: Deck) {
 describe("immutable snapshots panel", () => {
   beforeEach(async () => {
     await resetDatabaseForTests();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: vi.fn(() => "blob:immutable-snapshot"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("creates read-only snapshot history and compares live deck changes", async () => {

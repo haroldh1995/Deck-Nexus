@@ -7,7 +7,7 @@ Deck Nexus now has a local canonical export foundation for future BoardState and
 - Deck Snapshot: full deck reconstruction data, including metadata, commander metadata, main deck, maybeboard, cuts, goals, tags, groups, favorite state, ownership summary, missing cards, analysis metadata, recommendation metadata, and compatibility sections.
 - Collection Snapshot: owned-card inventory, exact printings, set/color/type/rarity summaries, favorite card IDs, and scanner summary metadata.
 - Profile Snapshot: local-only settings and preferences Deck Nexus owns, including appearance, accessibility, scanner, backup, default deck-building, and Home customization settings.
-- Application Metadata: producer name, application version, schema/export/snapshot versions, compatibility version, supported consumers, checksum, capabilities, and unsigned signature placeholder.
+- Application Metadata: producer name, application version, schema/export/snapshot versions, compatibility version, supported consumers, checksum, capabilities, and explicitly unsigned signature metadata.
 - Export Metadata: export ID, format, timestamps, source application, migration status, and checksum.
 - Backup Metadata: backup ID/name, schema/export/snapshot versions, deck count, owned-card count, timestamps, and checksum.
 - ZIP Manifest: package file list and per-file checksum references.

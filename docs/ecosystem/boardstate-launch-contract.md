@@ -14,7 +14,7 @@
 - correlation ID and nonce
 - transport type
 - payload encoding/compression/size
-- unsigned signature placeholder
+- explicitly unsigned signature metadata
 - privacy flags
 - user-visible deck name
 

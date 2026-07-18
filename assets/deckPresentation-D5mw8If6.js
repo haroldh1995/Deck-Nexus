@@ -1,1 +1,0 @@
-function e(e){return e.cards.reduce((e,t)=>e+t.quantity,0)}function t(e){return e.commanderNames.length>0?e.commanderNames.join(` / `):`Commander unassigned`}function n(e){return e.enabled?e.bracket.replace(`bracket_`,`Bracket `).replace(`custom`,`Custom bracket`):`Bracket unlocked`}export{t as n,e as r,n as t};

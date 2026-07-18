@@ -5,7 +5,7 @@ This audit describes the current Deck Nexus web app as found in this repository.
 ## Current Architecture
 
 - App shell: React, Vite, React Router, lazy-loaded feature screens, `BrowserRouter` with GitHub Pages base-path support.
-- Deployment: GitHub Pages workflow in `.github/workflows/deploy-pages.yml`; it runs install, lint, unit tests, and `npm run build -- --mode github-pages`.
+- Deployment: GitHub Pages workflow in `.github/workflows/deploy-pages.yml`; it runs install, lint, unit tests, and `npm run build -- --mode github-pages`. The app ships a web manifest and service worker for an offline app shell.
 - Storage: Dexie/IndexedDB database named `deck-nexus-local`; settings are loaded through `SettingsProvider`.
 - Data source: Scryfall live/cache services plus a small local catalog for test and fallback flows. Prices and marketplace behavior are intentionally absent.
 - Home: mobile-first holographic orbit scene with local Home ordering and hidden IDs in settings.
@@ -23,8 +23,8 @@ This audit describes the current Deck Nexus web app as found in this repository.
 - Analyzer/Smart Build/Recommend: local analysis snapshots, recommendations, Smart Build proposals, maybeboard/cuts, version history, replacement records, and feedback.
 - Directories: wishlist, upgrade lists, and custom collections.
 - Settings: interface/accessibility, local data, scanner, Scryfall cache, bracket defaults, and ecosystem readiness status.
-- Export: canonical Deck Snapshot, Collection Snapshot, Profile Snapshot, JSON, compressed JSON, ZIP package, and Arena text exports generated from local data.
-- Foundation routes: Import, Groups, Tags, and Test Deck currently show local schema/status placeholders where full UI is not implemented.
+- Export: canonical Deck Snapshot, Collection Snapshot, Profile Snapshot, JSON, compressed JSON, ZIP package, Arena text exports, local full-backup export/restore, immutable snapshot exports, and BoardState handoff packages generated from local data.
+- Foundation routes: Import, Groups, Tags, and Test Deck show truthful local/unavailable status. They preserve schema boundaries without claiming unavailable BoardState or Hub behavior is live.
 
 ## Route Inventory
 
@@ -37,12 +37,12 @@ This audit describes the current Deck Nexus web app as found in this repository.
 | `/search` | Card search | Scryfall cache/live, decks, owned cards | decks, owned cards, directories, undo | Yes plus Scryfall lookup | Card identity source later | No |
 | `/scan` | Scanner | settings, scanner batches, records | scanner batches, records, owned/deck cards | Yes plus camera/Scryfall | Collection/deck source later | No |
 | `/owned` | Owned cards | owned cards, printings | owned cards, printings | Yes | Collection export later | No |
-| `/import` | Import placeholder | import schema | none in route currently | Yes | Import source later | No |
+| `/import` | Import status | import schema | none in route currently | Yes | Import source later | No |
 | `/analyzer` | Analysis, Smart Build, Recommend | decks, analysis, owned cards | analysis, smart builds, versions | Yes | Planning signals later | No |
-| `/groups` | Groups placeholder | group schema | none in route currently | Yes | No direct export | Hub organization later |
-| `/tags` | Tags placeholder | tag schema | none in route currently | Yes | Optional metadata later | Hub metadata later |
-| `/test` | Test Deck placeholder | deck schema | none in route currently | Yes | BoardState owns gameplay/dry run | No |
-| `/export` | Export local snapshots and Arena text | decks, owned cards, settings | download/copy files only | Yes | Snapshot source later | Future package handoff later |
+| `/groups` | Groups status | group schema | none in route currently | Yes | No direct export | Hub organization later |
+| `/tags` | Tags status | tag schema | none in route currently | Yes | Optional metadata later | Hub metadata later |
+| `/test` | Test Deck status | deck schema | none in route currently | Yes | BoardState owns gameplay/dry run | No |
+| `/export` | Export local snapshots, Arena text, backups, immutable snapshots, and BoardState packages | decks, owned cards, settings, snapshots, validations, handoffs | backup package records, downloads, clipboard | Yes | Snapshot and handoff package source | Future package handoff later |
 | `/settings` | Settings | settings, Scryfall cache metadata, ecosystem status | settings, Scryfall cache controls | Yes | Capability status only | Capability status only |
 | `/wishlist` | Wishlist directory | wishlist | wishlist, favorites | Yes | No direct gameplay export | Future profile surface |
 | `/upgrade-lists` | Upgrade lists | upgrade lists | upgrade lists, entries | Yes | Planning data later | Future profile surface |
@@ -56,7 +56,7 @@ No current route should claim live BoardState validation, Hub connection, friend
 
 `Deck` includes `id`, `name`, `format`, `commanderIds`, `commanderNames`, `colorIdentity`, `cards`, `maybeboard`, `cuts`, `goals`, `tags`, `style`, `powerTarget`, `bracketLock`, `ownershipPreference`, `categoryStyle`, `notes`, `status`, optional `thumbnailCardId`, `originalImportText`, `unresolvedImports`, `createdFrom`, `createdAt`, and `updatedAt`.
 
-Current snapshot/version support includes canonical local ecosystem exports and mutable local `DeckVersion` restore records. These are not BoardState gameplay snapshots and do not include gameplay state.
+Current snapshot/version support includes canonical local ecosystem exports, mutable local `DeckVersion` restore records, and immutable Deck Nexus snapshot records for future BoardState consumption. None of these include active gameplay state.
 
 ### Deck Card
 
@@ -86,7 +86,7 @@ There is no Hub identity profile, friend graph, notification routing, or profile
 
 `ExportHistory` stores format, file name, deck ID, and created timestamp.
 
-`BackupPackage` stores schema version, deck/owned counts, created timestamp, and opaque contents.
+`BackupPackage` stores schema version, deck/owned counts, created timestamp, and a validated local full-backup payload. Full backups include user data tables except backup records themselves, avoid secrets and temporary transfer state, and restore additively unless overwrite is explicitly requested.
 
 ### Settings
 
@@ -100,18 +100,21 @@ Dexie versions:
 - Version 2: Scryfall card, oracle, autocomplete, search, bulk data, and cache metadata.
 - Version 3: wishlist, upgrade lists, custom collections, search sessions, destination history, undo transactions.
 - Version 4: recommendation feedback, replacement records, deck versions.
+- Version 5: BoardState validation result history.
+- Version 6: immutable deck snapshot history.
+- Version 7: BoardState handoff history.
 
 Additional browser storage:
 
 - `localStorage`: Home focused card, Home customization behavior, search history, and feature-specific UI state where used.
 - `sessionStorage`: Home intro playback state.
-- Service worker: none found in source; GitHub Pages serves the Vite build and public assets.
+- Service worker: production builds register `service-worker.js`, cache the app shell and same-origin assets, clean old Deck Nexus caches on activation, and use a network-first navigation strategy so new GitHub Pages deployments are not permanently pinned to stale HTML.
 
 ## Preparation Status
 
 - Canonical deck/collection/profile snapshot exports: implemented locally.
-- BoardState bridge: not implemented.
-- Immutable gameplay snapshots for BoardState gameplay sessions: not implemented.
-- Hub adapter: not implemented.
-- Cross-app launch actions: not implemented.
+- BoardState validation bridge: implemented as a production-safe, replaceable adapter. It reports not configured unless a real endpoint is configured and verified.
+- Immutable deck snapshots and future Advanced Gameplay/Dry Run envelopes: implemented locally without gameplay state or launch claims.
+- Cross-app launch and handoff architecture: implemented with file/manual local fallbacks and honest unconfirmed status when no real BoardState transport exists.
+- Hub-ready adapters: implemented for profile, friends, notifications, backups, app links, and capabilities. Hub remains not connected.
 - Honest status surface: implemented in Settings as local readiness only.

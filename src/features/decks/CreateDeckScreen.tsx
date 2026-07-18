@@ -18,18 +18,18 @@ const deckStartOptions = [
   },
   {
     title: "Choose Commander",
-    status: "Coming later",
-    summary: "Commander search will be connected after card search is built.",
+    status: "Manual",
+    summary: "Enter a commander name below or use Card Search, then continue editing locally.",
   },
   {
     title: "Import Decklist",
-    status: "Coming later",
-    summary: "Import parsing is routed through the Import Deck foundation.",
+    status: "Unavailable",
+    summary: "Full decklist import UI is not active yet. Existing import records remain preserved.",
   },
   {
     title: "Build From Owned Cards",
-    status: "Coming later",
-    summary: "Owned-card deck starts will use the local collection store.",
+    status: "Analyzer",
+    summary: "Create a local deck, then use Analyzer and Smart Build for owned-card planning.",
   },
 ] as const;
 
@@ -99,7 +99,7 @@ export function CreateDeckScreen() {
             <div>
               <h2>{option.title}</h2>
               <StatusPill
-                tone={option.status === "Ready" ? "cyan" : "violet"}
+                tone={option.status === "Unavailable" ? "violet" : "cyan"}
               >
                 {option.status}
               </StatusPill>
@@ -130,7 +130,7 @@ export function CreateDeckScreen() {
                 autoComplete="off"
                 name="commanderName"
                 onChange={(event) => setCommanderName(event.target.value)}
-                placeholder="Optional until card search is connected"
+                placeholder="Optional commander name"
                 value={commanderName}
               />
             </label>

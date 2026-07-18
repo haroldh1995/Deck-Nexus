@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { HolographicPanel } from "../../components/HolographicPanel";
 import { PageHeader } from "../../components/PageHeader";
@@ -17,10 +17,12 @@ import {
 } from "../../ecosystem";
 import {
   ensureAppSettings,
+  createFullBackupPackage,
   listDecks,
   listOwnedCards,
+  restoreFullBackupPackage,
 } from "../../db/repositories";
-import type { AppSettings, Deck, OwnedCard } from "../../types/domain";
+import type { AppSettings, BackupPackage, Deck, OwnedCard } from "../../types/domain";
 import { BoardStateValidationPanel } from "./BoardStateValidationPanel";
 import { ImmutableSnapshotsPanel } from "./ImmutableSnapshotsPanel";
 
@@ -158,6 +160,38 @@ export function ExportScreen() {
     }
   }
 
+  async function exportFullBackup(): Promise<void> {
+    try {
+      const backup = await createFullBackupPackage();
+      downloadFile(
+        `deck-nexus-full-backup-${backup.createdAt.slice(0, 10)}.json`,
+        createDownloadBlob(serializePrettyJson(backup), "application/json"),
+      );
+      setMessage("Local backup file generated.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Backup could not be generated.");
+    }
+  }
+
+  async function restoreBackup(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(await file.text()) as BackupPackage;
+      const result = await restoreFullBackupPackage(parsed);
+      setMessage(
+        `Restore reviewed ${result.restoredRecords} record${result.restoredRecords === 1 ? "" : "s"}; ${result.conflictRecords} conflict${result.conflictRecords === 1 ? "" : "s"} kept untouched.`,
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Backup could not be restored.");
+    }
+  }
+
   return (
     <div className="screen">
       <PageHeader title="Export">
@@ -241,6 +275,31 @@ export function ExportScreen() {
             <p className="settings-note">
               BoardState bridge validation and Hub networking are not connected yet.
             </p>
+          </div>
+        </HolographicPanel>
+
+        <HolographicPanel>
+          <div className="settings-section">
+            <h2>Backup & Restore</h2>
+            <p className="settings-note">
+              Local backups include decks, collection records, settings, snapshots,
+              BoardState validation history, and handoff history. Cloud providers are not connected.
+            </p>
+            <div className="form-actions">
+              <button type="button" data-testid="export-full-backup" onClick={() => void exportFullBackup()}>
+                Export Full Backup
+              </button>
+              <label className="file-action">
+                Restore Backup JSON
+                <input
+                  accept="application/json,.json"
+                  aria-label="Restore backup JSON"
+                  data-testid="restore-full-backup"
+                  onChange={(event) => void restoreBackup(event)}
+                  type="file"
+                />
+              </label>
+            </div>
           </div>
         </HolographicPanel>
 

@@ -25,7 +25,7 @@
 | Commander-specific exceptions | Local classification is not exhaustive | Rules bridge | BoardState owns exception handling. |
 | No gameplay snapshot store | Prompt 4 adds `immutableDeckSnapshots` non-destructively at Dexie version 6 | Cross-app launch, Hub | Keep snapshot restore/launch contracts versioned and non-destructive. |
 | Snapshot schema evolution | Prompt 2 adds v1 schema/export/snapshot versions | Later prompts | Preserve compatibility utilities and add migrations only when needed. |
-| No migration path for snapshots | Snapshot schema/format versions exist; destructive snapshot migrations are not implemented | Later versioning | Add explicit migration readers only when a new snapshot schema ships. |
+| No migration path for future snapshot schema changes | Snapshot schema/format versions exist; destructive snapshot migrations are intentionally absent | Later versioning | Add explicit migration readers only when a new snapshot schema ships. |
 | Local profile only | No Hub identity | Hub adapters | Add local profile export status without claiming sync. |
 | No friend graph | Prompt 6 exposes an unavailable empty friend adapter | Hub runtime | Hub owns friend graph, presence, and sharing policy. |
 | No notification routing | Prompt 6 exposes local-only notification status and no remote queue | Hub runtime | Hub owns remote notifications. |

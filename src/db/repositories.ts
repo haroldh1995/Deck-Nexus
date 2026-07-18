@@ -2,6 +2,7 @@ import { defaultAppSettings, defaultBracketLock } from "../data/defaults";
 import { db } from "./database";
 import type {
   AppSettings,
+  BackupPackage,
   BoardStateHandoffRecord,
   BoardStateValidationResultRecord,
   BracketLock,
@@ -70,10 +71,63 @@ export type OwnedCardInput = {
   printing?: Partial<OwnedPrinting>;
 };
 
+export interface DeckNexusFullBackupContents {
+  packageKind: "deck-nexus-full-backup";
+  packageVersion: "deck-nexus.full-backup.v1";
+  createdAt: string;
+  schemaVersion: number;
+  excludedTables: string[];
+  tables: Record<string, Record<string, unknown>[]>;
+}
+
+export interface BackupRestoreTableResult {
+  tableName: string;
+  restored: number;
+  skipped: number;
+  conflicts: number;
+}
+
+export interface BackupRestoreResult {
+  restoredRecords: number;
+  skippedRecords: number;
+  conflictRecords: number;
+  tableResults: BackupRestoreTableResult[];
+}
+
+const currentDatabaseSchemaVersion = 7;
+const fullBackupPackageVersion = "deck-nexus.full-backup.v1";
+const backupExcludedTables = new Set(["backups"]);
+
 function dispatchLocalEvent(eventName: string) {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(eventName));
   }
+}
+
+function backupTableNames(): string[] {
+  return db.tables
+    .map((table) => table.name)
+    .filter((tableName) => !backupExcludedTables.has(tableName));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isRecordArray(value: unknown): value is Record<string, unknown>[] {
+  return Array.isArray(value) && value.every(isRecord);
+}
+
+function dispatchRestoreEvents() {
+  [
+    "deck-nexus:settings-updated",
+    "deck-nexus:decks-updated",
+    "deck-nexus:owned-cards-updated",
+    "deck-nexus:scan-batches-updated",
+    "deck-nexus:snapshots-updated",
+    "deck-nexus:boardstate-validation-updated",
+    "deck-nexus:boardstate-handoff-updated",
+  ].forEach(dispatchLocalEvent);
 }
 
 export async function ensureAppSettings(): Promise<AppSettings> {
@@ -1187,6 +1241,136 @@ export async function saveDeckVersionFromDecks({
 
 export async function listDeckVersions(deckId: string): Promise<DeckVersion[]> {
   return db.deckVersions.where("deckId").equals(deckId).reverse().sortBy("createdAt");
+}
+
+export async function createFullBackupPackage(
+  name = "Deck Nexus full backup",
+): Promise<BackupPackage> {
+  const createdAt = nowIso();
+  const tableNames = backupTableNames();
+  const tables: DeckNexusFullBackupContents["tables"] = {};
+
+  await Promise.all(
+    tableNames.map(async (tableName) => {
+      tables[tableName] = await db.table<Record<string, unknown>, string>(tableName).toArray();
+    }),
+  );
+
+  const contents: DeckNexusFullBackupContents = {
+    packageKind: "deck-nexus-full-backup",
+    packageVersion: fullBackupPackageVersion,
+    createdAt,
+    schemaVersion: currentDatabaseSchemaVersion,
+    excludedTables: [...backupExcludedTables],
+    tables,
+  };
+
+  const backup: BackupPackage = {
+    id: createId("backup"),
+    name,
+    schemaVersion: currentDatabaseSchemaVersion,
+    deckCount: tables.decks?.length ?? 0,
+    ownedCardCount: tables.ownedCards?.length ?? 0,
+    createdAt,
+    contents: contents as unknown as Record<string, unknown>,
+  };
+
+  await db.backups.put(backup);
+  dispatchLocalEvent("deck-nexus:backups-updated");
+  return backup;
+}
+
+export async function listBackupPackages(): Promise<BackupPackage[]> {
+  return db.backups.orderBy("createdAt").reverse().toArray();
+}
+
+export async function restoreFullBackupPackage(
+  backup: BackupPackage,
+  options: { overwriteConflicts?: boolean } = {},
+): Promise<BackupRestoreResult> {
+  const contents = backup.contents as unknown;
+
+  if (!isRecord(contents)) {
+    throw new Error("Backup contents are unreadable.");
+  }
+
+  if (contents.packageKind !== "deck-nexus-full-backup") {
+    throw new Error("Backup package kind is not supported.");
+  }
+
+  if (contents.schemaVersion !== undefined && Number(contents.schemaVersion) > currentDatabaseSchemaVersion) {
+    throw new Error("Backup schema version is newer than this Deck Nexus build.");
+  }
+
+  if (!isRecord(contents.tables)) {
+    throw new Error("Backup table contents are missing.");
+  }
+
+  const backupTables = contents.tables;
+  const knownTableNames = new Set(backupTableNames());
+  const requestedTableNames = Object.keys(backupTables).filter((tableName) =>
+    knownTableNames.has(tableName),
+  );
+  const tableResults: BackupRestoreTableResult[] = [];
+  const transactionTables = requestedTableNames.map((tableName) => db.table(tableName));
+
+  await db.transaction("rw", transactionTables, async () => {
+    for (const tableName of requestedTableNames) {
+      const rows = backupTables[tableName];
+      const table = db.table<Record<string, unknown>, string>(tableName);
+      const keyPath = table.schema.primKey.keyPath;
+      const result: BackupRestoreTableResult = {
+        tableName,
+        restored: 0,
+        skipped: 0,
+        conflicts: 0,
+      };
+
+      if (!isRecordArray(rows) || typeof keyPath !== "string") {
+        result.skipped += Array.isArray(rows) ? rows.length : 1;
+        tableResults.push(result);
+        continue;
+      }
+
+      for (const row of rows) {
+        const primaryKey = row[keyPath];
+        if (typeof primaryKey !== "string" || !primaryKey) {
+          result.skipped += 1;
+          continue;
+        }
+
+        const existing = await table.get(primaryKey);
+        if (
+          existing &&
+          !options.overwriteConflicts &&
+          JSON.stringify(existing) !== JSON.stringify(row)
+        ) {
+          result.conflicts += 1;
+          continue;
+        }
+
+        await table.put(row);
+        result.restored += 1;
+      }
+
+      tableResults.push(result);
+    }
+  });
+
+  const restoredRecords = tableResults.reduce((total, result) => total + result.restored, 0);
+  const skippedRecords = tableResults.reduce((total, result) => total + result.skipped, 0);
+  const conflictRecords = tableResults.reduce((total, result) => total + result.conflicts, 0);
+
+  if (restoredRecords > 0) {
+    dispatchRestoreEvents();
+  }
+
+  return {
+    restoredRecords,
+    skippedRecords,
+    conflictRecords,
+    tableResults,
+  };
 }
 
 export async function saveBoardStateValidationResult(

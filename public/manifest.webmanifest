@@ -1,0 +1,18 @@
+{
+  "name": "Deck Nexus",
+  "short_name": "Deck Nexus",
+  "description": "Local-first Commander deck builder, collection manager, scanner, and snapshot exporter.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#050914",
+  "theme_color": "#091b36",
+  "icons": [
+    {
+      "src": "assets/deck-nexus-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -949,6 +949,31 @@ input[type="range"] {
   align-items: center;
 }
 
+.file-action {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(55, 234, 255, 0.42);
+  border-radius: var(--radius);
+  padding: 0.68rem 0.9rem;
+  color: var(--text-primary);
+  background: rgba(55, 234, 255, 0.08);
+  font-size: 0.85rem;
+  font-weight: 850;
+  text-align: center;
+  cursor: pointer;
+}
+
+.file-action input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .primary-action,
 .secondary-action,
 .danger-action {

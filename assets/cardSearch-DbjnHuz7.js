@@ -1,1 +1,0 @@
-function e({card:e,ownedQuantity:t=0,destination:n=`main`,requestedSection:r}){return{scryfallId:e.scryfallId,oracleId:e.oracleId,name:e.name,manaCost:e.manaCost,manaValue:e.manaValue,typeLine:e.typeLine,oracleText:e.oracleText,colorIdentity:e.colorIdentity,roleTags:e.roles,customTags:[],notes:``,owned:t>0,destination:n,requestedSection:r}}export{e as t};

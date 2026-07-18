@@ -1109,7 +1109,7 @@ export function DeckBuilderScreen() {
           }}
           onFindSimilar={() => {
             setStatusMessage(
-              "Find Similar will use local-only recommendation data in a later prompt.",
+              "Use Analyzer recommendations for local-only similar-card planning.",
             );
             setQuickMenuCardId("");
           }}

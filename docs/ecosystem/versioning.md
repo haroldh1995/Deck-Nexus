@@ -26,7 +26,7 @@ Prompt 2 does not rewrite the importer and does not reject legacy exports. It on
 
 Checksums use deterministic stable JSON ordering and ignore checksum fields themselves. Identical exported data produces the same checksum. Changing exported content changes the checksum.
 
-Checksums are integrity markers only. Cryptographic signing is not implemented yet; signature fields remain null placeholders.
+Checksums are integrity markers only. Cryptographic signing is not active; unsigned signature metadata remains explicitly null until a real signing contract exists.
 
 ## Migration Expectations
 

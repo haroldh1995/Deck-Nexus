@@ -140,8 +140,8 @@ export function AppShell() {
               element={
                 <FoundationScreen
                   title="Import Deck"
-                  status="Coming later"
-                  summary="Deck import results and unresolved card records are part of the local schema."
+                  status="Unavailable"
+                  summary="Deck import records are preserved locally, but full text-import UI is not active on this route yet. Use Search or Scanner to add cards without losing legacy import data."
                 />
               }
             />
@@ -151,8 +151,8 @@ export function AppShell() {
               element={
                 <FoundationScreen
                   title="Deck Groups"
-                  status="Coming later"
-                  summary="Local deck groups are modeled for organizing Commander decks."
+                  status="Local"
+                  summary="Deck group records are preserved locally for organization metadata. Current deck editing remains available through Library and Deck Builder."
                 />
               }
             />
@@ -161,8 +161,8 @@ export function AppShell() {
               element={
                 <FoundationScreen
                   title="Tags"
-                  status="Coming later"
-                  summary="Tags and categories are ready for decks, cards, owned cards, and analysis."
+                  status="Local"
+                  summary="Tag and category records are preserved locally for decks, cards, owned cards, and analysis metadata."
                 />
               }
             />
@@ -171,8 +171,8 @@ export function AppShell() {
               element={
                 <FoundationScreen
                   title="Test Deck"
-                  status="Coming later"
-                  summary="Goldfish and test-play tools will be added after the Deck Builder is complete."
+                  status="BoardState owned"
+                  summary="Gameplay testing and Dry Run simulation belong to BoardState. Deck Nexus can prepare immutable snapshot exports without claiming a session has started."
                 />
               }
             />

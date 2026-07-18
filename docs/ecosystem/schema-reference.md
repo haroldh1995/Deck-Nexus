@@ -53,13 +53,13 @@ Fields include collection metadata, owned cards, statistics, set summaries, colo
 
 ## Profile Snapshot
 
-Fields include local profile ID, optional display/avatar fields, appearance settings, scanner settings, accessibility settings, backup preferences, application preferences, favorite commander/color/archetype placeholders, and explicit null/empty Hub identity, friends, and multiplayer presence fields.
+Fields include local profile ID, optional display/avatar fields, appearance settings, scanner settings, accessibility settings, backup preferences, application preferences, favorite commander/color/archetype fields, and explicit null/empty Hub identity, friends, and multiplayer presence fields.
 
 Deck Nexus does not export Hub identity, friend graph, notifications, presence, or fake cloud IDs.
 
 ## Application, Export, Backup, and Manifest Metadata
 
-Application Metadata records Deck Nexus as producer, lists BoardState and Hub as supported future consumers, and records capabilities. It includes checksum and a null digital signature placeholder.
+Application Metadata records Deck Nexus as producer, lists BoardState and Hub as supported future consumers, and records capabilities. It includes checksum and explicitly unsigned digital-signature metadata.
 
 Export Metadata records export format and migration status.
 

@@ -8,7 +8,7 @@ export function FoundationScreen({
   summary,
 }: {
   title: string;
-  status: "Coming later";
+  status: "Local" | "Unavailable" | "BoardState owned";
   summary: string;
 }) {
   return (
