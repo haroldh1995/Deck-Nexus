@@ -6,15 +6,20 @@ import type {
   BoardStateHandoffRecord,
   BoardStateValidationResultRecord,
   BracketLock,
+  CardPriceReference,
+  CollectorFinish,
+  CollectorTradeStatus,
   CommanderColor,
   Deck,
   DeckCard,
   DeckGoal,
+  ImportResult,
   FavoriteItem,
   OwnedCard,
   OwnedDuplicateFlag,
   OwnedPrinting,
   OwnershipPreference,
+  PriceHistoryPoint,
   ScanBatch,
   ScanBatchDestination,
   ScanRecord,
@@ -23,11 +28,14 @@ import type {
   DecisionEvent,
   DeckVersion,
   ImmutableDeckSnapshotRecord,
+  ManualPriceOverride,
   RecommendationFeedback,
   ReplacementRecord,
+  StorageLocationDetail,
   UpgradeList,
   UpgradeListEntry,
 } from "../types/domain";
+import { normalizeFinish } from "../collector";
 import { createId, nowIso } from "../utils/ids";
 import type { AddDestination, ManualCardInput } from "../features/decks/builderTypes";
 import {
@@ -48,7 +56,18 @@ export type SettingsPatch = Partial<
 >;
 
 export type DeckMetadataPatch = Partial<
-  Pick<Deck, "name" | "notes" | "goals" | "bracketLock" | "tags" | "status">
+  Pick<
+    Deck,
+    | "name"
+    | "notes"
+    | "goals"
+    | "bracketLock"
+    | "tags"
+    | "status"
+    | "createdFrom"
+    | "originalImportText"
+    | "unresolvedImports"
+  >
 >;
 
 export type OwnedCardInput = {
@@ -63,6 +82,18 @@ export type OwnedCardInput = {
   colorIdentity?: CommanderColor[];
   imageUri?: string;
   legalities?: Record<string, string>;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  finish?: CollectorFinish;
+  language?: string;
+  condition?: string;
+  tradeStatus?: CollectorTradeStatus;
+  wantStatus?: OwnedCard["wantStatus"];
+  manualPriceOverride?: ManualPriceOverride;
+  storage?: StorageLocationDetail;
+  collectorFlags?: OwnedCard["collectorFlags"];
+  rarity?: string;
+  releasedAt?: string;
   tags?: string[];
   notes?: string;
   favorite?: boolean;
@@ -94,7 +125,7 @@ export interface BackupRestoreResult {
   tableResults: BackupRestoreTableResult[];
 }
 
-const currentDatabaseSchemaVersion = 7;
+const currentDatabaseSchemaVersion = 9;
 const fullBackupPackageVersion = "deck-nexus.full-backup.v1";
 const backupExcludedTables = new Set(["backups"]);
 
@@ -123,7 +154,10 @@ function dispatchRestoreEvents() {
     "deck-nexus:settings-updated",
     "deck-nexus:decks-updated",
     "deck-nexus:owned-cards-updated",
+    "deck-nexus:owned-updated",
     "deck-nexus:scan-batches-updated",
+    "deck-nexus:scanner-updated",
+    "deck-nexus:price-history-updated",
     "deck-nexus:snapshots-updated",
     "deck-nexus:boardstate-validation-updated",
     "deck-nexus:boardstate-handoff-updated",
@@ -300,6 +334,15 @@ export function createDeckCardFromInput(
     setName: input.setName,
     collectorNumber: input.collectorNumber,
     legalities: input.legalities,
+    prices: input.prices,
+    priceUpdatedAt: input.priceUpdatedAt ?? input.prices?.fetchedAt,
+    finish: input.finish,
+    language: input.language,
+    condition: input.condition,
+    manualPriceOverride: input.manualPriceOverride,
+    storage: input.storage,
+    rarity: input.rarity,
+    releasedAt: input.releasedAt,
     quantity: 1,
     section: cardSection,
     categories,
@@ -712,6 +755,21 @@ export async function updateDeckMetadata(
   return nextDeck;
 }
 
+export async function saveImportResult(
+  result: ImportResult,
+): Promise<ImportResult> {
+  const next: ImportResult = {
+    ...result,
+    originalText: result.originalText,
+    resolvedCards: result.resolvedCards,
+    unresolvedImports: result.unresolvedImports,
+  };
+
+  await db.importResults.put(next);
+  dispatchLocalEvent("deck-nexus:imports-updated");
+  return next;
+}
+
 export async function duplicateDeck(deckId: string): Promise<Deck> {
   const deck = await getDeck(deckId);
 
@@ -799,6 +857,9 @@ function createOwnedPrintingFromInput(
   }
 
   const printing = input.printing ?? {};
+  const finish = normalizeFinish(printing.finish ?? input.finish, printing.foil);
+  const prices = printing.prices ?? input.prices;
+  const manualPriceOverride = printing.manualPriceOverride ?? input.manualPriceOverride;
 
   return {
     id: printing.id ?? createId("printing"),
@@ -808,11 +869,21 @@ function createOwnedPrintingFromInput(
     setCode: printing.setCode ?? "local",
     setName: printing.setName ?? "Local Entry",
     collectorNumber: printing.collectorNumber ?? "",
-    language: printing.language ?? "en",
-    foil: printing.foil ?? false,
-    condition: printing.condition ?? "unspecified",
+    language: printing.language ?? input.language ?? "en",
+    foil: printing.foil ?? finish === "foil",
+    finish,
+    condition: printing.condition ?? input.condition ?? "unknown",
     quantityOwned: printing.quantityOwned ?? input.quantityOwned,
     imageUri: printing.imageUri ?? input.imageUri ?? "",
+    prices,
+    priceUpdatedAt: printing.priceUpdatedAt ?? input.priceUpdatedAt ?? prices?.fetchedAt,
+    manualPriceOverride,
+    tradeStatus: printing.tradeStatus ?? input.tradeStatus ?? "not_for_trade",
+    storageLocation: printing.storageLocation ?? input.storageLocation,
+    storage: printing.storage ?? input.storage,
+    collectorFlags: printing.collectorFlags ?? input.collectorFlags,
+    rarity: printing.rarity ?? input.rarity,
+    releasedAt: printing.releasedAt ?? input.releasedAt,
     lastScannedAt: printing.lastScannedAt,
   };
 }
@@ -845,12 +916,25 @@ export async function upsertOwnedCard(input: OwnedCardInput): Promise<OwnedCard>
     colorIdentity: input.colorIdentity ?? existing?.colorIdentity ?? [],
     imageUri: input.imageUri ?? existing?.imageUri,
     legalities: input.legalities ?? existing?.legalities,
+    prices: input.prices ?? existing?.prices,
+    priceUpdatedAt:
+      input.priceUpdatedAt ??
+      input.prices?.fetchedAt ??
+      existing?.priceUpdatedAt ??
+      existing?.prices?.fetchedAt,
+    manualPriceOverride: input.manualPriceOverride ?? existing?.manualPriceOverride,
+    tradeStatus: input.tradeStatus ?? existing?.tradeStatus ?? "not_for_trade",
+    wantStatus: input.wantStatus ?? existing?.wantStatus ?? "none",
     quantityOwned: Math.max(0, input.quantityOwned),
     printings,
     tags: input.tags ?? existing?.tags ?? [],
     notes: input.notes ?? existing?.notes ?? "",
     favorite: input.favorite ?? existing?.favorite ?? false,
     storageLocation: input.storageLocation ?? existing?.storageLocation ?? "",
+    storage: input.storage ?? existing?.storage,
+    collectorFlags: input.collectorFlags ?? existing?.collectorFlags,
+    rarity: input.rarity ?? existing?.rarity,
+    releasedAt: input.releasedAt ?? existing?.releasedAt,
     duplicateFlag:
       input.duplicateFlag ??
       (typeof existing?.duplicateFlag === "boolean"
@@ -922,6 +1006,56 @@ export async function deleteOwnedCard(ownedCardId: string): Promise<void> {
   });
 
   dispatchLocalEvent("deck-nexus:owned-updated");
+}
+
+export async function recordPriceHistoryPoint(
+  input: Omit<PriceHistoryPoint, "id" | "recordedAt"> & {
+    id?: string;
+    recordedAt?: string;
+  },
+): Promise<PriceHistoryPoint> {
+  if (!Number.isFinite(input.value) || input.value < 0) {
+    throw new Error("Price history value must be a non-negative number.");
+  }
+
+  const point: PriceHistoryPoint = {
+    id: input.id ?? createId("price-history"),
+    oracleId: input.oracleId,
+    scryfallId: input.scryfallId,
+    printingId: input.printingId,
+    finish: normalizeFinish(input.finish),
+    source: input.source,
+    sourceLabel: input.sourceLabel,
+    currency: input.currency,
+    value: Number(input.value.toFixed(2)),
+    recordedAt: input.recordedAt ?? nowIso(),
+  };
+
+  await db.priceHistory.put(point);
+  dispatchLocalEvent("deck-nexus:price-history-updated");
+  return point;
+}
+
+export async function listPriceHistoryForCard({
+  oracleId,
+  scryfallId,
+  printingId,
+  limit = 100,
+}: {
+  oracleId?: string;
+  scryfallId?: string;
+  printingId?: string;
+  limit?: number;
+}): Promise<PriceHistoryPoint[]> {
+  const points = await db.priceHistory.orderBy("recordedAt").reverse().toArray();
+  return points
+    .filter((point) => {
+      if (printingId && point.printingId === printingId) return true;
+      if (scryfallId && point.scryfallId === scryfallId) return true;
+      if (oracleId && point.oracleId === oracleId) return true;
+      return !printingId && !scryfallId && !oracleId;
+    })
+    .slice(0, Math.max(0, limit));
 }
 
 export async function listScanBatches(): Promise<ScanBatch[]> {
@@ -1038,11 +1172,27 @@ export async function applyScanBatchToOwned(batchId: string): Promise<number> {
       scryfallId: record.scryfallId,
       typeLine: record.typeLine,
       colorIdentity: record.colorIdentity,
+      prices: record.prices,
+      priceUpdatedAt: record.priceUpdatedAt ?? record.prices?.fetchedAt,
+      finish: record.finish,
+      language: record.language,
+      condition: record.condition,
+      rarity: record.rarity,
       duplicateFlag: "none",
       printing: {
         name: record.name,
         oracleId: record.oracleId,
         scryfallId: record.scryfallId,
+        setCode: record.setCode,
+        setName: record.setName,
+        collectorNumber: record.collectorNumber,
+        language: record.language,
+        foil: record.foil,
+        finish: record.finish,
+        condition: record.condition,
+        prices: record.prices,
+        priceUpdatedAt: record.priceUpdatedAt ?? record.prices?.fetchedAt,
+        rarity: record.rarity,
         quantityOwned: record.quantity,
         lastScannedAt: nowIso(),
       },

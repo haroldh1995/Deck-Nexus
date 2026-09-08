@@ -91,3 +91,11 @@ Must not implement early: unrelated UI redesigns or gameplay engine features.
 Dependencies: all prior prompts.
 
 Validation: full tests, production build, pushed commit, successful Pages deployment, live app verification.
+
+## Collector System Foundation
+
+Purpose: make pricing, collection value, printing metadata, trade comparison, and physical-card organization a permanent Deck Nexus responsibility.
+
+Status: implemented as local-first collector metadata and Scryfall price-reference support. Collector data is not a marketplace, does not include checkout flows, and remains separate from BoardState gameplay authority and immutable gameplay checksums.
+
+Validation: price parsing, missing/stale price handling, collection/deck/trade totals, backup/export preservation, and gameplay-checksum isolation tests.

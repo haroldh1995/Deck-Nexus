@@ -26,10 +26,6 @@
   text-shadow: 0 0 14px rgba(55, 234, 255, 0.7);
 }
 
-.app-root--home .bottom-command-bar {
-  display: none !important;
-}
-
 .home-menu-gear {
   position: fixed;
   top: max(0.86rem, env(safe-area-inset-top));

@@ -7,6 +7,7 @@ import {
   CheckSquare,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
   Filter,
   ImageIcon,
   Library,
@@ -18,6 +19,11 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import {
+  formatCurrency,
+  formatPriceFreshness,
+  selectReferencePrice,
+} from "../../collector";
 import { HolographicPanel } from "../../components/HolographicPanel";
 import { PageHeader } from "../../components/PageHeader";
 import { StatusPill } from "../../components/StatusPill";
@@ -73,6 +79,8 @@ interface DecoratedCardResult {
   legalInCommanderIdentity: boolean;
   recommendedSection: BuilderSectionId;
 }
+
+type CollectorSortMode = "none" | "price_asc" | "price_desc";
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -239,6 +247,7 @@ export function CardSearchScreen() {
   const [keyword, setKeyword] = useState("");
   const [scope, setScope] = useState<SearchScope>(context === "owned" ? "owned" : "all");
   const [view, setView] = useState<SearchView>("compact");
+  const [collectorSort, setCollectorSort] = useState<CollectorSortMode>("none");
   const [filterOpen, setFilterOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
@@ -287,8 +296,20 @@ export function CardSearchScreen() {
 
   const results = useMemo(() => {
     const next = decorateResults(page?.cards ?? [], { deck, ownedCards, manualSearch: true });
-    return applyLocalScope(next, scope, deck);
-  }, [deck, ownedCards, page, scope]);
+    const scoped = applyLocalScope(next, scope, deck);
+    if (collectorSort === "none") {
+      return scoped;
+    }
+    return [...scoped].sort((left, right) => {
+      const leftPrice = selectReferencePrice(left.card.prices).value;
+      const rightPrice = selectReferencePrice(right.card.prices).value;
+      const leftSortable = leftPrice ?? (collectorSort === "price_asc" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+      const rightSortable = rightPrice ?? (collectorSort === "price_asc" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+      return collectorSort === "price_asc"
+        ? leftSortable - rightSortable || left.card.name.localeCompare(right.card.name)
+        : rightSortable - leftSortable || left.card.name.localeCompare(right.card.name);
+    });
+  }, [collectorSort, deck, ownedCards, page, scope]);
   const deferredResults = useDeferredValue(results);
   const selectedCards = useMemo(() => Object.values(selectedCardsById), [selectedCardsById]);
   const primaryAction = useMemo(
@@ -591,6 +612,15 @@ export function CardSearchScreen() {
       rawText: card.name,
       typeLine: card.typeLine,
       colorIdentity: card.colorIdentity,
+      setCode: card.setCode,
+      setName: card.setName,
+      collectorNumber: card.collectorNumber,
+      language: card.lang,
+      foil: card.foil && !card.nonfoil,
+      finish: card.foil && !card.nonfoil ? "foil" : "nonfoil",
+      prices: card.prices,
+      priceUpdatedAt: card.prices?.fetchedAt,
+      rarity: card.rarity,
       status: "confirmed",
       confidence: 1,
       possibleMatches: [card.name],
@@ -819,6 +849,7 @@ export function CardSearchScreen() {
           : null}
         {deferredResults.map((result) => {
           const selected = Boolean(selectedCardsById[result.card.id]);
+          const price = selectReferencePrice(result.card.prices);
 
           return (
           <HolographicPanel
@@ -860,6 +891,10 @@ export function CardSearchScreen() {
                   </span>
                 ))}
                 <span className="badge">Set {result.card.setCode.toUpperCase()} #{result.card.collectorNumber}</span>
+                <span className={price.value === null ? "badge badge--warn" : "badge"}>
+                  <DollarSign aria-hidden="true" />
+                  {price.value === null ? "Price unavailable" : `${formatCurrency(price.value, price.currency)} nonfoil`}
+                </span>
               </div>
             </div>
             <div className="result-actions">
@@ -967,6 +1002,14 @@ export function CardSearchScreen() {
                   <option value="grid">Grid</option>
                 </select>
               </label>
+              <label>
+                Collector sort
+                <select value={collectorSort} onChange={(event) => setCollectorSort(event.target.value as CollectorSortMode)}>
+                  <option value="none">Default relevance</option>
+                  <option value="price_asc">Price low to high</option>
+                  <option value="price_desc">Price high to low</option>
+                </select>
+              </label>
             </div>
             <div className="form-actions">
               <button
@@ -1033,6 +1076,30 @@ export function CardSearchScreen() {
               <p>
                 <strong>Printing:</strong> {selectedCard.setName} #{selectedCard.collectorNumber}
               </p>
+              <div className="collector-detail-section" data-testid="card-detail-pricing">
+                <h3>
+                  <DollarSign aria-hidden="true" /> Collector / Price
+                </h3>
+                <p>
+                  <strong>Nonfoil:</strong>{" "}
+                  {formatCurrency(selectedCard.prices?.nonfoil, selectedCard.prices?.currency ?? "USD")}
+                </p>
+                <p>
+                  <strong>Foil:</strong>{" "}
+                  {formatCurrency(selectedCard.prices?.foil, selectedCard.prices?.currency ?? "USD")}
+                </p>
+                <p>
+                  <strong>Etched:</strong>{" "}
+                  {formatCurrency(selectedCard.prices?.etched, selectedCard.prices?.currency ?? "USD")}
+                </p>
+                <p>
+                  <strong>Selected printing:</strong>{" "}
+                  {selectedCard.setName} #{selectedCard.collectorNumber} - {selectedCard.foil && !selectedCard.nonfoil ? "foil" : "nonfoil"}
+                </p>
+                <p>
+                  <strong>Freshness:</strong> {formatPriceFreshness(selectedCard.prices)}
+                </p>
+              </div>
               <p className="scryfall-attribution">
                 <BookOpen aria-hidden="true" /> Card data and images provided by Scryfall. Deckstate is not endorsed by Scryfall.
               </p>

@@ -1,18 +1,15 @@
 import {
   lazy,
   Suspense,
-  useCallback,
   useState,
   type CSSProperties,
 } from "react";
 import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AppIcon } from "../components/AppIcon";
 import { HolographicPanel } from "../components/HolographicPanel";
-import { permanentHomeRoutes } from "../data/routes";
 import { getRecoverableScanBatch, updateScanBatch } from "../db/repositories";
 import { FoundationScreen } from "../features/foundation/FoundationScreen";
 import type { ScanBatch } from "../types/domain";
-import { preloadAppRoute } from "./routePreloaders";
 import { useSettings } from "./useSettings";
 
 const HomeScreen = lazy(async () => ({
@@ -48,6 +45,9 @@ const ExportScreen = lazy(async () => ({
 const DeckBuilderScreen = lazy(async () => ({
   default: (await import("../features/decks/DeckBuilderScreen")).DeckBuilderScreen,
 }));
+const ImportDeckScreen = lazy(async () => ({
+  default: (await import("../features/import/ImportDeckScreen")).ImportDeckScreen,
+}));
 
 function RouteLoading() {
   return (
@@ -63,7 +63,6 @@ export function AppShell() {
   const navigate = useNavigate();
   const isHomeRoute = location.pathname === "/";
   const [protectedBatch, setProtectedBatch] = useState<ScanBatch | null>(null);
-  const preloadRoute = useCallback((path: string) => preloadAppRoute(path), []);
 
   const textScale =
     settings.textSize === "large"
@@ -135,16 +134,7 @@ export function AppShell() {
             <Route path="/collections" element={<CardDirectoriesScreen kind="collections" />} />
             <Route path="/scan" element={<ScanCardsScreen />} />
             <Route path="/owned" element={<OwnedCardsScreen />} />
-            <Route
-              path="/import"
-              element={
-                <FoundationScreen
-                  title="Import Deck"
-                  status="Unavailable"
-                  summary="Deck import records are preserved locally, but full text-import UI is not active on this route yet. Use Search or Scanner to add cards without losing legacy import data."
-                />
-              }
-            />
+            <Route path="/import" element={<ImportDeckScreen />} />
             <Route path="/analyzer" element={<AnalyzerScreen />} />
             <Route
               path="/groups"
@@ -186,25 +176,6 @@ export function AppShell() {
           </Routes>
         </Suspense>
       </main>
-
-      {!isHomeRoute ? (
-        <nav className="bottom-command-bar" aria-label="Primary navigation">
-          {permanentHomeRoutes.map((route) => (
-            <NavLink
-              className={({ isActive }) =>
-                `bottom-command-bar__item${isActive ? " is-active" : ""}`
-              }
-              key={route.id}
-              onFocus={() => preloadRoute(route.path)}
-              onPointerEnter={() => preloadRoute(route.path)}
-              to={route.path}
-            >
-              <AppIcon name={route.icon} />
-              <span>{route.shortLabel}</span>
-            </NavLink>
-          ))}
-        </nav>
-      ) : null}
 
       {protectedBatch ? (
         <div className="builder-modal-backdrop" role="presentation">

@@ -7,7 +7,7 @@ This audit describes the current Deck Nexus web app as found in this repository.
 - App shell: React, Vite, React Router, lazy-loaded feature screens, `BrowserRouter` with GitHub Pages base-path support.
 - Deployment: GitHub Pages workflow in `.github/workflows/deploy-pages.yml`; it runs install, lint, unit tests, and `npm run build -- --mode github-pages`. The app ships a web manifest and service worker for an offline app shell.
 - Storage: Dexie/IndexedDB database named `deck-nexus-local`; settings are loaded through `SettingsProvider`.
-- Data source: Scryfall live/cache services plus a small local catalog for test and fallback flows. Prices and marketplace behavior are intentionally absent.
+- Data source: Scryfall live/cache services plus a small local catalog for test and fallback flows. Informational Scryfall price references are retained for collector views; marketplace checkout behavior is intentionally absent.
 - Home: mobile-first holographic orbit scene with local Home ordering and hidden IDs in settings.
 
 ## Feature Inventory
@@ -24,7 +24,7 @@ This audit describes the current Deck Nexus web app as found in this repository.
 - Directories: wishlist, upgrade lists, and custom collections.
 - Settings: interface/accessibility, local data, scanner, Scryfall cache, bracket defaults, and ecosystem readiness status.
 - Export: canonical Deck Snapshot, Collection Snapshot, Profile Snapshot, JSON, compressed JSON, ZIP package, Arena text exports, local full-backup export/restore, immutable snapshot exports, and BoardState handoff packages generated from local data.
-- Foundation routes: Import, Groups, Tags, and Test Deck show truthful local/unavailable status. They preserve schema boundaries without claiming unavailable BoardState or Hub behavior is live.
+- Foundation routes: Groups, Tags, and Test Deck show truthful local/unavailable status. Import is an active local workflow that parses common decklist formats into a review screen before saving a normal Deck Nexus deck.
 
 ## Route Inventory
 
@@ -37,7 +37,7 @@ This audit describes the current Deck Nexus web app as found in this repository.
 | `/search` | Card search | Scryfall cache/live, decks, owned cards | decks, owned cards, directories, undo | Yes plus Scryfall lookup | Card identity source later | No |
 | `/scan` | Scanner | settings, scanner batches, records | scanner batches, records, owned/deck cards | Yes plus camera/Scryfall | Collection/deck source later | No |
 | `/owned` | Owned cards | owned cards, printings | owned cards, printings | Yes | Collection export later | No |
-| `/import` | Import status | import schema | none in route currently | Yes | Import source later | No |
+| `/import` | Import deck | text, JSON, CSV, ZIP/package input; Scryfall cache/live; owned cards | decks, deck cards, import results, decision events | Yes plus optional Scryfall lookup | Import source later | No |
 | `/analyzer` | Analysis, Smart Build, Recommend | decks, analysis, owned cards | analysis, smart builds, versions | Yes | Planning signals later | No |
 | `/groups` | Groups status | group schema | none in route currently | Yes | No direct export | Hub organization later |
 | `/tags` | Tags status | tag schema | none in route currently | Yes | Optional metadata later | Hub metadata later |
@@ -60,15 +60,15 @@ Current snapshot/version support includes canonical local ecosystem exports, mut
 
 ### Deck Card
 
-`DeckCard` includes local `id`, `deckId`, `scryfallId`, `oracleId`, `name`, optional mana/type/text/color/image/printing/legalities fields, `quantity`, `section`, `categories`, `roleTags`, `customTags`, `notes`, `protected`, ownership counts, optional bracket/import/maybeboard/cut metadata, and timestamps.
+`DeckCard` includes local `id`, `deckId`, `scryfallId`, `oracleId`, `name`, optional mana/type/text/color/image/printing/legalities fields, optional cached price reference, manual reference value, finish/language/condition metadata, `quantity`, `section`, `categories`, `roleTags`, `customTags`, `notes`, `protected`, ownership counts, optional bracket/import/maybeboard/cut metadata, and timestamps.
 
 Sections are `main`, `commander`, `maybeboard`, and `cuts`.
 
 ### Owned Card and Printing
 
-`OwnedCard` tracks `id`, `oracleId`, `scryfallId`, `name`, card details, `quantityOwned`, `printings`, `tags`, `notes`, `favorite`, optional storage, duplicate flag, `deckUsage`, `lastScannedAt`, and timestamps.
+`OwnedCard` tracks `id`, `oracleId`, `scryfallId`, `name`, card details, cached price references, manual reference values, trade/want status, `quantityOwned`, `printings`, `tags`, `notes`, `favorite`, optional storage, collector flags, duplicate flag, `deckUsage`, `lastScannedAt`, and timestamps.
 
-`OwnedPrinting` tracks `id`, `scryfallId`, `oracleId`, `name`, set code/name, collector number, language, foil, condition, quantity, image URI, and last scanned timestamp.
+`OwnedPrinting` tracks `id`, `scryfallId`, `oracleId`, `name`, set code/name, collector number, language, foil, finish, condition, quantity, image URI, cached price reference, manual reference value, trade status, storage, collector flags, rarity/release metadata, and last scanned timestamp.
 
 ### Profile
 
@@ -86,11 +86,11 @@ There is no Hub identity profile, friend graph, notification routing, or profile
 
 `ExportHistory` stores format, file name, deck ID, and created timestamp.
 
-`BackupPackage` stores schema version, deck/owned counts, created timestamp, and a validated local full-backup payload. Full backups include user data tables except backup records themselves, avoid secrets and temporary transfer state, and restore additively unless overwrite is explicitly requested.
+`BackupPackage` stores schema version, deck/owned counts, created timestamp, and a validated local full-backup payload. Full backups include collector metadata and price history user data tables except backup records themselves, avoid secrets and temporary transfer state, and restore additively unless overwrite is explicitly requested.
 
 ### Settings
 
-`AppSettings` stores motion, Home performance/static/high-contrast/text settings, export and bracket defaults, scanner behavior, Scryfall cache/offline settings, and Home orbit customization.
+`AppSettings` stores motion, Home performance/static/high-contrast/text settings, export and bracket defaults, collector currency/high-value/freshness defaults, scanner behavior, Scryfall cache/offline settings, and Home orbit customization.
 
 ## Persistence Map
 
@@ -103,6 +103,8 @@ Dexie versions:
 - Version 5: BoardState validation result history.
 - Version 6: immutable deck snapshot history.
 - Version 7: BoardState handoff history.
+- Version 8: collector metadata indexes and non-destructive legacy foil-to-finish defaults.
+- Version 9: price history records for Scryfall/manual reference value snapshots.
 
 Additional browser storage:
 
@@ -118,3 +120,4 @@ Additional browser storage:
 - Cross-app launch and handoff architecture: implemented with file/manual local fallbacks and honest unconfirmed status when no real BoardState transport exists.
 - Hub-ready adapters: implemented for profile, friends, notifications, backups, app links, and capabilities. Hub remains not connected.
 - Honest status surface: implemented in Settings as local readiness only.
+- Collector value foundation: implemented using Scryfall price references, manual values, price freshness, collection/deck value summaries, trade comparison, storage/condition/language/finish metadata, and local price history. Price data remains non-gameplay metadata and does not affect BoardState gameplay checksums.

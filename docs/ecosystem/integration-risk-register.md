@@ -10,6 +10,10 @@
 | Missing oracle/Scryfall IDs | Manual local entries can synthesize local IDs | Snapshot exports, rules bridge | Require confidence tier and unresolved state before BoardState export. |
 | Exact printing versus gameplay identity ambiguity | Deck cards and owned printings both store print data | Snapshot exports | Separate gameplay identity from preferred/owned printing metadata. |
 | Ownership state mixed with legality state | Deck cards include owned/missing counts | BoardState bridge | Keep ownership metadata out of gameplay legality input unless explicitly requested. |
+| Price data mixed with gameplay identity | Collector prices now exist on cards, printings, decks, and collection summaries | BoardState bridge, immutable snapshots | Keep price data out of gameplay checksums and BoardState gameplay envelopes unless a future non-gameplay metadata contract explicitly allows it. |
+| Stale or missing price data misread as exact value | Scryfall price references can be unavailable, stale, or cached; manual values can differ from market references | Collector tools | Display source/fetch timestamp and missing-price counts; never treat unknown as zero or condition-adjust without a real model. |
+| Exact printing and finish mismatch | Owned cards can track selected printing, finish, language, and condition independently from oracle identity | Collector tools, exports | Prefer printing-specific price when known, otherwise label price as non-specific. Preserve legacy foil boolean while migrating to finish. |
+| Trade value overconfidence | Trade comparison can compare reference prices but cannot judge preference, scarcity, condition premiums, or local demand | Collector tools | Use neutral wording and allow clearly labeled manual values without declaring a trade good or bad. |
 | Maybeboard/cuts mixed with deck model | Deck contains `cards`, `maybeboard`, and `cuts` arrays | Snapshot exports | Export only selected gameplay zones; include side planning zones separately. |
 | Local notes accidentally exported to gameplay | Notes exist on deck/card/list records | Snapshot exports, Hub | Add export privacy filters and explicit metadata flags. |
 | Local legality guidance differs from BoardState | Analyzer and bracket checks are local | Rules bridge | Display local guidance only; BoardState remains authority. |
@@ -36,7 +40,7 @@
 | False import/session success | Opening a URL, file download, clipboard copy, or share sheet could be misread as success | Cross-app launch | Handoff history records unconfirmed states unless BoardState acknowledgment verifies import or session creation. |
 | Return payload trust | Future BoardState returns could be malformed, stale, wrong-origin, or checksum mismatched | Cross-app launch | Validate schema, request ID, correlation ID, snapshot ID, gameplay checksum, source app, status, and return type. |
 | Oversized handoff payloads | Full snapshots can exceed URL, QR, or clipboard limits | Cross-app launch | Use payload-size checks and redirect large payloads to file/manual export. |
-| Service worker stale data | No service worker source found, but browser cache and Pages fallback assets can stale | Deployment | Verify deployed asset hashes after each prompt. |
+| Service worker stale data | Service worker exists and caches the app shell and same-origin assets | Deployment | Update cache version when deployment-sensitive assets change and verify deployed asset hashes after each prompt. |
 | IndexedDB migration risk | DB has non-destructive stores for BoardState validation, immutable snapshots, and handoff history | All data prompts | Avoid destructive migrations; add stores only when necessary. |
 | Backup/restore conflict risk | Backup contents are opaque | Snapshot/Hub | Add schema-aware conflict policy later. |
 | GitHub Pages base-path risk | Vite base changes in `github-pages` mode | Deployment | Keep route and asset verification in release checks. |

@@ -2,6 +2,10 @@ import type {
   AppSettings,
   Bracket,
   BracketLock,
+  CardPriceReference,
+  CollectionValueSummary,
+  CollectorFinish,
+  CollectorTradeStatus,
   CommanderColor,
   Deck,
   DeckAnalysis,
@@ -13,8 +17,10 @@ import type {
   FavoriteItem,
   OwnedCard,
   OwnedDuplicateFlag,
+  ManualPriceOverride,
   ScanBatch,
   ScanRecord,
+  StorageLocationDetail,
   SmartBuildResult,
 } from "../../types/domain";
 import type { EcosystemAppId } from "../contracts/ecosystemContracts";
@@ -155,6 +161,10 @@ export interface SnapshotPrintingSelection {
   setName?: string;
   collectorNumber?: string;
   imageUri?: string;
+  finish?: CollectorFinish;
+  language?: string;
+  condition?: string;
+  rarity?: string;
 }
 
 export interface SnapshotDeckCard extends SchemaVersionMetadata {
@@ -214,8 +224,18 @@ export interface SnapshotOwnedPrinting extends SchemaVersionMetadata {
   language: string;
   foil: boolean;
   condition: string;
+  finish?: CollectorFinish;
   quantityOwned: number;
   imageUri: string;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  manualPriceOverride?: ManualPriceOverride;
+  tradeStatus?: CollectorTradeStatus;
+  storageLocation?: string;
+  storage?: StorageLocationDetail;
+  collectorFlags?: OwnedCard["collectorFlags"];
+  rarity?: string;
+  releasedAt?: string;
   purchaseMetadata: null;
   lastScannedAt?: string;
   createdAt: string;
@@ -238,9 +258,19 @@ export interface SnapshotOwnedCard extends SchemaVersionMetadata {
   colorIdentity: CommanderColor[];
   imageUri?: string;
   legalities?: Record<string, string>;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  manualPriceOverride?: ManualPriceOverride;
+  tradeStatus?: CollectorTradeStatus;
+  wantStatus?: OwnedCard["wantStatus"];
   tags: string[];
   notes: string;
   favorite: boolean;
+  storageLocation?: string;
+  storage?: StorageLocationDetail;
+  collectorFlags?: OwnedCard["collectorFlags"];
+  rarity?: string;
+  releasedAt?: string;
   duplicateFlag: OwnedDuplicateFlag;
   deckUsage: Record<string, number>;
   lastScannedAt?: string;
@@ -330,6 +360,7 @@ export interface CollectionSnapshot extends SchemaVersionMetadata {
     uniqueCards: number;
     totalQuantity: number;
     totalPrintings: number;
+    estimatedValue: CollectionValueSummary;
   };
   setSummaries: Record<string, number>;
   colorSummaries: Record<string, number>;
@@ -397,6 +428,9 @@ export interface ProfileSnapshot extends SchemaVersionMetadata {
   applicationPreferences: Pick<
     AppSettings,
     | "defaultExportFormat"
+    | "collectorCurrency"
+    | "collectorHighValueThreshold"
+    | "collectorPriceFreshnessDays"
     | "defaultBracketLock"
     | "defaultOwnershipPreference"
     | "homeOrbitOrder"

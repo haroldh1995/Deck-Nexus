@@ -1,6 +1,6 @@
 # Export Contracts
 
-Deck Nexus now has a local canonical export foundation for future BoardState and Hub consumers. These exports do not include gameplay state, BoardState validation, Hub identity, friends, notifications, cloud sync, prices, or marketplace data.
+Deck Nexus now has a local canonical export foundation for future BoardState and Hub consumers. These exports do not include gameplay state, BoardState validation, Hub identity, friends, notifications, cloud sync, or marketplace checkout data. Collection/profile exports may include collector price references as non-gameplay metadata, while BoardState gameplay envelopes exclude price data from gameplay identity.
 
 ## Export Objects
 
@@ -19,6 +19,12 @@ Deck Nexus now has a local canonical export foundation for future BoardState and
 - Compressed JSON: gzip-compressed canonical JSON where the platform supports `CompressionStream`; otherwise the byte output remains valid JSON bytes for compatibility.
 - ZIP package: uncompressed ZIP containing `deck-snapshot.json`, `collection-snapshot.json`, `profile-snapshot.json`, `metadata.json`, and `manifest.json`.
 - MTG Arena text: generated from the canonical Deck Snapshot. Existing Arena modes are preserved as all cards, optimal including missing cards, and owned-only.
+
+Collector price references:
+
+- Collection and backup exports may preserve cached price records, source labels, fetch timestamps, manual reference values, finish, language, condition, storage, trade status, and collector flags.
+- BoardState Advanced Gameplay and Dry Run envelopes exclude price data, marketplace data, provider links, trade status, storage location, and collection value from gameplay payloads.
+- MTG Arena export remains plain Arena deck text and never includes prices.
 
 ## Ownership
 

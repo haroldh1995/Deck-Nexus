@@ -27,7 +27,7 @@ function getDirectoryTitle(kind: DirectoryKind): string {
 
 function getDirectorySummary(kind: DirectoryKind): string {
   if (kind === "wishlist") {
-    return "Wanted cards for planning. No prices, vendors, or marketplace links.";
+    return "Wanted cards for planning with optional collector value. Checkout, vendors, and marketplace links are not part of this list.";
   }
   if (kind === "upgradeLists") {
     return "Deck-specific and general upgrade plans created from Search.";

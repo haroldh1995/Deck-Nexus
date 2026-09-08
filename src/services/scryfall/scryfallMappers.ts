@@ -1,5 +1,6 @@
 import type { CommanderColor, DeckstateScryfallCard } from "../../types/domain";
 import type { AddDestination, BuilderSectionId, ManualCardInput } from "../../features/decks/builderTypes";
+import { createScryfallPriceReference } from "../../collector";
 import { pickCardImage, getCardImageUris, mapImageUris } from "./scryfallImages";
 import type { ScryfallCard, ScryfallCardFace } from "./scryfallTypes";
 
@@ -77,6 +78,7 @@ export function mapScryfallCard(card: ScryfallCard): DeckstateScryfallCard {
     textless: card.textless,
     booster: card.booster,
     storySpotlight: card.story_spotlight,
+    prices: createScryfallPriceReference(card.prices, now),
     cardFaces,
     allParts: card.all_parts?.map((part) => ({
       id: part.id,
@@ -116,6 +118,13 @@ export function scryfallCardToManualInput({
     setName: card.setName,
     collectorNumber: card.collectorNumber,
     legalities: card.legalities,
+    prices: card.prices,
+    priceUpdatedAt: card.prices?.fetchedAt,
+    finish: card.foil && !card.nonfoil ? "foil" : "nonfoil",
+    language: card.lang,
+    condition: "unknown",
+    rarity: card.rarity,
+    releasedAt: card.releasedAt,
     roleTags,
     customTags: [],
     notes: "",
@@ -125,7 +134,7 @@ export function scryfallCardToManualInput({
   };
 }
 
-export function hasNoPriceFields(value: unknown): boolean {
+export function hasNoMarketplaceLinks(value: unknown): boolean {
   const serialized = JSON.stringify(value);
-  return !serialized.includes("prices") && !serialized.includes("purchase_uris");
+  return !/purchase_uris|tcgplayer|cardmarket|cardhoarder|cardkingdom/i.test(serialized);
 }

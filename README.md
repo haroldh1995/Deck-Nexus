@@ -130,7 +130,7 @@ The Card Search route is now a live Scryfall-backed, local-first search surface.
 - New Deck from Search asks how selected cards should be used, validates commander eligibility, and can create the deck while staying in Search by default.
 - Existing deck destinations rank compatible decks first but keep incompatible decks selectable with explicit Commander rule review.
 - Owned Cards registration uses exact Scryfall printing data already available in the result, updates owned badges through local persistence, and stays in Search.
-- Wishlist is a first-class planning list, not a marketplace. It stores desired quantity, priority, intended deck data, notes, tags, source query, and ownership state without prices or vendor links.
+- Wishlist is a first-class planning list, not a marketplace. It stores desired quantity, priority, intended deck data, notes, tags, source query, ownership state, and optional collector price references without vendor checkout links.
 - Upgrade Lists and Custom Collections are local directories that can be created from Search, favorited, and revisited from the Library organization links.
 - Successful destination actions show a confirmation with Undo and View Destination. Undo restores persisted data such as deck additions, owned-card changes, wishlist quantity merges, favorites, list entries, collections, and new decks where safe.
 - Search-state preservation includes raw input, committed query, filters, scope, result page, loaded results, result scroll position, selected cards, active deck context, scanner correction context, and import correction context.
@@ -157,11 +157,18 @@ Cache and offline behavior:
 - Offline mode displays an offline/cached data status and does not pretend results are live.
 - Reconnecting restores live search without requiring a full app reload.
 
-No-price policy:
+Collector pricing policy:
 
-- Deck Nexus maps Scryfall Card objects into a normalized domain model and intentionally drops `prices` and `purchase_uris`.
-- The UI never displays USD, EUR, TIX, TCGplayer, Cardmarket, Cardhoarder, vendor links, marketplace values, or collection values.
-- Card data and images are attributed to Scryfall without implying endorsement.
+- Deck Nexus maps Scryfall Card objects into a normalized domain model and keeps supported Scryfall price references while dropping `purchase_uris`.
+- Price data is informational collector metadata for card detail, deck value, collection value, printing comparison, and trade comparison. It is separate from Commander legality, BoardState validation, and gameplay identity.
+- Unknown prices are displayed as unavailable, not as zero, and every displayed market reference is traceable to its source and fetch timestamp.
+- Card data, images, and Scryfall price references are attributed to Scryfall without implying endorsement. Deck Nexus does not provide checkout or marketplace vendor flows.
+
+## Import Deck
+
+Import Deck is a local review-first workflow. It accepts pasted plain text, MTG Arena lists, JSON Deck Nexus exports/snapshots/shared-contract packages, local full-backup JSON, CSV, and Deck Nexus uncompressed ZIP packages. The importer resolves exact Scryfall IDs where present, then set plus collector number, then exact/fuzzy card names, with the local catalog as an offline fallback.
+
+Parsed cards always land in Import Review before anything is saved. The review shows detected format, commanders, resolved/unresolved/ambiguous entries, duplicate lines, ownership state, local bracket guidance, estimated reference value, and cards without pricing. Unresolved cards are preserved unless the user removes them, and import confirmation creates a normal Commander deck with `createdFrom: "deck_import"`.
 
 ## Owned Cards
 
@@ -241,11 +248,11 @@ Search-created directories are stored in IndexedDB and are separate relationship
 - Upgrade Lists track name, description, related deck, goal/bracket metadata, tags, favorite state, Home visibility, archive state, and card entries with role, priority, suggested replacement, notes, and completion state.
 - Custom Collections track name, description, tags, favorite state, Home visibility, icon, associated decks, sort mode, archive state, and card entries with quantity, notes, tags, custom status, ownership state, and source query.
 - Favorites can store card favorites created from Search without duplicating existing favorite records.
-- The Deck Library header links to Wishlist, Upgrade Lists, and Custom Collections. These screens read the same IndexedDB stores populated by Search and include no commerce information.
+- The Deck Library header links to Wishlist, Upgrade Lists, and Custom Collections. These screens read the same IndexedDB stores populated by Search and may include collector reference values without checkout or vendor flows.
 
 ## Analyzer, Recommendations, And Smart Build
 
-Analyzer, Recommendations, and Smart Build are local-first Commander planning tools. They never show prices, never use marketplace links, and automatic suggestions stay inside commander color identity.
+Analyzer, Recommendations, and Smart Build are local-first Commander planning tools. Analyzer can show collector reference value separately from deck health, while recommendations remain legality, synergy, goal, and bracket driven unless a user explicitly chooses budget/value preferences.
 
 Analyzer:
 
@@ -309,4 +316,4 @@ public/assets  App assets
 
 ## Current Deferred Work
 
-EDHREC-compatible external datasets, deeper import/export tooling, groups/tags management depth, backup/restore flows, and goldfish/test-play simulation remain future work. Scanner recognition now uses live camera capture, local frame analysis, OCR, Scryfall resolution, and persistent batch recovery; future scanner depth can add stronger perspective correction and richer local visual fingerprint databases without changing the user-facing batch model. The current implementations remain local-first, no-price, no-marketplace foundations designed to deepen without required login or commerce links.
+EDHREC-compatible external datasets, groups/tags management depth, backup/restore depth, and goldfish/test-play simulation remain future work. Scanner recognition now uses live camera capture, local frame analysis, OCR, Scryfall resolution, asynchronous collector price enrichment, and persistent batch recovery; future scanner depth can add stronger perspective correction and richer local visual fingerprint databases without changing the user-facing batch model. The current implementations remain local-first collector foundations with informational prices and no marketplace checkout or commerce links.

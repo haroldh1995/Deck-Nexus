@@ -23,8 +23,9 @@ const deckStartOptions = [
   },
   {
     title: "Import Decklist",
-    status: "Unavailable",
-    summary: "Full decklist import UI is not active yet. Existing import records remain preserved.",
+    status: "Ready",
+    summary: "Paste or load common decklist formats, review unresolved cards, then save into the normal builder.",
+    actionPath: "/import",
   },
   {
     title: "Build From Owned Cards",
@@ -99,12 +100,17 @@ export function CreateDeckScreen() {
             <div>
               <h2>{option.title}</h2>
               <StatusPill
-                tone={option.status === "Unavailable" ? "violet" : "cyan"}
+                tone={option.status === "Manual" ? "violet" : "cyan"}
               >
                 {option.status}
               </StatusPill>
             </div>
             <p>{option.summary}</p>
+            {"actionPath" in option ? (
+              <button type="button" onClick={() => navigate(option.actionPath)}>
+                Open Import Deck
+              </button>
+            ) : null}
           </HolographicPanel>
         ))}
       </div>

@@ -2,6 +2,7 @@ import type {
   BoardStateValidationResultRecord,
   Bracket,
   BracketLock,
+  CollectorFinish,
   CommanderColor,
   Deck,
   DeckCardSection,
@@ -83,6 +84,8 @@ export interface SnapshotCardEntry {
   readonly collectorNumber?: string;
   readonly language?: string;
   readonly foil?: boolean;
+  readonly finish?: CollectorFinish;
+  readonly condition?: string;
   readonly manaCost?: string;
   readonly manaValue?: number;
   readonly typeLine?: string;

@@ -1,6 +1,8 @@
 import { localCardCatalog, type CatalogCard } from "../../data/cardCatalog";
 import { resolveScryfallCardName, searchScryfallCards } from "../../services/scryfall";
 import type {
+  CardPriceReference,
+  CollectorFinish,
   DeckstateScryfallCard,
   ScanBatchDestination,
   ScanRecordStatus,
@@ -22,6 +24,13 @@ export interface ScannerResolvedCard {
   setCode?: string;
   setName?: string;
   collectorNumber?: string;
+  language?: string;
+  foil?: boolean;
+  finish?: CollectorFinish;
+  condition?: string;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  rarity?: string;
   imageUri?: string;
   capturedThumbnail?: string;
   frameFingerprint?: string;
@@ -46,6 +55,13 @@ interface ScannerTestCard {
   setCode?: string;
   setName?: string;
   collectorNumber?: string;
+  language?: string;
+  foil?: boolean;
+  finish?: CollectorFinish;
+  condition?: string;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  rarity?: string;
   imageUri?: string;
   confidence?: number;
 }
@@ -194,6 +210,12 @@ function fromScryfallCard({
     setCode: card.setCode,
     setName: card.setName,
     collectorNumber: card.collectorNumber,
+    language: card.lang,
+    foil: card.foil && !card.nonfoil,
+    finish: card.foil && !card.nonfoil ? "foil" : "nonfoil",
+    prices: card.prices,
+    priceUpdatedAt: card.prices?.fetchedAt,
+    rarity: card.rarity,
     imageUri: cardImage(card),
     capturedThumbnail,
     frameFingerprint,
@@ -357,6 +379,13 @@ export async function recognizeScannerFrame({
       setCode: harnessCard.setCode,
       setName: harnessCard.setName,
       collectorNumber: harnessCard.collectorNumber,
+      language: harnessCard.language,
+      foil: harnessCard.foil,
+      finish: harnessCard.finish,
+      condition: harnessCard.condition,
+      prices: harnessCard.prices,
+      priceUpdatedAt: harnessCard.priceUpdatedAt ?? harnessCard.prices?.fetchedAt,
+      rarity: harnessCard.rarity,
       imageUri: harnessCard.imageUri,
       capturedThumbnail,
       frameFingerprint: analysis.fingerprint,

@@ -66,6 +66,162 @@ async function addCardToSection(
   await page.getByRole("button", { name: "Save Card" }).click();
 }
 
+function rawScryfallCard(name: string, overrides: Record<string, unknown> = {}) {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const commander = name.includes("Anim Pakal");
+
+  return {
+    object: "card",
+    id: `e2e-${slug}`,
+    oracle_id: `e2e-oracle-${slug}`,
+    name,
+    lang: "en",
+    released_at: "2023-11-17",
+    uri: `https://api.scryfall.com/cards/e2e-${slug}`,
+    scryfall_uri: `https://scryfall.com/card/e2e/${slug}`,
+    layout: "normal",
+    highres_image: false,
+    image_status: "placeholder",
+    image_uris: {
+      small: "https://example.test/small.jpg",
+      normal: "https://example.test/normal.jpg",
+    },
+    mana_cost: commander ? "{1}{R}{W}" : "{1}",
+    cmc: commander ? 3 : 1,
+    type_line: commander ? "Legendary Creature - Human Soldier" : "Artifact",
+    oracle_text: commander ? "Whenever you attack with one or more non-Gnome creatures, create tapped Gnome tokens." : "{T}: Add mana.",
+    colors: commander ? ["R", "W"] : [],
+    color_identity: commander ? ["R", "W"] : [],
+    keywords: [],
+    legalities: { commander: "legal" },
+    games: ["paper"],
+    foil: true,
+    nonfoil: true,
+    set: "cmm",
+    set_name: "Commander Masters",
+    collector_number: "396",
+    rarity: "uncommon",
+    prices: {
+      usd: "2.50",
+      usd_foil: null,
+      usd_etched: null,
+      eur: null,
+      eur_foil: null,
+      tix: null,
+    },
+    ...overrides,
+  };
+}
+
+async function mockScryfallForImport(page: Page) {
+  await page.route("https://api.scryfall.com/cards/search**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        object: "list",
+        total_cards: 1,
+        has_more: false,
+        data: [rawScryfallCard("Sol Ring")],
+      }),
+    });
+  });
+
+  await page.route("https://api.scryfall.com/cards/named**", async (route) => {
+    const url = new URL(route.request().url());
+    const requested = url.searchParams.get("exact") ?? url.searchParams.get("fuzzy") ?? "Sol Ring";
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(rawScryfallCard(requested)),
+    });
+  });
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  const metrics = await page.evaluate(() => {
+    const scrollingElement = document.scrollingElement ?? document.documentElement;
+    return {
+      horizontalOverflow: scrollingElement.scrollWidth - scrollingElement.clientWidth,
+      bodyOverflow: document.body.scrollWidth - document.body.clientWidth,
+    };
+  });
+
+  expect(metrics.horizontalOverflow).toBeLessThanOrEqual(2);
+  expect(metrics.bodyOverflow).toBeLessThanOrEqual(2);
+}
+
+async function installScannerCameraHarness(page: Page) {
+  await page.addInitScript(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 960;
+    canvas.height = 1280;
+    const context = canvas.getContext("2d");
+    const draw = () => {
+      if (!context) {
+        return;
+      }
+      context.fillStyle = "#031224";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#f5f0dd";
+      context.fillRect(260, 150, 440, 760);
+      context.strokeStyle = "#39e7ff";
+      context.lineWidth = 14;
+      context.strokeRect(260, 150, 440, 760);
+    };
+    draw();
+    window.setInterval(draw, 180);
+    const stream = canvas.captureStream(12);
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia: async () => stream,
+        enumerateDevices: async () => [
+          {
+            kind: "videoinput",
+            deviceId: "fake-rear-camera",
+            groupId: "fake",
+            label: "Back Camera",
+          },
+        ],
+      },
+    });
+    Object.defineProperty(window, "isSecureContext", {
+      configurable: true,
+      value: true,
+    });
+    class FakeAudioContext {
+      currentTime = 0;
+      destination = {};
+      state = "running";
+      resume = async () => undefined;
+      close = async () => undefined;
+      createOscillator = () => ({
+        type: "triangle",
+        frequency: {
+          setValueAtTime: () => undefined,
+          exponentialRampToValueAtTime: () => undefined,
+        },
+        connect: () => undefined,
+        start: () => undefined,
+        stop: () => undefined,
+        disconnect: () => undefined,
+        onended: undefined,
+      });
+      createGain = () => ({
+        gain: {
+          setValueAtTime: () => undefined,
+          exponentialRampToValueAtTime: () => undefined,
+        },
+        connect: () => undefined,
+        disconnect: () => undefined,
+      });
+    }
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: FakeAudioContext,
+    });
+  });
+}
+
 test.describe("Deck Nexus local-first flow", () => {
   test("opens every permanent Home command route from the holographic orbit keyboard controls", async ({
     page,
@@ -285,6 +441,64 @@ test.describe("Deck Nexus local-first flow", () => {
     await expect(page.locator(".nexus-orbit--static")).toBeVisible();
   });
 
+  test("keeps Scanner and Import Deck mobile layouts within the viewport and saves imported decks after review", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installScannerCameraHarness(page);
+
+    await page.goto("/scan");
+    await expect(page.getByRole("heading", { name: "Scan Cards" })).toBeVisible();
+    await expect(page.locator(".bottom-command-bar")).toHaveCount(0);
+    await page.getByRole("button", { name: /Allow Camera/ }).first().click();
+    await expect(page.getByText(/Camera live/i)).toBeVisible();
+    await expect(page.getByText(/Place cards inside the scan area/i)).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    const scannerLayout = await page.evaluate(() => {
+      const frame = document.querySelector(".scanner-frame") as HTMLElement | null;
+      const guidance = document.querySelector(".scanner-guidance") as HTMLElement | null;
+      const controls = document.querySelector(".scanner-actions") as HTMLElement | null;
+      return {
+        frameWidth: frame?.getBoundingClientRect().width ?? 0,
+        frameHeight: frame?.getBoundingClientRect().height ?? 0,
+        guidanceWidth: guidance?.getBoundingClientRect().width ?? 0,
+        controlsWidth: controls?.getBoundingClientRect().width ?? 0,
+      };
+    });
+    expect(scannerLayout.frameWidth).toBeGreaterThan(300);
+    expect(scannerLayout.frameWidth).toBeLessThanOrEqual(390);
+    expect(scannerLayout.frameHeight).toBeLessThan(320);
+    expect(scannerLayout.guidanceWidth).toBeGreaterThan(300);
+    expect(scannerLayout.controlsWidth).toBeGreaterThan(300);
+
+    await mockScryfallForImport(page);
+    await page.goto("/import");
+    await expect(page.getByRole("heading", { name: "Import Deck" })).toBeVisible();
+    await expect(page.locator(".bottom-command-bar")).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+
+    await page.getByLabel("Decklist source").fill(`Commander
+1 Anim Pakal, Thousandth Moon
+
+Deck
+1 Sol Ring (CMM) 396
+1 Arcane Signet`);
+    await page.getByRole("button", { name: /Parse and Review/i }).click();
+    await expect(page.getByText(/Import review is ready/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("import-review")).toContainText("Anim Pakal, Thousandth Moon");
+    await expect(page.getByTestId("import-review")).toContainText("Estimated value");
+    await expectNoHorizontalOverflow(page);
+
+    await page.getByRole("button", { name: /^Import Deck$/ }).click();
+    await expect(page).toHaveURL(/deck-builder/);
+    await expect(page.getByRole("heading", { name: "Imported Deck" })).toBeVisible();
+    await expect(page.getByText("Sol Ring").first()).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Imported Deck" })).toBeVisible();
+  });
+
   test("uses Card Search, Owned Cards, Scanner feeder persistence, and Analyzer Smart Build", async ({
     page,
   }) => {
@@ -498,9 +712,11 @@ test.describe("Deck Nexus local-first flow", () => {
     await page.reload();
     await expect(page.getByText(/Unfinished scan batch found/i)).toBeVisible();
     await expect(page.locator(".scanner-batch-summary").getByText(/2 records/i)).toBeVisible();
+    await page.getByRole("button", { name: /Allow Camera/ }).first().click();
+    await expect(page.getByText(/Camera live/i)).toBeVisible();
+    await page.getByText("Manual fallback and feeder controls").click();
     await page.getByLabel("Scanner mode").selectOption("stacking_feeder");
     await page.getByRole("button", { name: "Start Batch" }).click();
-    await page.getByText("Manual fallback and feeder controls").click();
     await page.getByRole("button", { name: "Simulate Scan" }).click();
     await page.getByRole("button", { name: "Too-Close Cue" }).click();
     await expect(page.getByText(/Too-close cue detected/i)).toBeVisible();

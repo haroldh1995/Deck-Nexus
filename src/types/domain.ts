@@ -33,6 +33,146 @@ export type OwnershipPreference =
   | "owned_only"
   | "allow_missing";
 
+export type CollectorCurrency = "USD" | "EUR" | "GBP" | "TIX";
+
+export type CollectorFinish = "nonfoil" | "foil" | "etched" | "other";
+
+export type CollectorTradeStatus =
+  | "not_for_trade"
+  | "for_trade"
+  | "possibly_for_trade"
+  | "want_to_keep"
+  | "high_priority_keep";
+
+export type PriceFetchStatus =
+  | "current"
+  | "recently_updated"
+  | "stale"
+  | "unavailable"
+  | "offline_cached"
+  | "fetch_failed";
+
+export type PriceSourceId =
+  | "scryfall"
+  | "manual"
+  | "tcgplayer"
+  | "cardmarket"
+  | "cardkingdom"
+  | "unknown";
+
+export interface CardPriceReference {
+  source: PriceSourceId;
+  sourceLabel: string;
+  currency: CollectorCurrency;
+  nonfoil: number | null;
+  foil: number | null;
+  etched: number | null;
+  eur?: number | null;
+  eurFoil?: number | null;
+  tix?: number | null;
+  market?: number | null;
+  low?: number | null;
+  mid?: number | null;
+  high?: number | null;
+  fetchedAt: string;
+  sourceUpdatedAt?: string;
+  staleAt: string;
+  status: PriceFetchStatus;
+  error?: string;
+}
+
+export interface ManualPriceOverride {
+  value: number;
+  currency: CollectorCurrency;
+  reason: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StorageLocationDetail {
+  name: string;
+  container?: string;
+  page?: string;
+  slot?: string;
+  notes?: string;
+}
+
+export interface CollectorCopyFlags {
+  signed?: boolean;
+  altered?: boolean;
+  misprint?: boolean;
+  serialized?: boolean;
+  stamped?: boolean;
+  promo?: boolean;
+  artistProof?: boolean;
+  note?: string;
+}
+
+export interface PriceHistoryPoint {
+  id: string;
+  oracleId?: string;
+  scryfallId?: string;
+  printingId?: string;
+  finish: CollectorFinish;
+  source: PriceSourceId;
+  sourceLabel: string;
+  currency: CollectorCurrency;
+  value: number;
+  recordedAt: string;
+}
+
+export interface CollectionValueSummary {
+  currency: CollectorCurrency;
+  totalEstimatedValue: number;
+  nonfoilValue: number;
+  foilValue: number;
+  etchedValue: number;
+  pricedCardCount: number;
+  missingPriceCount: number;
+  unresolvedPrintingCount: number;
+  highestValueCards: {
+    id: string;
+    name: string;
+    quantity: number;
+    value: number;
+    source: string;
+  }[];
+  valuableDuplicateCount: number;
+  lastPriceRefresh?: string;
+}
+
+export interface DeckValueSummary {
+  currency: CollectorCurrency;
+  totalEstimatedValue: number;
+  commanderValue: number;
+  mainDeckValue: number;
+  ownedCopyValue: number;
+  missingCardValue: number;
+  maybeboardValue: number;
+  cutsValue: number;
+  pricedCardCount: number;
+  missingPriceCount: number;
+  highestValueCard?: {
+    id: string;
+    name: string;
+    value: number;
+    source: string;
+  };
+  lastPriceRefresh?: string;
+}
+
+export interface TradeValueSummary {
+  currency: CollectorCurrency;
+  mySideValue: number;
+  theirSideValue: number;
+  differenceTowardMe: number;
+  percentDifference: number;
+  myMissingPriceCount: number;
+  theirMissingPriceCount: number;
+  summary: string;
+  lastPriceRefresh?: string;
+}
+
 export type CategoryStyle =
   | "commander_roles"
   | "card_type"
@@ -89,6 +229,17 @@ export interface DeckCard {
   setName?: string;
   collectorNumber?: string;
   legalities?: Record<string, string>;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  finish?: CollectorFinish;
+  language?: string;
+  condition?: string;
+  tradeStatus?: CollectorTradeStatus;
+  manualPriceOverride?: ManualPriceOverride;
+  storage?: StorageLocationDetail;
+  collectorFlags?: CollectorCopyFlags;
+  rarity?: string;
+  releasedAt?: string;
   quantity: number;
   section: DeckCardSection;
   categories: string[];
@@ -150,9 +301,19 @@ export interface OwnedPrinting {
   collectorNumber: string;
   language: string;
   foil: boolean;
+  finish?: CollectorFinish;
   condition: string;
   quantityOwned: number;
   imageUri: string;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  manualPriceOverride?: ManualPriceOverride;
+  tradeStatus?: CollectorTradeStatus;
+  storageLocation?: string;
+  storage?: StorageLocationDetail;
+  collectorFlags?: CollectorCopyFlags;
+  rarity?: string;
+  releasedAt?: string;
   lastScannedAt?: string;
 }
 
@@ -168,12 +329,21 @@ export interface OwnedCard {
   colorIdentity?: CommanderColor[];
   imageUri?: string;
   legalities?: Record<string, string>;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  manualPriceOverride?: ManualPriceOverride;
+  tradeStatus?: CollectorTradeStatus;
+  wantStatus?: "none" | "want" | "high_priority_want" | "upgrade_target" | "deck_missing_card" | "trade_target";
   quantityOwned: number;
   printings: OwnedPrinting[];
   tags: string[];
   notes: string;
   favorite: boolean;
   storageLocation?: string;
+  storage?: StorageLocationDetail;
+  collectorFlags?: CollectorCopyFlags;
+  rarity?: string;
+  releasedAt?: string;
   duplicateFlag: OwnedDuplicateFlag;
   deckUsage: Record<string, number>;
   lastScannedAt?: string;
@@ -364,6 +534,13 @@ export interface ScanRecord {
   setCode?: string;
   setName?: string;
   collectorNumber?: string;
+  language?: string;
+  foil?: boolean;
+  finish?: CollectorFinish;
+  condition?: string;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  rarity?: string;
   imageUri?: string;
   capturedThumbnail?: string;
   frameFingerprint?: string;
@@ -689,6 +866,9 @@ export interface AppSettings {
   textSize: TextSize;
   localFirstMode: true;
   defaultExportFormat: ExportFormat;
+  collectorCurrency: CollectorCurrency;
+  collectorHighValueThreshold: number;
+  collectorPriceFreshnessDays: number;
   defaultBracketLock: BracketLock;
   defaultOwnershipPreference: OwnershipPreference;
   scannerBatchPersistence: boolean;
@@ -782,6 +962,7 @@ export interface DeckstateScryfallCard {
   textless?: boolean;
   booster?: boolean;
   storySpotlight?: boolean;
+  prices?: CardPriceReference;
   cardFaces: DeckstateCardFace[];
   allParts?: {
     id: string;
@@ -857,6 +1038,10 @@ export interface WishlistEntry {
   desiredQuantity: number;
   preferredFoilStatus?: "foil" | "nonfoil" | "either";
   preferredLanguage?: string;
+  preferredFinish?: CollectorFinish;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  manualPriceOverride?: ManualPriceOverride;
   priority: WishlistPriority;
   intendedDeckIds: string[];
   intendedRole: string;
@@ -904,6 +1089,9 @@ export interface UpgradeListEntry {
   notes: string;
   sourceSearchId?: string;
   sourceQuery: string;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  manualPriceOverride?: ManualPriceOverride;
   completed: boolean;
   createdAt: string;
   updatedAt: string;
@@ -937,6 +1125,9 @@ export interface CustomCollectionEntry {
   ownedStatus: "owned" | "missing" | "partial";
   sourceSearchId?: string;
   sourceQuery: string;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  manualPriceOverride?: ManualPriceOverride;
   customOrder: number;
   createdAt: string;
   updatedAt: string;

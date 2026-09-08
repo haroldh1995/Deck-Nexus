@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -267,8 +267,11 @@ describe("Prompt 3 scanner persistence and feeder modes", () => {
   });
 
   it("renders scanner mode switching and tray-full controls", async () => {
+    installFakeCamera();
     renderWithAppProviders(<ScanCardsScreen />, "/scan");
     await screen.findByRole("heading", { name: "Scan Cards" });
+    await userEvent.click(screen.getAllByRole("button", { name: /Allow Camera/i })[0]);
+    await screen.findByText(/Camera live/i);
     await userEvent.selectOptions(screen.getByLabelText("Scanner mode"), "stacking_feeder");
     await userEvent.click(screen.getByText("Manual fallback and feeder controls"));
     await userEvent.click(screen.getByRole("button", { name: "Too-Close Cue" }));
@@ -284,9 +287,9 @@ describe("Prompt 3 scanner persistence and feeder modes", () => {
     expect(screen.getByRole("heading", { name: /needs camera access/i })).toBeInTheDocument();
 
     await userEvent.click(screen.getAllByRole("button", { name: /Allow Camera/i })[0]);
-    fireEvent.loadedMetadata(screen.getByLabelText("Live camera preview"));
 
     await screen.findByText(/Camera live/i);
+    expect(await screen.findByLabelText("Live camera preview")).toBeInTheDocument();
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith(
       expect.objectContaining({ audio: false }),
     );

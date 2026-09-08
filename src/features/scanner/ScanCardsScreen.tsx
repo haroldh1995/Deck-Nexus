@@ -375,6 +375,21 @@ export function ScanCardsScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    const stream = streamRef.current;
+    const video = videoRef.current;
+    if (!cameraReady || !stream || !video || video.srcObject === stream) {
+      return;
+    }
+
+    video.srcObject = stream;
+    video.muted = true;
+    video.playsInline = true;
+    void video.play().catch(() => {
+      setMessage("Camera stream is open; tap Refresh Camera if the preview does not start.");
+    });
+  }, [cameraReady]);
+
   async function attachStream(stream: MediaStream) {
     const video = videoRef.current;
     if (!video) {
@@ -468,7 +483,7 @@ export function ScanCardsScreen() {
       setCameraStatus({
         state: result.permissionState,
         title: "Camera live",
-        detail: "Live video stays on this device. Deckstate is watching for stable card candidates.",
+        detail: "Live video stays on this device. Deck Nexus is watching for stable card candidates.",
         action: "Refresh Camera",
       });
       if (result.selectedDeviceId) {
@@ -484,7 +499,7 @@ export function ScanCardsScreen() {
         mode,
         destination,
       });
-      setMessage("Camera live. Continuous scanning is active; accepted scans will enter the current batch.");
+      setMessage("Camera live. Scans save to the current batch.");
     } catch (error) {
       const mapped = mapCameraError(error);
       setCameraStatus(mapped);
@@ -881,11 +896,23 @@ export function ScanCardsScreen() {
             ? sectionId
             : undefined,
       });
+      const pricedInput = {
+        ...input,
+        prices: record.prices,
+        priceUpdatedAt: record.priceUpdatedAt ?? record.prices?.fetchedAt,
+        finish: record.finish,
+        language: record.language,
+        condition: record.condition,
+        setCode: record.setCode,
+        setName: record.setName,
+        collectorNumber: record.collectorNumber,
+        rarity: record.rarity,
+      };
       const ruleResult = evaluateAddCardRules({ deck, input, mode: "guided" });
       if (destinationOverride === "main" && ruleResult.warnings.some((warning) => warning.severity === "illegal")) {
-        await addDeckCard(deck.id, { ...input, destination: "maybeboard" }, "maybeboard");
+        await addDeckCard(deck.id, { ...pricedInput, destination: "maybeboard" }, "maybeboard");
       } else {
-        await addDeckCard(deck.id, input, destinationOverride);
+        await addDeckCard(deck.id, pricedInput, destinationOverride);
       }
       await updateScanRecord(record.id, { status: "applied" });
       applied += 1;
@@ -947,9 +974,9 @@ export function ScanCardsScreen() {
       ? cameraStatus
       : {
           state: cameraStatus.state,
-          title: "Deckstate needs camera access to scan your cards.",
+          title: "Deck Nexus needs camera access to scan your cards.",
           detail:
-            "Your camera feed stays on your device while scanning. Card lookup requests may be sent to Scryfall, but video is not uploaded or stored unless you explicitly save a correction thumbnail.",
+            "Video stays on this device. Card lookup and pricing refreshes run separately after a card is recognized.",
           action: "Allow Camera",
         };
 
@@ -990,7 +1017,7 @@ export function ScanCardsScreen() {
           <div>
             <h2>{activeCameraCopy.title}</h2>
             <p>{activeCameraCopy.detail}</p>
-            <small>No microphone permission is requested. Wishlist, deck, and owned-card behavior remains local-first and price-free.</small>
+            <small>No microphone permission is requested. Card lookup and pricing refreshes run separately from the camera stream.</small>
           </div>
           <div className="form-actions">
             <button type="button" onClick={() => void requestCamera()}>
@@ -1011,6 +1038,7 @@ export function ScanCardsScreen() {
         </HolographicPanel>
       ) : null}
 
+      {cameraReady ? (
       <div className="scanner-layout">
         <HolographicPanel className="scanner-preview">
           <div
@@ -1045,10 +1073,16 @@ export function ScanCardsScreen() {
           </div>
           <canvas aria-hidden="true" className="scanner-analysis-canvas" ref={analysisCanvasRef} />
           <canvas aria-hidden="true" className="scanner-analysis-canvas" ref={captureCanvasRef} />
-          <div className="scanner-guidance">
-            {frameGuidanceText.map((text) => (
-              <span key={text}>{text}</span>
-            ))}
+          <div className="scanner-guidance" role="note">
+            <span>Place cards inside the scan area. Deck Nexus captures recognized cards automatically.</span>
+            <details>
+              <summary>Scan tips</summary>
+              <div>
+                {frameGuidanceText.map((text) => (
+                  <span key={text}>{text}</span>
+                ))}
+              </div>
+            </details>
           </div>
         </HolographicPanel>
 
@@ -1076,87 +1110,12 @@ export function ScanCardsScreen() {
             ) : null}
           </div>
 
-          <div className="feature-controls">
-            <label>
-              Scanner mode
-              <select
-                value={mode}
-                onChange={(event) => {
-                  const nextMode = event.target.value as ScannerMode;
-                  setMode(nextMode);
-                  void updateSettings({ scannerDefaultMode: nextMode });
-                }}
-              >
-                {scannerModes.map((scannerMode) => (
-                  <option key={scannerMode.id} value={scannerMode.id}>
-                    {scannerMode.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Batch destination
-              <select
-                value={destination}
-                onChange={(event) => setDestination(event.target.value as ScanBatchDestination)}
-              >
-                {scannerDestinations.map((scannerDestination) => (
-                  <option key={scannerDestination.id} value={scannerDestination.id}>
-                    {scannerDestination.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Active deck
-              <select value={deckId} onChange={(event) => setDeckId(event.target.value)}>
-                <option value="">No deck selected</option>
-                {decks.map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {cameraDevices.length > 1 ? (
-              <label>
-                Camera
-                <select
-                  value={selectedCameraId}
-                  onChange={(event) => void switchCamera(event.target.value)}
-                >
-                  {cameraDevices.map((device) => (
-                    <option key={device.deviceId} value={device.deviceId}>
-                      {device.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            {capabilities.zoom ? (
-              <label>
-                Camera zoom
-                <input
-                  type="range"
-                  min={capabilities.zoom.min}
-                  max={capabilities.zoom.max}
-                  step={capabilities.zoom.step}
-                  value={zoomValue}
-                  onChange={(event) => void updateZoom(Number(event.target.value))}
-                />
-              </label>
-            ) : null}
-          </div>
-
           <div className="feature-status" role="status">
             <ScanLine aria-hidden="true" />
             <span>{message}</span>
           </div>
 
           <div className="scanner-actions">
-            <button type="button" onClick={() => void requestCamera()}>
-              <Video aria-hidden="true" /> {cameraReady ? "Refresh Camera" : "Allow Camera"}
-            </button>
             <button type="button" onClick={() => void startBatch()}>
               <Play aria-hidden="true" /> Start Batch
             </button>
@@ -1177,6 +1136,77 @@ export function ScanCardsScreen() {
 
           <details className="scanner-mode-panel">
             <summary>Manual fallback and feeder controls</summary>
+            <div className="feature-controls scanner-setup-controls">
+              <label>
+                Scanner mode
+                <select
+                  value={mode}
+                  onChange={(event) => {
+                    const nextMode = event.target.value as ScannerMode;
+                    setMode(nextMode);
+                    void updateSettings({ scannerDefaultMode: nextMode });
+                  }}
+                >
+                  {scannerModes.map((scannerMode) => (
+                    <option key={scannerMode.id} value={scannerMode.id}>
+                      {scannerMode.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Batch destination
+                <select
+                  value={destination}
+                  onChange={(event) => setDestination(event.target.value as ScanBatchDestination)}
+                >
+                  {scannerDestinations.map((scannerDestination) => (
+                    <option key={scannerDestination.id} value={scannerDestination.id}>
+                      {scannerDestination.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Active deck
+                <select value={deckId} onChange={(event) => setDeckId(event.target.value)}>
+                  <option value="">No deck selected</option>
+                  {decks.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {cameraDevices.length > 1 ? (
+                <label>
+                  Camera
+                  <select
+                    value={selectedCameraId}
+                    onChange={(event) => void switchCamera(event.target.value)}
+                  >
+                    {cameraDevices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {capabilities.zoom ? (
+                <label>
+                  Camera zoom
+                  <input
+                    type="range"
+                    min={capabilities.zoom.min}
+                    max={capabilities.zoom.max}
+                    step={capabilities.zoom.step}
+                    value={zoomValue}
+                    onChange={(event) => void updateZoom(Number(event.target.value))}
+                  />
+                </label>
+              ) : null}
+            </div>
             <div className="scanner-actions">
               <button type="button" onClick={() => void simulateScan("assumed", 0.82)}>
                 Simulate Scan
@@ -1214,7 +1244,9 @@ export function ScanCardsScreen() {
           </details>
         </HolographicPanel>
       </div>
+      ) : null}
 
+      {records.length > 0 ? (
       <HolographicPanel className="scanner-batch-panel">
         <div className="scanner-batch-summary">
           <strong>{summary.total} records</strong>
@@ -1231,6 +1263,7 @@ export function ScanCardsScreen() {
           ))}
         </div>
       </HolographicPanel>
+      ) : null}
 
       {reviewOpen ? (
         <div className="builder-modal-backdrop" role="presentation">

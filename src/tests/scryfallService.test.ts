@@ -4,7 +4,7 @@ import {
   buildScryfallQuery,
   cardSearchUrl,
   chunkScryfallCollectionIdentifiers,
-  hasNoPriceFields,
+  hasNoMarketplaceLinks,
   isAdvancedScryfallQuery,
   mapScryfallCard,
   normalizeScryfallText,
@@ -62,13 +62,16 @@ describe("Scryfall endpoint and query helpers", () => {
 });
 
 describe("Scryfall card mapping", () => {
-  it("maps card data while stripping price and purchase fields", () => {
+  it("maps card data with price references while stripping purchase links", () => {
     const mapped = mapScryfallCard(baseCard());
     expect(mapped.name).toBe("Test Card");
     expect(mapped.colorIdentity).toEqual(["U"]);
     expect(mapped.legalities.commander).toBe("legal");
-    expect(hasNoPriceFields(mapped)).toBe(true);
-    expect(JSON.stringify(mapped)).not.toMatch(/tcgplayer|usd|eur|tix|purchase_uris|prices/i);
+    expect(mapped.prices?.nonfoil).toBe(1);
+    expect(mapped.prices?.sourceLabel).toBe("Scryfall");
+    expect(mapped.prices?.fetchedAt).toBeTruthy();
+    expect(hasNoMarketplaceLinks(mapped)).toBe(true);
+    expect(JSON.stringify(mapped)).not.toMatch(/tcgplayer|purchase_uris/i);
   });
 
   it("uses card face data and imagery for double-faced cards", () => {

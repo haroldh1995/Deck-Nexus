@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { BarChart3, BrainCircuit, Clock3, History, Sparkles } from "lucide-react";
+import { formatCurrency, summarizeDeckValue } from "../../collector";
 import { HolographicPanel } from "../../components/HolographicPanel";
 import { PageHeader } from "../../components/PageHeader";
 import { StatusPill } from "../../components/StatusPill";
+import { useSettings } from "../../app/useSettings";
 import { useDecks, useOwnedCards } from "../../db/hooks";
 import {
   addDeckCard,
@@ -59,6 +61,7 @@ type AnalyzerTab =
   | "goals"
   | "bracket"
   | "ownership"
+  | "value"
   | "recommendations"
   | "cuts"
   | "smart_build"
@@ -73,6 +76,7 @@ const analyzerTabs: { id: AnalyzerTab; label: string }[] = [
   { id: "goals", label: "Goal Alignment" },
   { id: "bracket", label: "Bracket Lock" },
   { id: "ownership", label: "Ownership" },
+  { id: "value", label: "Collector Value" },
   { id: "recommendations", label: "Recommendations" },
   { id: "cuts", label: "Cuts/Replacements" },
   { id: "smart_build", label: "Smart Build" },
@@ -187,6 +191,7 @@ function timelineMatchesFilter(
 export function AnalyzerScreen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { settings } = useSettings();
   const { decks } = useDecks();
   const { ownedCards } = useOwnedCards();
   const [deckId, setDeckId] = useState(searchParams.get("deckId") ?? "");
@@ -229,6 +234,10 @@ export function AnalyzerScreen() {
     [deck, ownedCards],
   );
   const bracket = useMemo(() => (deck ? analyzeLiveBracket(deck) : null), [deck]);
+  const deckValue = useMemo(
+    () => (deck ? summarizeDeckValue(deck, ownedCards, settings.collectorCurrency) : null),
+    [deck, ownedCards, settings.collectorCurrency],
+  );
   const doNotSuggest = useMemo(() => {
     const typed = parseCommaList(doNotSuggestText);
     const persisted = recommendationFeedback
@@ -794,10 +803,17 @@ export function AnalyzerScreen() {
             <strong className="feature-metric">{analysis.ownership?.missingCount ?? 0} missing</strong>
             <p>Ownership is planning-only and separate from legality.</p>
           </HolographicPanel>
+          <HolographicPanel data-testid="deck-value-summary">
+            <h2>Collector Value</h2>
+            <strong className="feature-metric">
+              {deckValue ? formatCurrency(deckValue.totalEstimatedValue, deckValue.currency) : "Price unavailable"}
+            </strong>
+            <p>Reference value is informational and separate from legality, bracket, and BoardState gameplay payloads.</p>
+          </HolographicPanel>
         </div>
       ) : null}
 
-      {deck && analysis && ["legality", "composition", "curve", "synergy", "goals", "bracket", "ownership"].includes(activeTab) ? (
+      {deck && analysis && ["legality", "composition", "curve", "synergy", "goals", "bracket", "ownership", "value"].includes(activeTab) ? (
         <HolographicPanel className="analysis-detail-panel">
           <h2>{analyzerTabs.find((tab) => tab.id === activeTab)?.label}</h2>
           {activeTab === "legality" ? (
@@ -857,6 +873,33 @@ export function AnalyzerScreen() {
               <span><strong>Owned</strong> {analysis.ownership?.ownedCount ?? 0}</span>
               <span><strong>Missing/not confirmed owned</strong> {analysis.ownership?.missingCount ?? 0}</span>
               <span><strong>Duplicate/share warnings</strong> {analysis.ownership?.duplicateWarnings ?? 0}</span>
+              {deckValue ? (
+                <>
+                  <span><strong>Owned reference value</strong> {formatCurrency(deckValue.ownedCopyValue, deckValue.currency)}</span>
+                  <span><strong>Missing-card reference value</strong> {formatCurrency(deckValue.missingCardValue, deckValue.currency)}</span>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+          {activeTab === "value" && deckValue ? (
+            <div className="analysis-bars" data-testid="deck-value-detail">
+              <span><strong>Deck reference value</strong> {formatCurrency(deckValue.totalEstimatedValue, deckValue.currency)}</span>
+              <span><strong>Commander value</strong> {formatCurrency(deckValue.commanderValue, deckValue.currency)}</span>
+              <span><strong>Main-deck value</strong> {formatCurrency(deckValue.mainDeckValue, deckValue.currency)}</span>
+              <span><strong>Missing-card value</strong> {formatCurrency(deckValue.missingCardValue, deckValue.currency)}</span>
+              <span><strong>Maybeboard value</strong> {formatCurrency(deckValue.maybeboardValue, deckValue.currency)}</span>
+              <span><strong>Cuts value</strong> {formatCurrency(deckValue.cutsValue, deckValue.currency)}</span>
+              <span><strong>Cards without pricing</strong> {deckValue.missingPriceCount}</span>
+              <span>
+                <strong>Highest-value card</strong>{" "}
+                {deckValue.highestValueCard
+                  ? `${deckValue.highestValueCard.name} (${formatCurrency(deckValue.highestValueCard.value, deckValue.currency)})`
+                  : "Price unavailable"}
+              </span>
+              <p>
+                Collector value is a reference-price view only. It does not alter legalities,
+                Commander color identity, recommendations, or gameplay checksums.
+              </p>
             </div>
           ) : null}
         </HolographicPanel>
@@ -1128,7 +1171,7 @@ export function AnalyzerScreen() {
                 <button type="button" onClick={() => applySmartBuild("maybeboard")}>Send Suggestions to Maybeboard</button>
                 <button type="button" onClick={createSmartBuildUpgradeList}>Create Upgrade List Only</button>
                 <button type="button" onClick={() => setCardReviewMode((current) => !current)}>Review Card by Card</button>
-                <button type="button" onClick={() => setMessage("Export preview staged in plain text without prices or marketplace links.")}>Export Preview</button>
+                <button type="button" onClick={() => setMessage("Export preview staged with collector value separate from legality and without marketplace checkout links.")}>Export Preview</button>
                 <button type="button" onClick={() => setSmartBuildResult(null)}>Cancel</button>
               </div>
             </div>

@@ -5,6 +5,7 @@
 - Deck creation and editing.
 - Commander deck preparation and local legality guidance.
 - Local collection and owned-card tracking.
+- Collector pricing, printing selection, condition, language, finish, storage location, trade status, want-list metadata, and reference value summaries.
 - Scanner flows, scanner batches, correction, and recovery.
 - Card search and Scryfall caching.
 - Import/export preparation.
@@ -13,6 +14,7 @@
 - BoardState handoff request creation, local fallback exports, unconfirmed handoff history, and optional acknowledgment/return validation.
 - Analyzer, recommendations, Smart Build planning, maybeboard, cuts, versions, and replacement records.
 - Deck groups, tags, favorites, wishlist, upgrade lists, custom collections, backup/restore, settings, and local-first storage.
+- Trade comparison and collection/deck value tooling as informational collector utilities without checkout or marketplace authority.
 - Future source data for immutable deck snapshots and BoardState/Hub contracts.
 
 ## BoardState Owns
@@ -34,6 +36,12 @@
 - Cross-app presence.
 - Centralized sync/backup surfaces where built later.
 - Hub-managed profile, friend, notification, central backup, and app-link runtime authority.
+
+## Collector Data Boundary
+
+Deck Nexus may display Scryfall-backed or manual collector reference values for card details, decks, collections, trade comparisons, printings, duplicate copies, and want lists. Price data is informational and can be stale, cached, unavailable, or manually overridden.
+
+Collector data must remain separate from Commander legality, BoardState validation, immutable gameplay checksums, gameplay state, and MTG Arena export text. BoardState gameplay envelopes exclude price data by default.
 
 ## Prompt 6 Hub Compatibility State
 
@@ -77,6 +85,7 @@ Deck Nexus must not display or imply:
 - Friends synced.
 - Notifications active.
 - Cloud profile sync.
+- Marketplace checkout, vendor availability, or guaranteed card value.
 
 Acceptable current wording includes:
 

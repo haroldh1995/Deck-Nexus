@@ -1,4 +1,12 @@
-import type { Bracket, CommanderColor, DeckCard } from "../../types/domain";
+import type {
+  Bracket,
+  CardPriceReference,
+  CollectorFinish,
+  CommanderColor,
+  DeckCard,
+  ManualPriceOverride,
+  StorageLocationDetail,
+} from "../../types/domain";
 
 export type BuilderSectionId =
   | "commander"
@@ -32,6 +40,15 @@ export interface ManualCardInput {
   setName?: string;
   collectorNumber?: string;
   legalities?: Record<string, string>;
+  prices?: CardPriceReference;
+  priceUpdatedAt?: string;
+  finish?: CollectorFinish;
+  language?: string;
+  condition?: string;
+  manualPriceOverride?: ManualPriceOverride;
+  storage?: StorageLocationDetail;
+  rarity?: string;
+  releasedAt?: string;
   roleTags: string[];
   customTags: string[];
   notes?: string;

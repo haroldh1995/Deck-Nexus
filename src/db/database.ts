@@ -22,6 +22,7 @@ import type {
   ImmutableDeckSnapshotRecord,
   OwnedCard,
   OwnedPrinting,
+  PriceHistoryPoint,
   RecommendationFeedback,
   ReplacementRecord,
   SavedSearch,
@@ -84,6 +85,7 @@ export class DeckNexusDatabase extends Dexie {
   boardStateValidationResults!: Table<BoardStateValidationResultRecord, string>;
   immutableDeckSnapshots!: Table<ImmutableDeckSnapshotRecord, string>;
   boardStateHandoffs!: Table<BoardStateHandoffRecord, string>;
+  priceHistory!: Table<PriceHistoryPoint, string>;
 
   constructor() {
     super("deck-nexus-local");
@@ -167,6 +169,37 @@ export class DeckNexusDatabase extends Dexie {
     this.version(7).stores({
       boardStateHandoffs:
         "&id, launchRequestId, deckId, snapshotId, gameplayChecksum, consumerIntent, transportType, createdAt, launchedAt, acknowledgedAt, finalStatus, retryOfHandoffId",
+    });
+
+    this.version(8).stores({
+      ownedCards:
+        "&id, oracleId, scryfallId, name, favorite, duplicateFlag, tradeStatus, wantStatus, priceUpdatedAt, updatedAt, *tags",
+      ownedPrintings:
+        "&id, scryfallId, oracleId, name, setCode, language, foil, finish, condition, tradeStatus, priceUpdatedAt, lastScannedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table<OwnedCard, string>("ownedCards").toCollection().modify((card) => {
+        card.tradeStatus ??= "not_for_trade";
+        card.wantStatus ??= "none";
+        card.priceUpdatedAt ??= card.prices?.fetchedAt;
+        card.printings = (card.printings ?? []).map((printing) => ({
+          ...printing,
+          finish: printing.finish ?? (printing.foil ? "foil" : "nonfoil"),
+          condition: printing.condition ?? "unknown",
+          tradeStatus: printing.tradeStatus ?? card.tradeStatus ?? "not_for_trade",
+          priceUpdatedAt: printing.priceUpdatedAt ?? printing.prices?.fetchedAt ?? card.priceUpdatedAt,
+        }));
+      });
+      await transaction.table<OwnedPrinting, string>("ownedPrintings").toCollection().modify((printing) => {
+        printing.finish ??= printing.foil ? "foil" : "nonfoil";
+        printing.condition ??= "unknown";
+        printing.tradeStatus ??= "not_for_trade";
+        printing.priceUpdatedAt ??= printing.prices?.fetchedAt;
+      });
+    });
+
+    this.version(9).stores({
+      priceHistory:
+        "&id, oracleId, scryfallId, printingId, finish, source, recordedAt",
     });
   }
 }

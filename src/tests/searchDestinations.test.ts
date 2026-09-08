@@ -36,6 +36,21 @@ function card(overrides: Partial<DeckstateScryfallCard> = {}): DeckstateScryfall
     rarity: "uncommon",
     imageUris: { small: "small.jpg", normal: "normal.jpg" },
     cardFaces: [],
+    prices: {
+      source: "scryfall",
+      sourceLabel: "Scryfall",
+      currency: "USD",
+      nonfoil: 2.5,
+      foil: null,
+      etched: null,
+      market: 2.5,
+      low: null,
+      mid: 2.5,
+      high: null,
+      fetchedAt: new Date(0).toISOString(),
+      staleAt: new Date(7 * 24 * 60 * 60 * 1000).toISOString(),
+      status: "stale",
+    },
     lastFetchedAt: new Date(0).toISOString(),
     ...overrides,
   };
@@ -87,7 +102,7 @@ describe("Search destination workflows", () => {
     expect(restored[0].priority).toBe("normal");
   });
 
-  it("creates custom collections and favorites without price fields", async () => {
+  it("creates custom collections and favorites with collector prices but no marketplace links", async () => {
     const collectionResult = await addCardsToCustomCollectionFromSearch({
       cards: [card()],
       collectionName: "Future Commanders",
@@ -98,7 +113,9 @@ describe("Search destination workflows", () => {
     expect(await db.customCollections.count()).toBe(1);
     expect(await db.customCollectionEntries.count()).toBe(1);
     expect(await db.favorites.count()).toBe(1);
-    expect(JSON.stringify(await db.customCollectionEntries.toArray())).not.toMatch(/usd|eur|tix|purchase|tcgplayer/i);
+    const entries = await db.customCollectionEntries.toArray();
+    expect(entries[0].prices?.nonfoil).toBe(2.5);
+    expect(JSON.stringify(entries)).not.toMatch(/purchase|tcgplayer/i);
 
     if (collectionResult.undo) {
       await applySearchUndoTransaction(collectionResult.undo);

@@ -203,8 +203,9 @@ export function ExportScreen() {
           <div className="settings-section">
             <h2>Canonical Snapshot</h2>
             <p className="settings-note">
-              Deck Nexus exports local deck, collection, and profile data without gameplay
-              state, BoardState networking, Hub identity, prices, or marketplace data.
+              Deck Nexus exports local deck, collection, profile, and collector metadata
+              without gameplay state, BoardState networking, Hub identity, or marketplace
+              checkout data. BoardState gameplay envelopes keep price data out of gameplay identity.
             </p>
             <label>
               Deck

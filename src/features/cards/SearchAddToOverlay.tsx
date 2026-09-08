@@ -444,7 +444,7 @@ export function SearchAddToOverlay({
         <div className="add-to-confirm">
           <p>
             Confirm adding {cards.length} card{cards.length === 1 ? "" : "s"} to {destinationLabel(destination)}.
-            Search will stay open and no prices or marketplace data will be stored.
+            Search will stay open. Supported collector price references may be stored; marketplace links are not stored.
           </p>
           {error ? <p className="add-to-warning" role="alert">{error}</p> : null}
           <div className="form-actions">

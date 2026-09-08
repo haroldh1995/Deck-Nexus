@@ -15,6 +15,7 @@ import {
 import type {
   Bracket,
   BracketLock,
+  CollectorCurrency,
   ExportFormat,
   HomePerformanceMode,
   OwnershipPreference,
@@ -255,6 +256,60 @@ export function SettingsScreen() {
                 <option value="allow_missing">Allow missing cards</option>
               </select>
             </label>
+          </div>
+        </HolographicPanel>
+
+        <HolographicPanel>
+          <div className="settings-section">
+            <h2>Collector Tools</h2>
+            <label>
+              Currency
+              <select
+                onChange={(event) =>
+                  void updateSettings({
+                    collectorCurrency: event.target.value as CollectorCurrency,
+                  })
+                }
+                value={settings.collectorCurrency}
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="TIX">TIX</option>
+              </select>
+            </label>
+            <label>
+              High-value threshold
+              <input
+                min="0"
+                onChange={(event) =>
+                  void updateSettings({
+                    collectorHighValueThreshold: Math.max(0, Number(event.target.value)),
+                  })
+                }
+                step="1"
+                type="number"
+                value={settings.collectorHighValueThreshold}
+              />
+            </label>
+            <label>
+              Stale price after days
+              <input
+                min="1"
+                onChange={(event) =>
+                  void updateSettings({
+                    collectorPriceFreshnessDays: Math.max(1, Number(event.target.value)),
+                  })
+                }
+                step="1"
+                type="number"
+                value={settings.collectorPriceFreshnessDays}
+              />
+            </label>
+            <p className="settings-note">
+              Collector prices are reference metadata only. They do not affect legality,
+              BoardState validation, or immutable gameplay checksums.
+            </p>
           </div>
         </HolographicPanel>
 
@@ -508,8 +563,8 @@ export function SettingsScreen() {
             </label>
             <p className="settings-note">
               Card data and images are provided by Scryfall. Deckstate stores cached card
-              records locally for speed and offline use, but it does not store or display
-              prices or marketplace links.
+              records, images, and supported Scryfall price references locally for speed,
+              offline use, and collector tools. Marketplace links and checkout data are not stored.
             </p>
             <p className="settings-note">
               Offline database:{" "}

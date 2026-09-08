@@ -102,7 +102,8 @@ describe("Scryfall Search screen", () => {
     expect(screen.queryByText("Unexpected card route")).not.toBeInTheDocument();
     expect(screen.getByTestId("route-echo")).toHaveTextContent("/search");
     expect(input).toHaveFocus();
-    expect(screen.queryByText(/USD|TCGplayer|purchase/i)).not.toBeInTheDocument();
+    expect(screen.getByText("$9.99 nonfoil")).toBeInTheDocument();
+    expect(screen.queryByText(/TCGplayer|purchase/i)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getAllByRole("button", { name: "Add To..." }).at(-1) as HTMLElement);
     expect(await screen.findByRole("dialog", { name: /add selected cards/i })).toBeInTheDocument();
@@ -113,6 +114,8 @@ describe("Scryfall Search screen", () => {
       expect(owned).toHaveLength(1);
       expect(owned[0].name).toBe("Sol Ring");
       expect(owned[0].imageUri).toBe("normal.jpg");
+      expect(owned[0].prices?.nonfoil).toBe(9.99);
+      expect(owned[0].prices?.sourceLabel).toBe("Scryfall");
     });
     expect(screen.getByTestId("route-echo")).toHaveTextContent("/search");
   });
