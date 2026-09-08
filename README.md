@@ -1,6 +1,6 @@
 # Deck Nexus
 
-Deck Nexus is a mobile-first, local-first Commander deck builder for Magic: The Gathering players who want deck planning without commerce data or required accounts.
+Deck Nexus is a mobile-first, local-first Commander deck builder and collector utility for Magic: The Gathering players who want deck planning, ownership tracking, pricing references, and collection value awareness without required accounts.
 
 The current build establishes the Commander-focused app foundation:
 
@@ -77,7 +77,7 @@ Every non-Home screen includes a small unlabeled top-right Home button with the 
 
 ## Local-First Rules
 
-Deck Nexus stores app data in the browser's IndexedDB and does not require login or cloud sync. The app intentionally contains no commerce data, collection valuation, or external acquisition flows.
+Deck Nexus stores app data in the browser's IndexedDB and does not require login or cloud sync. The app may display current or cached pricing references, deck value, collection value, and trade-value information. Pricing is informational and remains separate from legality, BoardState validation, ownership quantity, and gameplay checksums. Deck Nexus does not provide checkout, vendor inventory, marketplace listings, or purchasing flows.
 
 Automatic deck-building architecture must respect Commander color identity. Manual search can eventually show broader results, but automated suggestions and placements must stay inside the commander's color identity.
 
