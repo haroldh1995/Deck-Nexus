@@ -452,7 +452,7 @@ test.describe("Deck Nexus local-first flow", () => {
     await expect(page.getByRole("heading", { name: "Scan Cards" })).toBeVisible();
     await expect(page.locator(".bottom-command-bar")).toHaveCount(0);
     await page.getByRole("button", { name: /Allow Camera/ }).first().click();
-    await expect(page.getByText(/Camera live/i)).toBeVisible();
+    await expect(page.getByText("Camera Live", { exact: true })).toBeVisible();
     await expect(page.getByText(/Place cards inside the scan area/i)).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
@@ -681,7 +681,7 @@ Deck
     await page.goto("/scan");
     await expect(page.getByRole("heading", { name: "Scan Cards" })).toBeVisible();
     await page.getByRole("button", { name: /Allow Camera/ }).first().click();
-    await expect(page.getByText(/Camera live/i)).toBeVisible();
+    await expect(page.getByText("Camera Live", { exact: true })).toBeVisible();
     await expect(page.locator(".scanner-batch-summary").getByText(/1 records/i)).toBeVisible({
       timeout: 20_000,
     });
@@ -713,7 +713,7 @@ Deck
     await expect(page.getByText(/Unfinished scan batch found/i)).toBeVisible();
     await expect(page.locator(".scanner-batch-summary").getByText(/2 records/i)).toBeVisible();
     await page.getByRole("button", { name: /Allow Camera/ }).first().click();
-    await expect(page.getByText(/Camera live/i)).toBeVisible();
+    await expect(page.getByText("Camera Live", { exact: true })).toBeVisible();
     await page.getByText("Manual fallback and feeder controls").click();
     await page.getByLabel("Scanner mode").selectOption("stacking_feeder");
     await page.getByRole("button", { name: "Start Batch" }).click();

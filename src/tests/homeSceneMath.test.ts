@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { homeSceneRouteOrder } from "../features/home/scene/homeSceneConstants";
 import {
   applyOrbitFriction,
+  advanceOrbitRotation,
   calculateMagneticSettleStep,
   calculateTapTargetStep,
+  clampOrbitVelocity,
   calculateOrbitTransforms,
   calculateResponsiveSceneScale,
   getDepthSortedOrbitTransforms,
@@ -185,6 +187,24 @@ describe("home hologram scene math", () => {
         threshold: 7,
       }),
     ).toBe("drag");
+  });
+
+  it("keeps orbit motion continuous through fractional positions and bounded momentum", () => {
+    const cards = buildHomeHologramCards(permanentHomeOrbitItems);
+    const scale = calculateResponsiveSceneScale({ width: 390, height: 844 });
+    const start = calculateOrbitTransforms({ cards, rotation: 0, scale });
+    const middle = calculateOrbitTransforms({ cards, rotation: -13.5, scale });
+    const end = calculateOrbitTransforms({ cards, rotation: -30, scale });
+
+    expect(middle[0].x).toBeGreaterThan(Math.min(start[0].x, end[0].x));
+    expect(middle[0].x).toBeLessThan(Math.max(start[0].x, end[0].x));
+    expect(clampOrbitVelocity(4)).toBe(0.9);
+    expect(clampOrbitVelocity(-4, 0.68)).toBe(-0.68);
+    expect(advanceOrbitRotation({
+      deltaMilliseconds: 16,
+      rotation: 12,
+      velocity: 0.25,
+    })).toBe(16);
   });
 
   it("keeps permanent route order and favorite preview data stable", () => {

@@ -125,7 +125,6 @@ export function HomeHologramScene({
           focused={focusedCard?.id === card.id}
           index={index}
           key={card.id}
-          onClick={() => handleCardClick(card, index)}
           reducedMotion={settings.reducedMotion}
           total={cards.length}
         />
@@ -176,19 +175,6 @@ export function HomeHologramScene({
     orbit.setQuickActionCardId(null);
     markIntroPlayed();
     navigate(card.route);
-  }
-
-  function handleCardClick(card: HomeHologramCard, index: number) {
-    if (orbit.isClickSuppressed()) {
-      return;
-    }
-
-    if (focusedCard?.id === card.id) {
-      openCard(card);
-      return;
-    }
-
-    orbit.focusIndex(index);
   }
 
   function handleSceneClickCapture(event: MouseEvent<HTMLElement>) {
@@ -319,6 +305,7 @@ export function HomeHologramScene({
         onPointerDown={handleScenePointerDown}
         onPointerMove={(event) => orbit.movePointerDrag(event)}
         onPointerUp={(event) => orbit.endPointerDrag(event)}
+        onLostPointerCapture={(event) => orbit.endPointerDrag(event)}
         onWheel={orbit.handleWheel}
         style={
           {

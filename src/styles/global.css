@@ -65,6 +65,7 @@ a {
 button:active:not(:disabled),
 a:active {
   opacity: 0.86;
+  filter: brightness(1.08);
 }
 
 #root {

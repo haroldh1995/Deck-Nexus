@@ -275,4 +275,69 @@ test.describe("interaction performance and responsive motion", () => {
 
     await expect(input).toHaveValue("blue black creatures under 3 mana");
   });
+
+  test("takes over immediately when a new drag interrupts a snap", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const scene = page.getByTestId("home-hologram-scene");
+    await expect(scene).toBeVisible();
+    const sceneBox = await scene.boundingBox();
+    expect(sceneBox).not.toBeNull();
+
+    const startX = sceneBox!.x + sceneBox!.width / 2;
+    const startY = sceneBox!.y + sceneBox!.height * 0.48;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX - 88, startY, { steps: 5 });
+    await page.mouse.up();
+
+    const renderedAfterRelease = await page
+      .getByTestId("orbit-card-create-deck")
+      .evaluate((node) => getComputedStyle(node).transform);
+
+    await page.mouse.move(startX - 88, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX - 26, startY, { steps: 3 });
+    const renderedAfterTakeover = await page
+      .getByTestId("orbit-card-create-deck")
+      .evaluate((node) => getComputedStyle(node).transform);
+    await page.mouse.up();
+
+    expect(renderedAfterTakeover).not.toBe(renderedAfterRelease);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator(".home-orbit-card")).toHaveCount(12);
+  });
+
+  test("keeps the Home scene inside the viewport across phone widths", async ({
+    page,
+  }) => {
+    for (const viewport of [
+      { width: 320, height: 568 },
+      { width: 360, height: 640 },
+      { width: 375, height: 667 },
+      { width: 390, height: 844 },
+      { width: 393, height: 852 },
+      { width: 414, height: 896 },
+      { width: 430, height: 932 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto(`/?viewport=${viewport.width}x${viewport.height}`);
+      await expect(page.getByTestId("home-hologram-scene")).toBeVisible();
+      const dimensions = await page.evaluate(() => {
+        const root = document.scrollingElement ?? document.documentElement;
+        return {
+          horizontalOverflow: root.scrollWidth - root.clientWidth,
+          innerWidth: window.innerWidth,
+          sceneWidth: document.querySelector<HTMLElement>(
+            "[data-testid=home-hologram-scene]",
+          )?.getBoundingClientRect().width ?? 0,
+        };
+      });
+
+      expect(dimensions.horizontalOverflow).toBeLessThanOrEqual(2);
+      expect(dimensions.sceneWidth).toBeLessThanOrEqual(dimensions.innerWidth);
+    }
+  });
 });

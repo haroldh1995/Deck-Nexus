@@ -63,7 +63,8 @@ export function useSceneParallax({
       });
     }
 
-    window.addEventListener("pointermove", handlePointerMove, {
+    const surface = elementRef.current;
+    surface?.addEventListener("pointermove", handlePointerMove, {
       passive: true,
     });
 
@@ -94,7 +95,7 @@ export function useSceneParallax({
     }
 
     return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
+      surface?.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("deviceorientation", handleDeviceOrientation);
       if (frame) {
         window.cancelAnimationFrame(frame);

@@ -11,9 +11,11 @@ import {
 } from "react";
 import {
   applyOrbitFriction,
+  advanceOrbitRotation,
   calculateMagneticSettleStep,
   calculateOrbitTransforms,
   calculateTapTargetStep,
+  clampOrbitVelocity,
   getPositionSelectedOrbitIndex,
   getPointerDragIntent,
   getRotationForIndex,
@@ -38,10 +40,6 @@ type OrbitInteractionMode =
   | "route_opening"
   | "resizing"
   | "reduced_motion";
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
 
 export interface OrbitPhysicsOptions {
   cards: readonly HomeHologramCard[];
@@ -78,6 +76,9 @@ export function useOrbitPhysics({
   const cardsRef = useRef(cards);
   const scaleRef = useRef(scale);
   const cardElementsRef = useRef(new Map<string, HTMLButtonElement>());
+  const cardRegistrationRef = useRef(
+    new Map<string, (element: HTMLButtonElement | null) => void>(),
+  );
   const lastTransformsRef = useRef<ReturnType<typeof calculateOrbitTransforms>>(
     [],
   );
@@ -102,6 +103,7 @@ export function useOrbitPhysics({
   const settleTargetIndexRef = useRef<number | null>(null);
   const tapTargetIndexRef = useRef<number | null>(null);
   const tapTargetRotationRef = useRef<number | null>(null);
+  const requestAnimationRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     onFocusedIndexChangeRef.current = onFocusedIndexChange;
@@ -235,13 +237,22 @@ export function useOrbitPhysics({
   );
 
   const registerCardElement = useCallback(
-    (cardId: string) => (element: HTMLButtonElement | null) => {
-      if (element) {
-        cardElementsRef.current.set(cardId, element);
-        applyTransforms(rotationRef.current);
-      } else {
-        cardElementsRef.current.delete(cardId);
+    (cardId: string) => {
+      const existing = cardRegistrationRef.current.get(cardId);
+      if (existing) {
+        return existing;
       }
+
+      const registration = (element: HTMLButtonElement | null) => {
+        if (element) {
+          cardElementsRef.current.set(cardId, element);
+          applyTransforms(rotationRef.current);
+        } else {
+          cardElementsRef.current.delete(cardId);
+        }
+      };
+      cardRegistrationRef.current.set(cardId, registration);
+      return registration;
     },
     [applyTransforms],
   );
@@ -261,6 +272,8 @@ export function useOrbitPhysics({
       });
       velocityRef.current = 0;
       settleTargetIndexRef.current = null;
+      // Selection is semantic feedback and should not wait for the visual snap.
+      commitFocusedIndex(normalizedIndex);
 
       if (staticHomeScreen || reducedMotion) {
         rotationRef.current = nextRotation;
@@ -269,7 +282,6 @@ export function useOrbitPhysics({
         interactionModeRef.current = reducedMotion
           ? "reduced_motion"
           : "idle";
-        commitFocusedIndex(normalizedIndex);
         settleTargetIndexRef.current = null;
         setSettlingState(false);
         applyTransforms(nextRotation);
@@ -281,6 +293,7 @@ export function useOrbitPhysics({
       interactionModeRef.current = "tap_targeting";
       setSettlingState(true);
       applyTransforms(rotationRef.current);
+      requestAnimationRef.current?.();
     },
     [
       applyTransforms,
@@ -379,7 +392,7 @@ export function useOrbitPhysics({
       const now = performance.now();
       const dx = event.clientX - lastXRef.current;
       const dt = Math.max(now - lastMoveTimeRef.current, 8);
-      const nextVelocity = clamp((dx * dragDegreesPerPixel) / dt, -0.9, 0.9);
+      const nextVelocity = clampOrbitVelocity((dx * dragDegreesPerPixel) / dt);
       const nextRotation = rotationRef.current + dx * dragDegreesPerPixel;
 
       lastXRef.current = event.clientX;
@@ -410,9 +423,12 @@ export function useOrbitPhysics({
       }
 
       cancelLongPress();
-      event?.currentTarget.releasePointerCapture?.(event.pointerId);
       const hadActivePointer = activePointerIdRef.current !== null;
+      const pointerId = activePointerIdRef.current;
       activePointerIdRef.current = null;
+      if (event && pointerId !== null) {
+        event.currentTarget.releasePointerCapture?.(pointerId);
+      }
 
       if (!hadActivePointer) {
         return;
@@ -431,6 +447,7 @@ export function useOrbitPhysics({
             ? "inertial"
             : "snapping";
         setSettlingState(true);
+        requestAnimationRef.current?.();
       }
     },
     [
@@ -523,7 +540,7 @@ export function useOrbitPhysics({
       const delta = event.deltaX || event.deltaY;
       const nextRotation = rotationRef.current - delta * 0.08;
       rotationRef.current = nextRotation;
-      velocityRef.current = clamp(-delta * 0.0025, -0.68, 0.68);
+      velocityRef.current = clampOrbitVelocity(-delta * 0.0025, 0.68);
       settleTargetIndexRef.current = null;
       tapTargetIndexRef.current = null;
       tapTargetRotationRef.current = null;
@@ -531,6 +548,7 @@ export function useOrbitPhysics({
       applyTransforms(nextRotation);
       commitPositionSelectedIndex(nextRotation);
       setSettlingState(true);
+      requestAnimationRef.current?.();
     },
     [
       applyTransforms,
@@ -605,7 +623,25 @@ export function useOrbitPhysics({
     let frame = 0;
     let previousTime = performance.now();
 
+    const needsAnimation = () =>
+      visible &&
+      !staticHomeScreen &&
+      cardsRef.current.length > 0 &&
+      (settlingRef.current ||
+        interactionModeRef.current === "tap_targeting" ||
+        interactionModeRef.current === "inertial" ||
+        interactionModeRef.current === "snapping" ||
+        Math.abs(velocityRef.current) > 0.002);
+
+    const requestAnimation = () => {
+      if (!frame && needsAnimation()) {
+        previousTime = performance.now();
+        frame = window.requestAnimationFrame(tick);
+      }
+    };
+
     function tick(now: number) {
+      frame = 0;
       const dt = Math.min(now - previousTime, 34);
       previousTime = now;
 
@@ -635,8 +671,6 @@ export function useOrbitPhysics({
               : targetStep.nextRotation;
             nextVelocity = 0;
             didUpdateTransform = true;
-            commitPositionSelectedIndex(nextRotation);
-
             if (targetStep.settled) {
               commitFocusedIndex(targetIndex);
               tapTargetIndexRef.current = null;
@@ -648,7 +682,11 @@ export function useOrbitPhysics({
             }
           } else if (Math.abs(currentVelocity) > 0.002 && !reducedMotion) {
             interactionModeRef.current = "inertial";
-            nextRotation += currentVelocity * dt;
+            nextRotation = advanceOrbitRotation({
+              deltaMilliseconds: dt,
+              rotation: nextRotation,
+              velocity: currentVelocity,
+            });
             nextVelocity = applyOrbitFriction({
               deltaMilliseconds: dt,
               velocity: currentVelocity,
@@ -702,12 +740,16 @@ export function useOrbitPhysics({
         }
       }
 
-      frame = window.requestAnimationFrame(tick);
+      requestAnimation();
     }
 
-    frame = window.requestAnimationFrame(tick);
+    requestAnimationRef.current = requestAnimation;
+    requestAnimation();
     return () => {
       window.cancelAnimationFrame(frame);
+      if (requestAnimationRef.current === requestAnimation) {
+        requestAnimationRef.current = null;
+      }
     };
   }, [
     applyTransforms,
@@ -717,6 +759,39 @@ export function useOrbitPhysics({
     setSettlingState,
     staticHomeScreen,
     visible,
+  ]);
+
+  useEffect(() => {
+    function cancelPointerInteraction() {
+      if (activePointerIdRef.current === null) {
+        return;
+      }
+
+      cancelLongPress();
+      activePointerIdRef.current = null;
+      dragIntentActiveRef.current = false;
+      setDraggingState(false);
+      if (!staticHomeScreen) {
+        interactionModeRef.current = "snapping";
+        setSettlingState(true);
+        requestAnimationRef.current?.();
+      }
+    }
+
+    document.addEventListener("visibilitychange", cancelPointerInteraction);
+    window.addEventListener("orientationchange", cancelPointerInteraction, {
+      passive: true,
+    });
+
+    return () => {
+      document.removeEventListener("visibilitychange", cancelPointerInteraction);
+      window.removeEventListener("orientationchange", cancelPointerInteraction);
+    };
+  }, [
+    cancelLongPress,
+    setDraggingState,
+    setSettlingState,
+    staticHomeScreen,
   ]);
 
   useEffect(() => cancelLongPress, [cancelLongPress]);

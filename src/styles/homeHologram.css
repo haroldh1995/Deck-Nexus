@@ -507,7 +507,7 @@
   transform: translate3d(-50%, var(--home-orbit-center-y, 430px), 0) scale(0.54);
   transform-origin: 50% 55%;
   transform-style: preserve-3d;
-  will-change: transform;
+  will-change: auto;
   transition:
     border-color 120ms ease,
     box-shadow 120ms ease;
@@ -515,6 +515,7 @@
 }
 
 .home-hologram-scene--interacting .home-orbit-card {
+  will-change: transform;
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease;

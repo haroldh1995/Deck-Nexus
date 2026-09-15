@@ -8,6 +8,22 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+export function clampOrbitVelocity(velocity: number, maximum = 0.9): number {
+  return clamp(velocity, -maximum, maximum);
+}
+
+export function advanceOrbitRotation({
+  deltaMilliseconds,
+  rotation,
+  velocity,
+}: {
+  deltaMilliseconds: number;
+  rotation: number;
+  velocity: number;
+}): number {
+  return rotation + velocity * Math.max(0, deltaMilliseconds);
+}
+
 function lerp(min: number, max: number, t: number): number {
   return min + (max - min) * t;
 }

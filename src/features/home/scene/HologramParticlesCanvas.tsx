@@ -55,6 +55,7 @@ export function HologramParticlesCanvas({
     const canvasElement = canvas;
     const context2d = context;
     let frame = 0;
+    let timeout = 0;
     let width = 0;
     let height = 0;
     let lastDrawTime = 0;
@@ -82,9 +83,25 @@ export function HologramParticlesCanvas({
       );
     }
 
+    function scheduleNextDraw() {
+      if (!visible || reducedMotion) {
+        return;
+      }
+
+      if (frameInterval <= 48) {
+        frame = window.requestAnimationFrame(draw);
+        return;
+      }
+
+      timeout = window.setTimeout(() => {
+        timeout = 0;
+        frame = window.requestAnimationFrame(draw);
+      }, frameInterval);
+    }
+
     function draw(now: number) {
       if (now - lastDrawTime < frameInterval) {
-        frame = window.requestAnimationFrame(draw);
+        scheduleNextDraw();
         return;
       }
 
@@ -92,7 +109,6 @@ export function HologramParticlesCanvas({
       context2d.clearRect(0, 0, width, height);
 
       if (!visible) {
-        frame = window.requestAnimationFrame(draw);
         return;
       }
 
@@ -134,7 +150,7 @@ export function HologramParticlesCanvas({
       });
 
       context2d.globalCompositeOperation = "source-over";
-      frame = window.requestAnimationFrame(draw);
+      scheduleNextDraw();
     }
 
     resize();
@@ -142,12 +158,21 @@ export function HologramParticlesCanvas({
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
     resizeObserver?.observe(canvasElement);
     window.addEventListener("resize", resize, { passive: true });
-    frame = window.requestAnimationFrame(draw);
+    if (visible) {
+      if (reducedMotion) {
+        draw(performance.now());
+      } else {
+        frame = window.requestAnimationFrame(draw);
+      }
+    }
 
     return () => {
       resizeObserver?.disconnect();
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);
+      if (timeout) {
+        window.clearTimeout(timeout);
+      }
     };
   }, [performanceMode, reducedMotion, visible]);
 

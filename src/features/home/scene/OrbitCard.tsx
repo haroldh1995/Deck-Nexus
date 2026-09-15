@@ -9,7 +9,6 @@ export const OrbitCard = memo(function OrbitCard({
   total,
   focused,
   reducedMotion,
-  onClick,
 }: {
   card: HomeHologramCard;
   cardRef: Ref<HTMLButtonElement>;
@@ -17,7 +16,6 @@ export const OrbitCard = memo(function OrbitCard({
   total: number;
   focused: boolean;
   reducedMotion: boolean;
-  onClick: () => void;
 }) {
   return (
     <button
@@ -34,7 +32,6 @@ export const OrbitCard = memo(function OrbitCard({
       data-testid={`orbit-card-${card.id}`}
       data-depth="front"
       data-index={index}
-      onClick={onClick}
       style={{
         "--card-index": index,
       } as CSSProperties}
