@@ -1,13 +1,13 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-ZERO VISIBLE BUILDING / BACKGROUND WORK ISOLATION REPAIR
+MASTER PRODUCT COMPLETION & INTELLIGENCE OVERHAUL
 
 ## CURRENT OBJECTIVE
-Pause the completed master-task checkpoint while eliminating visible Home hydration/catch-up, stabilizing initial card rendering, and isolating nonessential work from first interaction. Resume the master task from its prior checkpoint after deployment and live verification.
+Resume the completed master checkpoint after the targeted ZERO VISIBLE BUILDING / BACKGROUND WORK ISOLATION REPAIR. The targeted repair is complete and deployed; preserve all prior Deck Nexus functionality and use this checkpoint for the next task.
 
 ## LAST VERIFIED MILESTONE
-The master product checkpoint is paused intact at deployed commit `9f0c40b`. The visible-building repair now removes staggered Home card/scene assembly, preloads critical Home artwork, deduplicates and idle-schedules route prefetch, defers it during active orbit interaction, adds a shared interaction-priority scheduler, and replaces per-particle canvas gradients with cheaper glow passes. Cold/warm profiling shows complete cards within the deliberate short reveal, no late Home DOM rebuild, zero mobile overflow, and route chunks loading after interaction rather than during it.
+Targeted repair completed at `1bfc96e`: Home cards now reveal as a complete stable state, critical artwork is preloaded, route prefetch is deduplicated and idle-scheduled, background work defers during interaction, and particle drawing avoids per-particle gradient allocation. Local cold/warm/30-second interaction profiling and deployed mobile verification showed no late Home rebuild, no overflow, and no page errors.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -18,17 +18,19 @@ The master product checkpoint is paused intact at deployed commit `9f0c40b`. The
 - Deck Builder shows nonintrusive change summaries with expandable detail and provides persistent targeted undo/redo through the existing deck stores.
 - Card detail in Search now connects owned quantity, collection navigation, current deck/Maybeboard actions, and Want List fallback.
 - Analyzer no-op staging actions were removed or replaced with working explanations and navigation.
-- Focused tests: 2 files, 6 tests; full unit suite before this repair: 28 files, 154 tests; full E2E before this repair: 36 tests passed.
+- Focused Home/orbit tests: 21 passed; background scheduler tests: 2 passed.
+- Full unit suite: 29 files, 156 tests passed.
+- Full E2E suite: 36 tests passed on Chromium and mobile Chromium.
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-IN PROGRESS
+COMPLETE
 
 ## IN PROGRESS
-- Targeted repair implementation and all local validation are complete; commit/push, deployment, and sustained live verification remain.
+None.
 
 ## REMAINING
-- Commit/push, deployment, and live sustained-interaction verification for this targeted repair, then restore the master-task checkpoint.
+None for the current master checkpoint.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -70,7 +72,7 @@ IN PROGRESS
 - `npm audit --audit-level=high` (reports two moderate Vitest transitive advisories)
 
 ## TESTS STILL REQUIRED
-- Final visual QA, deployment, and live sustained-interaction verification for this targeted repair.
+None for the completed repair/checkpoint.
 
 ## KNOWN ISSUES
 No new issue established yet. Existing `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree.
@@ -79,16 +81,18 @@ No new issue established yet. Existing `npm audit` reports two moderate transiti
 None known.
 
 ## GIT STATE
-Production implementation commit `8974b7a`, CI stabilization commit `50e9a0b`, and final checkpoint commit `fc53c39` are pushed to `origin/main`; worktree is clean.
+Targeted repair commit `1bfc96e` is pushed to `origin/main` and matches remote SHA `1bfc96eea2201a3a883c461a788fdd4802c038c1`. This checkpoint file update is pending commit/push.
 
 ## DEPLOYMENT STATE
-GitHub Pages build and deployment workflows for `50e9a0b` and final checkpoint commit `fc53c39` completed successfully. The production implementation from `8974b7a` is deployed.
+GitHub Actions deployment workflows for `1bfc96e` completed successfully:
+- https://github.com/haroldh1995/Deck-Nexus/actions/runs/35162772500
+- https://github.com/haroldh1995/Deck-Nexus/actions/runs/35162771524
 
 ## LIVE VERIFICATION STATE
-Live application verified at 390x844 with service workers blocked and a cache-busting query: Home loaded without overflow; in-app Card Search opened; Sol Ring search returned a result; Card Detail showed Deck and collection context; document width remained 390px; and no page errors occurred. Prior live Deck Builder creation/add/change/undo verification also passed.
+Live Deck Nexus was checked at 390x844 using service workers blocked and a cache-busting query after a 5-second wait and sustained drag. All 12 Home cards were complete/opaque, document overflow was `0`, and page errors were empty. Screenshot: `output/playwright/live-zero-building.png`.
 
 ## NEXT ACTION
-Review the final diff, commit/push/deploy/live-verify this repair, then resume the prior master-task checkpoint without restarting completed work.
+Await next Deck Nexus task.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
