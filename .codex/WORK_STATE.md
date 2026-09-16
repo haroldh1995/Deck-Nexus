@@ -1,13 +1,13 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-Targeted Home Nexus orbit input-latency repair.
+COMPLETE: Targeted Home Nexus orbit input-latency repair.
 
 ## CURRENT OBJECTIVE
 Make active Home orbit dragging directly follow the newest pointer position with no React-per-frame dependency or stale movement queue.
 
 ## LAST VERIFIED MILESTONE
-Frame-coalesced direct pointer tracking and transform-only active dragging are implemented; focused tests, full unit suite, typecheck, lint, production build, mobile regression E2E, mobile interaction E2E, visual screenshots, and a throttled ten-cycle orbit stress run pass. Profiling coalesces 241 pointer moves into frame updates with no page errors or overflow. Repair commit `961fec1` is pushed; its Pages build passed but the parallel deploy workflow build had a timing-sensitive existing BoardState test failure, so deployment is being retried by this checkpoint commit.
+Frame-coalesced direct pointer tracking and transform-only active dragging are implemented; focused tests, full unit suite, typecheck, lint, production build, mobile regression E2E, mobile interaction E2E, visual screenshots, and a throttled ten-cycle orbit stress run pass. The deployed build at the current `origin/main` commit was live-verified at 390x844: Home drag/intermediate/snap states, ten rapid cycles, no overflow/errors, route entry for Library/Search/Import/Scanner, and Import Review parsing all passed.
 
 ## COMPLETED
 - Continuous fractional orbit transforms with direct pointer dragging, bounded momentum, snap interruption, tap-to-center, keyboard fallback, reduced-motion handling, and pointer/orientation cleanup.
@@ -18,10 +18,10 @@ Frame-coalesced direct pointer tracking and transform-only active dragging are i
 - GitHub Pages workflow runs for the current commit completed successfully.
 
 ## IN PROGRESS
-- Complete the retried deployment and live-verify the targeted repair.
+None.
 
 ## REMAINING
-- Wait for the checkpoint-triggered GitHub Pages workflow, then verify the live Home orbit and major routes.
+None for this task. Await next Deck Nexus task.
 
 ## FILES CURRENTLY INVOLVED
 - `src/features/home/scene/useOrbitPhysics.ts`
@@ -48,7 +48,7 @@ Frame-coalesced direct pointer tracking and transform-only active dragging are i
 - `npm audit --audit-level=high` (reports two moderate Vitest transitive advisories)
 
 ## TESTS STILL REQUIRED
-- Successful deployment workflow and live verification of the targeted repair.
+None for this task.
 
 ## KNOWN ISSUES
 `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree; the high-severity threshold command completed without a high-severity finding.
@@ -57,16 +57,16 @@ Frame-coalesced direct pointer tracking and transform-only active dragging are i
 None.
 
 ## GIT STATE
-Targeted repair committed as `961fec1`; this deployment checkpoint is uncommitted on `main` and will be pushed next.
+Targeted repair and completion checkpoint are committed on `main`; the final checkpoint commit still needs to be pushed so the repository state remains resumable.
 
 ## DEPLOYMENT STATE
-The `961fec1` Pages build/deployment workflow succeeded, while the repository deploy workflow failed in its unit-test step because `boardStateBridge.test.ts` observed `valid` instead of `timeout` in a timestamp-order assertion. Local repeated runs pass; retry after checkpoint push is required.
+GitHub Pages workflows for the targeted repair checkpoint completed successfully. The earlier transient unit-test workflow failure was retried successfully.
 
 ## LIVE VERIFICATION STATE
-Previous live verification passed. Re-verify the targeted repair after deployment.
+Live `https://haroldh1995.github.io/Deck-Nexus/` was opened with service workers blocked and a cache-busting query. Home orbit movement, rapid interruption stress, route entry, mobile sizing, no horizontal overflow, no black screen, Search, Import entry/review parsing, and Scanner permission shell were checked at 390x844.
 
 ## NEXT ACTION
-Commit this checkpoint, push it, monitor both Pages workflows, and perform cache-busted live Home orbit verification.
+Commit and push this final checkpoint, monitor its Pages workflows, then await the next Deck Nexus task.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
