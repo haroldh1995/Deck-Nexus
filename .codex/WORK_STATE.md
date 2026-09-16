@@ -7,7 +7,7 @@ Targeted Home Nexus orbit input-latency repair.
 Make active Home orbit dragging directly follow the newest pointer position with no React-per-frame dependency or stale movement queue.
 
 ## LAST VERIFIED MILESTONE
-Frame-coalesced direct pointer tracking and transform-only active dragging are implemented; focused tests, full unit suite, typecheck, lint, production build, mobile regression E2E, mobile interaction E2E, visual screenshots, and a throttled ten-cycle orbit stress run pass. Profiling coalesces 241 pointer moves into frame updates with no page errors or overflow.
+Frame-coalesced direct pointer tracking and transform-only active dragging are implemented; focused tests, full unit suite, typecheck, lint, production build, mobile regression E2E, mobile interaction E2E, visual screenshots, and a throttled ten-cycle orbit stress run pass. Profiling coalesces 241 pointer moves into frame updates with no page errors or overflow. Repair commit `961fec1` is pushed; its Pages build passed but the parallel deploy workflow build had a timing-sensitive existing BoardState test failure, so deployment is being retried by this checkpoint commit.
 
 ## COMPLETED
 - Continuous fractional orbit transforms with direct pointer dragging, bounded momentum, snap interruption, tap-to-center, keyboard fallback, reduced-motion handling, and pointer/orientation cleanup.
@@ -18,10 +18,10 @@ Frame-coalesced direct pointer tracking and transform-only active dragging are i
 - GitHub Pages workflow runs for the current commit completed successfully.
 
 ## IN PROGRESS
-- Commit, push, deploy, and live-verify the targeted repair.
+- Complete the retried deployment and live-verify the targeted repair.
 
 ## REMAINING
-- Commit and push the repair, wait for GitHub Pages, then verify the live Home orbit and major routes.
+- Wait for the checkpoint-triggered GitHub Pages workflow, then verify the live Home orbit and major routes.
 
 ## FILES CURRENTLY INVOLVED
 - `src/features/home/scene/useOrbitPhysics.ts`
@@ -48,7 +48,7 @@ Frame-coalesced direct pointer tracking and transform-only active dragging are i
 - `npm audit --audit-level=high` (reports two moderate Vitest transitive advisories)
 
 ## TESTS STILL REQUIRED
-- Deployment workflow and live verification of the targeted repair.
+- Successful deployment workflow and live verification of the targeted repair.
 
 ## KNOWN ISSUES
 `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree; the high-severity threshold command completed without a high-severity finding.
@@ -57,16 +57,16 @@ Frame-coalesced direct pointer tracking and transform-only active dragging are i
 None.
 
 ## GIT STATE
-Uncommitted targeted repair in `src/features/home/scene/useOrbitPhysics.ts` and this checkpoint file on `main`; `origin/main` is still the pre-repair commit.
+Targeted repair committed as `961fec1`; this deployment checkpoint is uncommitted on `main` and will be pushed next.
 
 ## DEPLOYMENT STATE
-Previous current commit deployment succeeded. New targeted repair is not yet committed or deployed.
+The `961fec1` Pages build/deployment workflow succeeded, while the repository deploy workflow failed in its unit-test step because `boardStateBridge.test.ts` observed `valid` instead of `timeout` in a timestamp-order assertion. Local repeated runs pass; retry after checkpoint push is required.
 
 ## LIVE VERIFICATION STATE
 Previous live verification passed. Re-verify the targeted repair after deployment.
 
 ## NEXT ACTION
-Review the final diff, commit, push, monitor GitHub Pages, and perform cache-busted live Home orbit verification.
+Commit this checkpoint, push it, monitor both Pages workflows, and perform cache-busted live Home orbit verification.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
