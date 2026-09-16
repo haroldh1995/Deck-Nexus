@@ -18,12 +18,14 @@ Deck Change Intelligence is implemented as a reusable before/after analysis serv
 - Focused tests: 2 files, 6 tests; full unit suite: 28 files, 154 tests; full E2E: 36 tests passed.
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
+## STATUS
+COMPLETE
+
 ## IN PROGRESS
-- Final diff audit, commit, push, deployment, and live verification.
+- None.
 
 ## REMAINING
-- Complete only verified missing or broken product behavior from the master prompt.
-- Run focused and full validation, visual QA, final diff audit, commit, push, deployment, and live verification.
+- None for the current master task.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -55,16 +57,16 @@ No new issue established yet. Existing `npm audit` reports two moderate transiti
 None known.
 
 ## GIT STATE
-Working tree contains only the master task implementation and checkpoint changes; not yet committed. `git diff --check` passes.
+Production implementation commit `8974b7a` (`Complete deck builder intelligence workflow`) is pushed to `origin/main`; final checkpoint update is pending commit.
 
 ## DEPLOYMENT STATE
-Prior deployment is live. Master task changes are not yet committed or deployed.
+GitHub Pages build and deployment workflows for `8974b7a` completed successfully.
 
 ## LIVE VERIFICATION STATE
-Prior live verification remains valid for the previous deployed commit; master task changes still require local and live verification.
+Live application verified at 390x844 with service workers blocked/cache-busted: Home loaded without overflow, Deck Builder creation/add/change/undo worked, and the live change-intelligence summary rendered without page errors. Existing live route verification remains valid for Search, Scanner, Import, Collection, Analyzer, and settings.
 
 ## NEXT ACTION
-Inspect existing Deck Builder, Card Search/Detail, collection, analyzer, and repository tests; implement the first genuinely missing master-task capability.
+Await next Deck Nexus task.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
