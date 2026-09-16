@@ -57,7 +57,7 @@ None for this task.
 None.
 
 ## GIT STATE
-Targeted repair and completion checkpoint are committed on `main`; the final checkpoint commit still needs to be pushed so the repository state remains resumable.
+Clean `main` worktree; the targeted repair and final completion checkpoint are pushed, and `origin/main` matches the current commit.
 
 ## DEPLOYMENT STATE
 GitHub Pages workflows for the targeted repair checkpoint completed successfully. The earlier transient unit-test workflow failure was retried successfully.
@@ -66,7 +66,7 @@ GitHub Pages workflows for the targeted repair checkpoint completed successfully
 Live `https://haroldh1995.github.io/Deck-Nexus/` was opened with service workers blocked and a cache-busting query. Home orbit movement, rapid interruption stress, route entry, mobile sizing, no horizontal overflow, no black screen, Search, Import entry/review parsing, and Scanner permission shell were checked at 390x844.
 
 ## NEXT ACTION
-Commit and push this final checkpoint, monitor its Pages workflows, then await the next Deck Nexus task.
+Await the next Deck Nexus task.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
