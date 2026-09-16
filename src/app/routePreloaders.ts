@@ -15,13 +15,27 @@ const routePreloaders: Record<string, () => Promise<unknown>> = {
   "/wishlist": () => import("../features/directories/CardDirectoriesScreen"),
 };
 
-export function preloadAppRoute(path: string): void {
+const routePreloadPromises = new Map<string, Promise<unknown>>();
+
+export function preloadAppRoute(path: string): Promise<unknown> | undefined {
   if (import.meta.env.MODE === "test") {
-    return;
+    return undefined;
   }
 
   const preload = routePreloaders[path];
-  if (preload) {
-    void preload();
+  if (!preload) {
+    return undefined;
   }
+
+  const existing = routePreloadPromises.get(path);
+  if (existing) {
+    return existing;
+  }
+
+  const promise = preload().catch((error: unknown) => {
+    routePreloadPromises.delete(path);
+    throw error;
+  });
+  routePreloadPromises.set(path, promise);
+  return promise;
 }

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
+import { scheduleBackgroundWork } from "../../../app/backgroundWork";
 import { preloadAppRoute } from "../../../app/routePreloaders";
 import { AppIcon } from "../../../components/AppIcon";
 import type { HomeOrbitItem } from "../../../types/navigation";
@@ -140,35 +141,37 @@ export function HomeHologramScene({
   }, []);
 
   useEffect(() => {
-    if (!focusedCard || cards.length <= 0 || typeof window === "undefined") {
-      return;
+    if (
+      !focusedCard ||
+      cards.length <= 0 ||
+      typeof window === "undefined" ||
+      orbit.dragging ||
+      orbit.settling
+    ) {
+      return undefined;
     }
 
-    const preloadVisibleRoutes = () => {
-      const routeIndexes = new Set([
-        orbit.focusedIndex,
-        (orbit.focusedIndex + 1) % cards.length,
-        (orbit.focusedIndex - 1 + cards.length) % cards.length,
-      ]);
+    const cancelBackgroundPreload = scheduleBackgroundWork(
+      "home-visible-route-preload",
+      () => {
+        const routeIndexes = new Set([
+          orbit.focusedIndex,
+          (orbit.focusedIndex + 1) % cards.length,
+          (orbit.focusedIndex - 1 + cards.length) % cards.length,
+        ]);
 
-      for (const index of routeIndexes) {
-        const route = cards[index]?.route;
-        if (route) {
-          preloadAppRoute(route);
+        for (const index of routeIndexes) {
+          const route = cards[index]?.route;
+          if (route) {
+            void preloadAppRoute(route)?.catch(() => undefined);
+          }
         }
-      }
-    };
+      },
+      1400,
+    );
 
-    if (typeof window.requestIdleCallback === "function") {
-      const idleHandle = window.requestIdleCallback(preloadVisibleRoutes, {
-        timeout: 700,
-      });
-      return () => window.cancelIdleCallback(idleHandle);
-    }
-
-    const timer = window.setTimeout(preloadVisibleRoutes, 180);
-    return () => window.clearTimeout(timer);
-  }, [cards, focusedCard, orbit.focusedIndex]);
+    return cancelBackgroundPreload;
+  }, [cards, focusedCard, orbit.dragging, orbit.focusedIndex, orbit.settling]);
 
   function openCard(card: HomeHologramCard) {
     orbit.beginRouteOpening();

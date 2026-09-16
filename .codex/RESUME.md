@@ -14,5 +14,6 @@ When asked to resume Deck Nexus work:
 8. Verify the actual deployment and inspect the live Deck Nexus application. Never claim an external integration or live behavior was verified unless it was actually verified.
 9. Preserve Deck Nexus architecture, user data, migrations, ownership boundaries, pricing, BoardState compatibility, offline behavior, and established features. Never reset IndexedDB or delete legacy data to solve development problems.
 10. Never use Xcode or build a native iPhone app unless a future task explicitly changes that requirement.
+11. Preserve the visible-interaction principle: critical UI should appear as a complete stable state, and nonessential background work must be idle-scheduled, deduplicated, and deferred while the user is interacting.
 
 These files are internal development state only and must not be bundled into the production UI.

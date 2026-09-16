@@ -1,42 +1,64 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-MASTER PRODUCT COMPLETION & INTELLIGENCE OVERHAUL
+ZERO VISIBLE BUILDING / BACKGROUND WORK ISOLATION REPAIR
 
 ## CURRENT OBJECTIVE
-Finish and polish the established Deck Nexus product across deck building, card experience, collection, recommendations, analysis, scanner integration, and application-wide reliability without rebuilding completed systems.
+Pause the completed master-task checkpoint while eliminating visible Home hydration/catch-up, stabilizing initial card rendering, and isolating nonessential work from first interaction. Resume the master task from its prior checkpoint after deployment and live verification.
 
 ## LAST VERIFIED MILESTONE
-Deck Change Intelligence is implemented as a reusable before/after analysis service and connected to Deck Builder mutations, local undo/redo persistence, and compact expandable feedback. Card Search detail now exposes collection context and direct deck/want-list actions. Analyzer staged controls were replaced with honest Why?/navigation actions. Focused tests, typecheck, lint, full unit suite, production build, visual QA, and full E2E pass.
+The master product checkpoint is paused intact at deployed commit `9f0c40b`. The visible-building repair now removes staggered Home card/scene assembly, preloads critical Home artwork, deduplicates and idle-schedules route prefetch, defers it during active orbit interaction, adds a shared interaction-priority scheduler, and replaces per-particle canvas gradients with cheaper glow passes. Cold/warm profiling shows complete cards within the deliberate short reveal, no late Home DOM rebuild, zero mobile overflow, and route chunks loading after interaction rather than during it.
 
 ## COMPLETED
+- Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
+- Home visible-building repair: simultaneous short intro reveal, StrictMode-safe intro state, critical reference-image preload, deduplicated route preloading, idle/background scheduling, interaction deferral, and optimized particle drawing.
+- Added deterministic scheduler tests covering interaction deferral and job deduplication.
 - Prior Home orbit, Scanner, Import Deck, collection/ownership, pricing, BoardState boundary, snapshots, backup/restore, offline/PWA, and ecosystem foundation work remains preserved on `origin/main`.
 - Deck Change Intelligence calculates additions/removals/replacements, role, curve, ownership, price, goal, and estimated bracket deltas using existing canonical models.
 - Deck Builder shows nonintrusive change summaries with expandable detail and provides persistent targeted undo/redo through the existing deck stores.
 - Card detail in Search now connects owned quantity, collection navigation, current deck/Maybeboard actions, and Want List fallback.
 - Analyzer no-op staging actions were removed or replaced with working explanations and navigation.
-- Focused tests: 2 files, 6 tests; full unit suite: 28 files, 154 tests; full E2E: 36 tests passed.
+- Focused tests: 2 files, 6 tests; full unit suite before this repair: 28 files, 154 tests; full E2E before this repair: 36 tests passed.
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-COMPLETE
+IN PROGRESS
 
 ## IN PROGRESS
-- None.
+- Targeted repair implementation and all local validation are complete; commit/push, deployment, and sustained live verification remain.
 
 ## REMAINING
-- None for the current master task.
+- Commit/push, deployment, and live sustained-interaction verification for this targeted repair, then restore the master-task checkpoint.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
+- `src/app/AppShell.tsx`
+- `src/app/SettingsContext.tsx`
+- `src/features/home/HomeScreen.tsx`
+- `src/features/home/scene/HomeHologramScene.tsx`
+- `src/features/home/scene/OrbitCard.tsx`
+- `src/features/home/scene/homeSceneContent.ts`
+- `src/features/home/scene/HologramParticlesCanvas.tsx`
+- `src/app/routePreloaders.ts`
+- `src/app/backgroundWork.ts`
+- `src/features/home/scene/useHomeIntro.ts`
 - `src/features/decks/deckChangeIntelligence.ts`
 - `src/features/decks/DeckBuilderScreen.tsx`
 - `src/db/repositories.ts`
 - `src/features/cards/CardSearchScreen.tsx`
 - `src/styles/deckWorkspace.css`
 - `src/tests/deckChangeIntelligence.test.ts`
+- `src/tests/backgroundWork.test.ts`
+- `index.html`
+- `.codex/RESUME.md`
 
 ## TESTS ALREADY RUN
+- Focused Home/orbit tests: 2 files, 21 tests passed.
+- Background scheduler tests: 1 file, 2 tests passed.
+- Full unit suite: 29 files, 156 tests passed.
+- Full E2E suite: 36 tests passed on Chromium and mobile Chromium.
+- GitHub Pages production-mode build passed.
+- Typecheck, lint, production build, cold/warm Home profiling, 30-second interaction profiling, and route-prefetch timing checks passed locally.
 - `npx tsc -b --pretty false`
 - `npm run lint -- --quiet`
 - `npm test -- --reporter=dot --maxWorkers=1` (27 files, 151 tests)
@@ -48,7 +70,7 @@ COMPLETE
 - `npm audit --audit-level=high` (reports two moderate Vitest transitive advisories)
 
 ## TESTS STILL REQUIRED
-- None for the current master task.
+- Final visual QA, deployment, and live sustained-interaction verification for this targeted repair.
 
 ## KNOWN ISSUES
 No new issue established yet. Existing `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree.
@@ -66,7 +88,7 @@ GitHub Pages build and deployment workflows for `50e9a0b` and final checkpoint c
 Live application verified at 390x844 with service workers blocked and a cache-busting query: Home loaded without overflow; in-app Card Search opened; Sol Ring search returned a result; Card Detail showed Deck and collection context; document width remained 390px; and no page errors occurred. Prior live Deck Builder creation/add/change/undo verification also passed.
 
 ## NEXT ACTION
-Await next Deck Nexus task.
+Review the final diff, commit/push/deploy/live-verify this repair, then resume the prior master-task checkpoint without restarting completed work.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.

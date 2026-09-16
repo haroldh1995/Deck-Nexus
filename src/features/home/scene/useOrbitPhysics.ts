@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { setUserInteractionActive } from "../../../app/backgroundWork";
 import {
   applyOrbitFriction,
   advanceOrbitRotation,
@@ -152,6 +153,7 @@ export function useOrbitPhysics({
     }
 
     draggingRef.current = nextDragging;
+    setUserInteractionActive(nextDragging);
     if (!nextDragging) {
       restoreVisualsRef.current = true;
     }
@@ -898,6 +900,15 @@ export function useOrbitPhysics({
   ]);
 
   useEffect(() => cancelLongPress, [cancelLongPress]);
+
+  useEffect(() => {
+    return () => {
+      if (draggingRef.current) {
+        setUserInteractionActive(false);
+        draggingRef.current = false;
+      }
+    };
+  }, []);
 
   return {
     focusedIndex,

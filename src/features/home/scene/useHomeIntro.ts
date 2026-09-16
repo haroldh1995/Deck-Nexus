@@ -26,7 +26,6 @@ export function useHomeIntro(reducedMotion: boolean): {
     }
 
     const played = window.sessionStorage.getItem(homeIntroSessionKey) === "true";
-    window.sessionStorage.setItem(homeIntroSessionKey, "true");
     return played;
   }, []);
 

@@ -118,19 +118,15 @@ export function HologramParticlesCanvas({
         const depth = 0.45 + particle.z * 0.9;
         const radius = particle.radius * depth;
         const alpha = reducedMotion ? particle.alpha * 0.42 : particle.alpha;
-        const glow = context2d.createRadialGradient(
-          particle.x,
-          particle.y,
-          0,
-          particle.x,
-          particle.y,
-          radius * 5,
-        );
-        glow.addColorStop(0, `hsla(${particle.hue}, 100%, 72%, ${alpha})`);
-        glow.addColorStop(1, `hsla(${particle.hue}, 100%, 52%, 0)`);
-        context2d.fillStyle = glow;
+        // Two solid passes preserve the glow while avoiding a new gradient
+        // allocation for every particle on every draw.
+        context2d.fillStyle = `hsla(${particle.hue}, 100%, 52%, ${alpha * 0.14})`;
         context2d.beginPath();
         context2d.arc(particle.x, particle.y, radius * 5, 0, Math.PI * 2);
+        context2d.fill();
+        context2d.fillStyle = `hsla(${particle.hue}, 100%, 72%, ${alpha})`;
+        context2d.beginPath();
+        context2d.arc(particle.x, particle.y, radius, 0, Math.PI * 2);
         context2d.fill();
 
         if (!reducedMotion) {

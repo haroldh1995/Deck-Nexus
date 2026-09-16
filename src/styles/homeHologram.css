@@ -1285,25 +1285,25 @@
 }
 
 .home-hologram-scene--intro-full .upper-projection {
-  animation: intro-upper-ignite 900ms ease both;
+  animation: intro-upper-ignite 320ms ease both;
 }
 
 .home-hologram-scene--intro-full .central-beam {
-  animation: intro-beam-descend 1450ms 640ms ease both;
+  animation: intro-beam-descend 320ms ease both;
 }
 
 .home-hologram-scene--intro-full .lower-projection {
-  animation: intro-floor-activate 1100ms 1180ms ease both;
+  animation: intro-floor-activate 320ms ease both;
 }
 
 .home-hologram-scene--intro-full .central-crystal {
   animation:
-    intro-crystal-materialize 850ms 1780ms ease both,
-    crystal-float 5.6s 2650ms ease-in-out infinite;
+    intro-crystal-materialize 320ms ease both,
+    crystal-float 5.6s 320ms ease-in-out infinite;
 }
 
 .home-hologram-scene--intro-full .home-orbit-card {
-  animation: intro-card-summon 760ms calc(2100ms + var(--card-index, 0) * 46ms) ease both;
+  animation: intro-card-summon 320ms ease both;
 }
 
 .home-hologram-scene--intro-return .home-orbit-card,
