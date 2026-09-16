@@ -48,7 +48,7 @@ COMPLETE
 - `npm audit --audit-level=high` (reports two moderate Vitest transitive advisories)
 
 ## TESTS STILL REQUIRED
-- Deployment and live application verification for this master task.
+- None for the current master task.
 
 ## KNOWN ISSUES
 No new issue established yet. Existing `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree.
@@ -57,10 +57,10 @@ No new issue established yet. Existing `npm audit` reports two moderate transiti
 None known.
 
 ## GIT STATE
-Production implementation commit `8974b7a` and CI stabilization commit `50e9a0b` are pushed to `origin/main`; worktree is clean after this final checkpoint commit.
+Production implementation commit `8974b7a`, CI stabilization commit `50e9a0b`, and final checkpoint commit `fc53c39` are pushed to `origin/main`; worktree is clean.
 
 ## DEPLOYMENT STATE
-GitHub Pages build and deployment workflows for `50e9a0b` completed successfully. The production implementation from `8974b7a` is deployed.
+GitHub Pages build and deployment workflows for `50e9a0b` and final checkpoint commit `fc53c39` completed successfully. The production implementation from `8974b7a` is deployed.
 
 ## LIVE VERIFICATION STATE
 Live application verified at 390x844 with service workers blocked and a cache-busting query: Home loaded without overflow; in-app Card Search opened; Sol Ring search returned a result; Card Detail showed Deck and collection context; document width remained 390px; and no page errors occurred. Prior live Deck Builder creation/add/change/undo verification also passed.
