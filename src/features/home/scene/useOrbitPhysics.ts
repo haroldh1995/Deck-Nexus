@@ -41,6 +41,24 @@ type OrbitInteractionMode =
   | "resizing"
   | "reduced_motion";
 
+type PendingPointerSample = {
+  clientX: number;
+  timestamp: number;
+};
+
+type CardVisualState = {
+  glow: string;
+  isFrontCandidate: boolean;
+  isNearFront: boolean;
+  isRear: boolean;
+  isTapTarget: boolean;
+  layer: string;
+  opacity: string;
+  pointerEvents: string;
+  presence: string;
+  zIndex: string;
+};
+
 export interface OrbitPhysicsOptions {
   cards: readonly HomeHologramCard[];
   initialFocusedIndex?: number;
@@ -76,6 +94,7 @@ export function useOrbitPhysics({
   const cardsRef = useRef(cards);
   const scaleRef = useRef(scale);
   const cardElementsRef = useRef(new Map<string, HTMLButtonElement>());
+  const cardVisualStateRef = useRef(new Map<string, CardVisualState>());
   const cardRegistrationRef = useRef(
     new Map<string, (element: HTMLButtonElement | null) => void>(),
   );
@@ -97,6 +116,7 @@ export function useOrbitPhysics({
   const lastXRef = useRef(0);
   const lastMoveTimeRef = useRef(0);
   const activePointerIdRef = useRef<number | null>(null);
+  const pendingPointerSampleRef = useRef<PendingPointerSample | null>(null);
   const suppressClickUntilRef = useRef(0);
   const longPressTimerRef = useRef<number | null>(null);
   const onFocusedIndexChangeRef = useRef(onFocusedIndexChange);
@@ -104,6 +124,7 @@ export function useOrbitPhysics({
   const tapTargetIndexRef = useRef<number | null>(null);
   const tapTargetRotationRef = useRef<number | null>(null);
   const requestAnimationRef = useRef<(() => void) | null>(null);
+  const restoreVisualsRef = useRef(false);
 
   useEffect(() => {
     onFocusedIndexChangeRef.current = onFocusedIndexChange;
@@ -131,6 +152,9 @@ export function useOrbitPhysics({
     }
 
     draggingRef.current = nextDragging;
+    if (!nextDragging) {
+      restoreVisualsRef.current = true;
+    }
     setDragging(nextDragging);
   }, []);
 
@@ -169,33 +193,83 @@ export function useOrbitPhysics({
         ? Math.max(transform.zIndex, 112)
         : transform.zIndex;
       const cardLayerOpacity = 1;
-
-      element.style.transform = `translate3d(calc(-50% + ${transform.x}px), ${transform.y}px, ${transform.z}px) rotateY(${transform.rotationY}deg) rotateX(${transform.rotationX}deg) scale(${transform.scale})`;
-      element.style.zIndex = String(zIndex);
-      element.style.opacity = String(cardLayerOpacity);
-      element.style.pointerEvents = transform.frontness > 0.16 ||
+      const pointerEvents = transform.frontness > 0.16 ||
         transform.id === focusedIdRef.current ||
         transform.id === cardsRef.current[tapTargetIndexRef.current ?? -1]?.id
         ? "auto"
         : "none";
-      element.style.setProperty("--card-glow", String(transform.glow));
-      element.style.setProperty("--card-opacity", String(cardLayerOpacity));
-      element.style.setProperty("--card-depth-opacity", String(transform.opacity));
-      element.style.setProperty("--card-presence", String(transform.frontness));
-      element.dataset.depth = transform.rear ? "rear" : "front";
-      element.dataset.cardLayer = transform.rear
-        ? "rear-orbit-cards"
-        : "front-orbit-cards";
-      element.dataset.interactive = element.style.pointerEvents === "auto"
-        ? "true"
-        : "false";
-      element.classList.toggle("is-rear", transform.rear);
-      element.classList.toggle("is-near-front", transform.frontness > 0.54);
-      element.classList.toggle("is-front-candidate", transform.frontness > 0.78);
-      element.classList.toggle(
-        "is-tap-target",
-        transform.id === cardsRef.current[tapTargetIndexRef.current ?? -1]?.id,
-      );
+      const isRear = transform.rear;
+      const isNearFront = transform.frontness > 0.54;
+      const isFrontCandidate = transform.frontness > 0.78;
+      const isTapTarget =
+        transform.id === cardsRef.current[tapTargetIndexRef.current ?? -1]?.id;
+      const previousState = cardVisualStateRef.current.get(transform.id);
+      const nextState: CardVisualState = {
+        glow: String(transform.glow),
+        isFrontCandidate,
+        isNearFront,
+        isRear,
+        isTapTarget,
+        layer: isRear ? "rear-orbit-cards" : "front-orbit-cards",
+        opacity: String(cardLayerOpacity),
+        pointerEvents,
+        presence: String(transform.frontness),
+        zIndex: String(zIndex),
+      };
+      const applyCosmetics =
+        !draggingRef.current || restoreVisualsRef.current;
+
+      element.style.transform = `translate3d(calc(-50% + ${transform.x}px), ${transform.y}px, ${transform.z}px) rotateY(${transform.rotationY}deg) rotateX(${transform.rotationX}deg) scale(${transform.scale})`;
+      if (applyCosmetics) {
+        if (previousState?.zIndex !== nextState.zIndex) {
+          element.style.zIndex = nextState.zIndex;
+        }
+        if (previousState?.opacity !== nextState.opacity) {
+          element.style.opacity = nextState.opacity;
+        }
+        if (previousState?.pointerEvents !== nextState.pointerEvents) {
+          element.style.pointerEvents = nextState.pointerEvents;
+        }
+      }
+
+      // Keep direct manipulation transform-only. Depth cosmetics are restored
+      // on the first post-drag frame, avoiding style recalculation per card.
+      if (applyCosmetics) {
+        if (previousState?.glow !== nextState.glow) {
+          element.style.setProperty("--card-glow", nextState.glow);
+        }
+        if (previousState?.presence !== nextState.presence) {
+          element.style.setProperty("--card-presence", nextState.presence);
+        }
+        if (previousState?.isRear !== nextState.isRear) {
+          element.dataset.depth = nextState.isRear ? "rear" : "front";
+        }
+        if (previousState?.layer !== nextState.layer) {
+          element.dataset.cardLayer = nextState.layer;
+        }
+        if (previousState?.pointerEvents !== nextState.pointerEvents) {
+          element.dataset.interactive = nextState.pointerEvents === "auto"
+            ? "true"
+            : "false";
+        }
+        if (previousState?.isRear !== nextState.isRear) {
+          element.classList.toggle("is-rear", nextState.isRear);
+        }
+        if (previousState?.isNearFront !== nextState.isNearFront) {
+          element.classList.toggle("is-near-front", nextState.isNearFront);
+        }
+        if (previousState?.isFrontCandidate !== nextState.isFrontCandidate) {
+          element.classList.toggle("is-front-candidate", nextState.isFrontCandidate);
+        }
+        if (previousState?.isTapTarget !== nextState.isTapTarget) {
+          element.classList.toggle("is-tap-target", nextState.isTapTarget);
+        }
+      }
+      cardVisualStateRef.current.set(transform.id, nextState);
+    }
+
+    if (!draggingRef.current) {
+      restoreVisualsRef.current = false;
     }
   }, []);
 
@@ -256,6 +330,25 @@ export function useOrbitPhysics({
     },
     [applyTransforms],
   );
+
+  const consumePendingPointerSample = useCallback(() => {
+    const sample = pendingPointerSampleRef.current;
+    if (!sample || !dragIntentActiveRef.current) {
+      return false;
+    }
+
+    pendingPointerSampleRef.current = null;
+    const dx = sample.clientX - lastXRef.current;
+    const dt = Math.max(sample.timestamp - lastMoveTimeRef.current, 8);
+    lastXRef.current = sample.clientX;
+    lastMoveTimeRef.current = sample.timestamp;
+    rotationRef.current += dx * dragDegreesPerPixel;
+    velocityRef.current = reducedMotion
+      ? 0
+      : clampOrbitVelocity((dx * dragDegreesPerPixel) / dt);
+    commitPositionSelectedIndex(rotationRef.current);
+    return true;
+  }, [commitPositionSelectedIndex, reducedMotion]);
 
   const focusIndex = useCallback(
     (nextIndex: number) => {
@@ -344,6 +437,7 @@ export function useOrbitPhysics({
       startYRef.current = event.clientY;
       lastXRef.current = event.clientX;
       lastMoveTimeRef.current = performance.now();
+      pendingPointerSampleRef.current = null;
       velocityRef.current = 0;
       settleTargetIndexRef.current = null;
       cancelLongPress();
@@ -389,24 +483,14 @@ export function useOrbitPhysics({
       }
 
       event.preventDefault();
-      const now = performance.now();
-      const dx = event.clientX - lastXRef.current;
-      const dt = Math.max(now - lastMoveTimeRef.current, 8);
-      const nextVelocity = clampOrbitVelocity((dx * dragDegreesPerPixel) / dt);
-      const nextRotation = rotationRef.current + dx * dragDegreesPerPixel;
-
-      lastXRef.current = event.clientX;
-      lastMoveTimeRef.current = now;
-      rotationRef.current = nextRotation;
-      velocityRef.current = reducedMotion ? 0 : nextVelocity;
-      applyTransforms(nextRotation);
-      commitPositionSelectedIndex(nextRotation);
+      pendingPointerSampleRef.current = {
+        clientX: event.clientX,
+        timestamp: performance.now(),
+      };
+      requestAnimationRef.current?.();
     },
     [
-      applyTransforms,
       cancelLongPress,
-      commitPositionSelectedIndex,
-      reducedMotion,
       setDraggingState,
       staticHomeScreen,
     ],
@@ -425,6 +509,16 @@ export function useOrbitPhysics({
       cancelLongPress();
       const hadActivePointer = activePointerIdRef.current !== null;
       const pointerId = activePointerIdRef.current;
+      const wasDragging = dragIntentActiveRef.current;
+      if (wasDragging && event) {
+        pendingPointerSampleRef.current = {
+          clientX: event.clientX,
+          timestamp: performance.now(),
+        };
+      }
+      if (consumePendingPointerSample()) {
+        applyTransforms(rotationRef.current);
+      }
       activePointerIdRef.current = null;
       if (event && pointerId !== null) {
         event.currentTarget.releasePointerCapture?.(pointerId);
@@ -451,7 +545,9 @@ export function useOrbitPhysics({
       }
     },
     [
+      applyTransforms,
       cancelLongPress,
+      consumePendingPointerSample,
       reducedMotion,
       setDraggingState,
       setSettlingState,
@@ -627,7 +723,8 @@ export function useOrbitPhysics({
       visible &&
       !staticHomeScreen &&
       cardsRef.current.length > 0 &&
-      (settlingRef.current ||
+      (pendingPointerSampleRef.current !== null ||
+        settlingRef.current ||
         interactionModeRef.current === "tap_targeting" ||
         interactionModeRef.current === "inertial" ||
         interactionModeRef.current === "snapping" ||
@@ -651,7 +748,11 @@ export function useOrbitPhysics({
         let nextVelocity = currentVelocity;
         let didUpdateTransform = false;
 
-        if (!dragIntentActiveRef.current) {
+        if (dragIntentActiveRef.current) {
+          didUpdateTransform = consumePendingPointerSample();
+          nextRotation = rotationRef.current;
+          nextVelocity = velocityRef.current;
+        } else {
           if (
             interactionModeRef.current === "tap_targeting" &&
             tapTargetIndexRef.current !== null &&
@@ -755,6 +856,7 @@ export function useOrbitPhysics({
     applyTransforms,
     commitPositionSelectedIndex,
     commitFocusedIndex,
+    consumePendingPointerSample,
     reducedMotion,
     setSettlingState,
     staticHomeScreen,
@@ -769,6 +871,7 @@ export function useOrbitPhysics({
 
       cancelLongPress();
       activePointerIdRef.current = null;
+      pendingPointerSampleRef.current = null;
       dragIntentActiveRef.current = false;
       setDraggingState(false);
       if (!staticHomeScreen) {

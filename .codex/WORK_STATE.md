@@ -1,13 +1,13 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-Resume and checkpoint the completed mobile interaction/performance pass.
+Targeted Home Nexus orbit input-latency repair.
 
 ## CURRENT OBJECTIVE
-Keep a durable, verifiable checkpoint for future silent continuation sessions.
+Make active Home orbit dragging directly follow the newest pointer position with no React-per-frame dependency or stale movement queue.
 
 ## LAST VERIFIED MILESTONE
-The continuous Home orbit pass and resumability checkpoint are committed, pushed, deployed, and live-verified.
+Frame-coalesced direct pointer tracking and transform-only active dragging are implemented; focused tests, full unit suite, typecheck, lint, production build, mobile regression E2E, mobile interaction E2E, visual screenshots, and a throttled ten-cycle orbit stress run pass. Profiling coalesces 241 pointer moves into frame updates with no page errors or overflow.
 
 ## COMPLETED
 - Continuous fractional orbit transforms with direct pointer dragging, bounded momentum, snap interruption, tap-to-center, keyboard fallback, reduced-motion handling, and pointer/orientation cleanup.
@@ -18,10 +18,10 @@ The continuous Home orbit pass and resumability checkpoint are committed, pushed
 - GitHub Pages workflow runs for the current commit completed successfully.
 
 ## IN PROGRESS
-None.
+- Commit, push, deploy, and live-verify the targeted repair.
 
 ## REMAINING
-None for the resumed task. Start a new checkpoint here for a future objective.
+- Commit and push the repair, wait for GitHub Pages, then verify the live Home orbit and major routes.
 
 ## FILES CURRENTLY INVOLVED
 - `src/features/home/scene/useOrbitPhysics.ts`
@@ -48,7 +48,7 @@ None for the resumed task. Start a new checkpoint here for a future objective.
 - `npm audit --audit-level=high` (reports two moderate Vitest transitive advisories)
 
 ## TESTS STILL REQUIRED
-None for the completed checkpoint. Run the repository's actual suites for any new task.
+- Deployment workflow and live verification of the targeted repair.
 
 ## KNOWN ISSUES
 `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree; the high-severity threshold command completed without a high-severity finding.
@@ -57,16 +57,16 @@ None for the completed checkpoint. Run the repository's actual suites for any ne
 None.
 
 ## GIT STATE
-Clean `main` worktree; `origin/main` matches the current commit.
+Uncommitted targeted repair in `src/features/home/scene/useOrbitPhysics.ts` and this checkpoint file on `main`; `origin/main` is still the pre-repair commit.
 
 ## DEPLOYMENT STATE
-GitHub Pages deployment workflow for the current commit completed successfully.
+Previous current commit deployment succeeded. New targeted repair is not yet committed or deployed.
 
 ## LIVE VERIFICATION STATE
-Live URL `https://haroldh1995.github.io/Deck-Nexus/` was checked with cache-busting and service workers blocked at a 390x844 viewport. Home drag/intermediate/snap states, route navigation, Import review parsing, Scanner permission shell, no-overflow, no-black-screen, and no-obsolete-bottom-dashboard checks passed.
+Previous live verification passed. Re-verify the targeted repair after deployment.
 
 ## NEXT ACTION
-Await next Deck Nexus task. For a new task, replace this checkpoint with its objective and update it at logical milestones.
+Review the final diff, commit, push, monitor GitHub Pages, and perform cache-busted live Home orbit verification.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
