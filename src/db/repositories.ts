@@ -755,6 +755,52 @@ export async function updateDeckMetadata(
   return nextDeck;
 }
 
+export async function restoreDeckState(snapshot: Deck): Promise<Deck> {
+  const current = await getDeck(snapshot.id);
+  if (!current) {
+    throw new Error("Deck was not found.");
+  }
+
+  const now = nowIso();
+  const nextDeck = updateCommanderState({
+    ...snapshot,
+    id: current.id,
+    cards: snapshot.cards.map((card) => ({ ...card, deckId: current.id, updatedAt: now })),
+    maybeboard: snapshot.maybeboard.map((card) => ({ ...card, deckId: current.id, updatedAt: now })),
+    cuts: snapshot.cuts.map((card) => ({ ...card, deckId: current.id, updatedAt: now })),
+    updatedAt: now,
+  });
+
+  await db.transaction(
+    "rw",
+    db.decks,
+    db.deckCards,
+    db.maybeboardCards,
+    db.cutCards,
+    db.decisionEvents,
+    async () => {
+      await db.deckCards.where("deckId").equals(current.id).delete();
+      await db.maybeboardCards.where("deckId").equals(current.id).delete();
+      await db.cutCards.where("deckId").equals(current.id).delete();
+      await db.deckCards.bulkPut(nextDeck.cards);
+      await db.maybeboardCards.bulkPut(nextDeck.maybeboard);
+      await db.cutCards.bulkPut(nextDeck.cuts);
+      await db.decks.put(nextDeck);
+      await db.decisionEvents.add({
+        id: createId("decision"),
+        deckId: current.id,
+        type: "deck_state_restored",
+        message: "Deck state restored locally.",
+        payload: { cardCount: nextDeck.cards.length },
+        createdAt: now,
+      });
+    },
+  );
+
+  dispatchLocalEvent("deck-nexus:decks-updated");
+  return nextDeck;
+}
+
 export async function saveImportResult(
   result: ImportResult,
 ): Promise<ImportResult> {

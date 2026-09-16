@@ -19,6 +19,87 @@
   margin-bottom: 0.55rem;
 }
 
+.builder-history-button {
+  width: 2.35rem;
+  min-width: 2.35rem;
+  min-height: 2.35rem;
+  padding: 0.42rem;
+}
+
+.builder-history-button[aria-label="Redo last deck change"] svg {
+  transform: scaleX(-1);
+}
+
+.builder-change-summary {
+  width: 100%;
+  margin: 0 auto 0.65rem;
+  border: 1px solid rgba(89, 237, 255, 0.34);
+  border-radius: 8px;
+  color: var(--silver);
+  background: rgba(4, 14, 39, 0.78);
+  box-shadow: inset 0 0 20px rgba(54, 222, 255, 0.06);
+}
+
+.builder-change-summary__main {
+  display: flex;
+  align-items: center;
+  gap: 0.62rem;
+  min-width: 0;
+  padding: 0.58rem 0.7rem;
+}
+
+.builder-change-summary__main > svg {
+  flex: 0 0 auto;
+  width: 1.05rem;
+  color: var(--cyan);
+}
+
+.builder-change-summary__main > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.builder-change-summary strong {
+  color: #effcff;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.builder-change-summary p {
+  margin: 0.14rem 0 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.builder-change-summary__main .secondary-action {
+  flex: 0 0 auto;
+  min-height: 2rem;
+  padding: 0.35rem 0.55rem;
+  white-space: nowrap;
+}
+
+.builder-change-summary__details {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.55rem 0.8rem 0.7rem 2.45rem;
+  border-top: 1px solid rgba(89, 237, 255, 0.14);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 420px) {
+  .builder-change-summary__main {
+    align-items: flex-start;
+  }
+
+  .builder-change-summary__main .secondary-action {
+    font-size: 0.66rem;
+  }
+}
+
 .deck-builder-stage {
   --workspace-card-width: clamp(5.9rem, 22vw, 8.5rem);
   --workspace-card-height: clamp(8.1rem, 29vw, 10.6rem);

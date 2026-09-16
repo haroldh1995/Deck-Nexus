@@ -1007,8 +1007,8 @@ export function AnalyzerScreen() {
                     <button type="button" onClick={() => navigate(`/search?q=${encodeURIComponent(recommendation.roleTags[0] ?? recommendation.name)}`)}>
                       Find Similar
                     </button>
-                    <button type="button" onClick={() => setMessage(`Compare foundation staged for ${recommendation.name}.`)}>
-                      Compare
+                    <button type="button" onClick={() => setMessage(`Why ${recommendation.name}: ${recommendation.reason}`)}>
+                      Why?
                     </button>
                     <button type="button" onClick={() => recordRecommendationFeedback(recommendation, "favorite")}>
                       Favorite
@@ -1171,7 +1171,6 @@ export function AnalyzerScreen() {
                 <button type="button" onClick={() => applySmartBuild("maybeboard")}>Send Suggestions to Maybeboard</button>
                 <button type="button" onClick={createSmartBuildUpgradeList}>Create Upgrade List Only</button>
                 <button type="button" onClick={() => setCardReviewMode((current) => !current)}>Review Card by Card</button>
-                <button type="button" onClick={() => setMessage("Export preview staged with collector value separate from legality and without marketplace checkout links.")}>Export Preview</button>
                 <button type="button" onClick={() => setSmartBuildResult(null)}>Cancel</button>
               </div>
             </div>
@@ -1227,11 +1226,11 @@ export function AnalyzerScreen() {
               <button type="button" onClick={() => moveMaybeboardToCuts(card.id)}>Move to Cuts</button>
               <button type="button" onClick={() => navigate(`/search?q=${encodeURIComponent(card.name)}`)}>View Details</button>
               <button type="button" onClick={() => navigate(`/search?q=${encodeURIComponent(card.roleTags[0] ?? card.name)}`)}>Find Similar</button>
-              <button type="button" onClick={() => setMessage(`Compare staged for ${card.name}.`)}>Compare</button>
-              <button type="button" onClick={() => markMaybeboardProtected(card.id)}>Mark Protected</button>
-              <button type="button" onClick={() => setMessage(`Tags and notes editor staged for ${card.name}.`)}>Edit Tags / Notes</button>
-              <button type="button" onClick={() => setMessage(`Ownership confirmation staged for ${card.name}.`)}>Confirm Ownership</button>
-              <button type="button" onClick={() => setMessage(`Scanner correction staged for ${card.name}.`)}>Scan Copy</button>
+                    <button type="button" onClick={() => setMessage(`Why ${card.name}: ${card.reason || "Maybeboard candidate retained for review."}`)}>Why?</button>
+                    <button type="button" onClick={() => markMaybeboardProtected(card.id)}>Mark Protected</button>
+              <button type="button" onClick={() => navigate(`/deck-builder/${deck.id}`)}>Open Deck Builder</button>
+              <button type="button" onClick={() => navigate("/owned")}>Open Owned Cards</button>
+              <button type="button" onClick={() => navigate(`/scan?deckId=${deck.id}`)}>Open Scanner</button>
               <button type="button" onClick={() => removeMaybeboardEntry(card.id)}>Remove from Maybeboard</button>
             </article>
           ))}
@@ -1265,7 +1264,7 @@ export function AnalyzerScreen() {
               <button type="button" onClick={() => navigate(`/search?q=${encodeURIComponent(card.name)}`)}>View Details</button>
               <button type="button" onClick={() => updateCutReason(card.id)}>Edit Cut Reason</button>
               <button type="button" onClick={() => navigate(`/search?q=${encodeURIComponent(card.roleTags[0] ?? card.name)}`)}>Find Similar</button>
-              <button type="button" onClick={() => setMessage(`Compare with replacement staged for ${card.name}.`)}>Compare with Replacement</button>
+              <button type="button" onClick={() => setMessage(`${card.name}: ${card.cutReason || "No replacement reason recorded."}`)}>Why?</button>
               <button type="button" onClick={() => deleteCut(card.id)}>Delete From Cuts</button>
             </article>
           ))}

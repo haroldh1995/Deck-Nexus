@@ -1,40 +1,38 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-COMPLETE: Targeted Home Nexus orbit input-latency repair.
+MASTER PRODUCT COMPLETION & INTELLIGENCE OVERHAUL
 
 ## CURRENT OBJECTIVE
-Make active Home orbit dragging directly follow the newest pointer position with no React-per-frame dependency or stale movement queue.
+Finish and polish the established Deck Nexus product across deck building, card experience, collection, recommendations, analysis, scanner integration, and application-wide reliability without rebuilding completed systems.
 
 ## LAST VERIFIED MILESTONE
-Frame-coalesced direct pointer tracking and transform-only active dragging are implemented; focused tests, full unit suite, typecheck, lint, production build, mobile regression E2E, mobile interaction E2E, visual screenshots, and a throttled ten-cycle orbit stress run pass. The deployed build at the current `origin/main` commit was live-verified at 390x844: Home drag/intermediate/snap states, ten rapid cycles, no overflow/errors, route entry for Library/Search/Import/Scanner, and Import Review parsing all passed.
+Deck Change Intelligence is implemented as a reusable before/after analysis service and connected to Deck Builder mutations, local undo/redo persistence, and compact expandable feedback. Card Search detail now exposes collection context and direct deck/want-list actions. Analyzer staged controls were replaced with honest Why?/navigation actions. Focused tests, typecheck, lint, full unit suite, production build, visual QA, and full E2E pass.
 
 ## COMPLETED
-- Continuous fractional orbit transforms with direct pointer dragging, bounded momentum, snap interruption, tap-to-center, keyboard fallback, reduced-motion handling, and pointer/orientation cleanup.
-- Home render/performance improvements: on-demand orbit animation, scoped parallax input, scheduled particle rendering, cached card ref callbacks, and restrained touch feedback.
-- Focused orbit math, scene, interaction, responsive, scanner/import regression, full unit, typecheck, lint, production, and GitHub Pages builds passed.
-- Mobile and desktop Playwright interaction suites passed; live mobile Home, Library, Search, Import, and Scanner routes were inspected at 390x844 with no horizontal overflow or black screen. Live import parsing/review was exercised.
-- The current commit is present on `origin/main`.
-- GitHub Pages workflow runs for the current commit completed successfully.
+- Prior Home orbit, Scanner, Import Deck, collection/ownership, pricing, BoardState boundary, snapshots, backup/restore, offline/PWA, and ecosystem foundation work remains preserved on `origin/main`.
+- Deck Change Intelligence calculates additions/removals/replacements, role, curve, ownership, price, goal, and estimated bracket deltas using existing canonical models.
+- Deck Builder shows nonintrusive change summaries with expandable detail and provides persistent targeted undo/redo through the existing deck stores.
+- Card detail in Search now connects owned quantity, collection navigation, current deck/Maybeboard actions, and Want List fallback.
+- Analyzer no-op staging actions were removed or replaced with working explanations and navigation.
+- Focused tests: 2 files, 6 tests; full unit suite: 28 files, 154 tests; full E2E: 36 tests passed.
+- Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## IN PROGRESS
-None.
+- Final diff audit, commit, push, deployment, and live verification.
 
 ## REMAINING
-None for this task. Await next Deck Nexus task.
+- Complete only verified missing or broken product behavior from the master prompt.
+- Run focused and full validation, visual QA, final diff audit, commit, push, deployment, and live verification.
 
 ## FILES CURRENTLY INVOLVED
-- `src/features/home/scene/useOrbitPhysics.ts`
-- `src/features/home/scene/orbitMath.ts`
-- `src/features/home/scene/HomeHologramScene.tsx`
-- `src/features/home/scene/OrbitCard.tsx`
-- `src/features/home/scene/useSceneParallax.ts`
-- `src/features/home/scene/HologramParticlesCanvas.tsx`
-- `src/styles/homeHologram.css`
-- `src/styles/global.css`
-- `src/tests/homeSceneMath.test.ts`
-- `src/tests/e2e/interaction-performance.spec.ts`
-- `src/tests/e2e/deck-nexus.spec.ts`
+- `.codex/WORK_STATE.md`
+- `src/features/decks/deckChangeIntelligence.ts`
+- `src/features/decks/DeckBuilderScreen.tsx`
+- `src/db/repositories.ts`
+- `src/features/cards/CardSearchScreen.tsx`
+- `src/styles/deckWorkspace.css`
+- `src/tests/deckChangeIntelligence.test.ts`
 
 ## TESTS ALREADY RUN
 - `npx tsc -b --pretty false`
@@ -48,25 +46,25 @@ None for this task. Await next Deck Nexus task.
 - `npm audit --audit-level=high` (reports two moderate Vitest transitive advisories)
 
 ## TESTS STILL REQUIRED
-None for this task.
+- Deployment and live application verification for this master task.
 
 ## KNOWN ISSUES
-`npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree; the high-severity threshold command completed without a high-severity finding.
+No new issue established yet. Existing `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree.
 
 ## EXTERNAL BLOCKERS
-None.
+None known.
 
 ## GIT STATE
-Clean `main` worktree; the targeted repair and final completion checkpoint are pushed, and `origin/main` matches the current commit.
+Working tree contains only the master task implementation and checkpoint changes; not yet committed. `git diff --check` passes.
 
 ## DEPLOYMENT STATE
-GitHub Pages workflows for the targeted repair checkpoint completed successfully. The earlier transient unit-test workflow failure was retried successfully.
+Prior deployment is live. Master task changes are not yet committed or deployed.
 
 ## LIVE VERIFICATION STATE
-Live `https://haroldh1995.github.io/Deck-Nexus/` was opened with service workers blocked and a cache-busting query. Home orbit movement, rapid interruption stress, route entry, mobile sizing, no horizontal overflow, no black screen, Search, Import entry/review parsing, and Scanner permission shell were checked at 390x844.
+Prior live verification remains valid for the previous deployed commit; master task changes still require local and live verification.
 
 ## NEXT ACTION
-Await the next Deck Nexus task.
+Inspect existing Deck Builder, Card Search/Detail, collection, analyzer, and repository tests; implement the first genuinely missing master-task capability.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.

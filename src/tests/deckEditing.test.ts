@@ -8,6 +8,7 @@ import {
   moveDeckCard,
   removeDeckCard,
   replaceDeckCard,
+  restoreDeckState,
   updateDeckCard,
   updateDeckMetadata,
 } from "../db/repositories";
@@ -141,5 +142,22 @@ describe("Deck Builder local edit repositories", () => {
     expect(duplicate.cards.map((card) => card.name)).toEqual(
       deck.cards.map((card) => card.name),
     );
+  });
+
+  it("restores a saved deck state for local undo and redo", async () => {
+    let deck = await createDeckWithCommander();
+    deck = await addDeckCard(deck.id, manualCard("First Card", "Creature"));
+    const savedState = deck;
+    deck = await addDeckCard(deck.id, manualCard("Second Card", "Instant"));
+
+    const restored = await restoreDeckState(savedState);
+    expect(restored.cards.map((card) => card.name)).toEqual([
+      "Tatyova, Benthic Druid",
+      "First Card",
+    ]);
+    await expect(getDeck(deck.id)).resolves.toMatchObject({
+      cards: expect.arrayContaining([expect.objectContaining({ name: "First Card" })]),
+    });
+    expect(restored.cards.some((card) => card.name === "Second Card")).toBe(false);
   });
 });

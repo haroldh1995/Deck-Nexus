@@ -25,6 +25,7 @@ import {
   MoreHorizontal,
   NotebookPen,
   Plus,
+  Redo2,
   RotateCcw,
   ScanLine,
   Scissors,
@@ -51,6 +52,7 @@ import {
   replaceDeckCard,
   updateDeckCard,
   updateDeckMetadata,
+  restoreDeckState,
 } from "../../db/repositories";
 import type {
   Bracket,
@@ -99,6 +101,8 @@ import {
   type SectionSortOption,
 } from "./deckWorkspace";
 import { formatBracketLock, formatCommanderNames } from "./deckPresentation";
+import { analyzeDeckChange, type DeckChangeAnalysis, type DeckChangeKind } from "./deckChangeIntelligence";
+import { useOwnedCards } from "../../db/hooks";
 import "../../styles/deckWorkspace.css";
 
 type CardFormState = {
@@ -227,6 +231,16 @@ function manualInputFromCard(
 
 function getAllDeckCards(deck: Deck): DeckCard[] {
   return [...deck.cards, ...deck.maybeboard, ...deck.cuts];
+}
+
+function cloneDeck(deck: Deck): Deck {
+  return {
+    ...deck,
+    cards: deck.cards.map((card) => ({ ...card })),
+    maybeboard: deck.maybeboard.map((card) => ({ ...card })),
+    cuts: deck.cuts.map((card) => ({ ...card })),
+    goals: deck.goals.map((goal) => ({ ...goal, settings: { ...goal.settings } })),
+  };
 }
 
 function removeDeckCardLocally(deck: Deck, cardId: string): Deck {
@@ -358,7 +372,10 @@ function bracketValue(bracket: Bracket): number {
 export function DeckBuilderScreen() {
   const { deckId } = useParams();
   const navigate = useNavigate();
+  const { ownedCards } = useOwnedCards();
   const longPressTimer = useRef<number | undefined>(undefined);
+  const undoStackRef = useRef<Deck[]>([]);
+  const redoStackRef = useRef<Deck[]>([]);
   const [deck, setDeck] = useState<Deck | null>(null);
   const [loading, setLoading] = useState(Boolean(deckId));
   const [activeTab, setActiveTab] = useState<BuilderTab>("main");
@@ -388,6 +405,10 @@ export function DeckBuilderScreen() {
     notes: "",
   });
   const [statusMessage, setStatusMessage] = useState("");
+  const [changeAnalysis, setChangeAnalysis] = useState<DeckChangeAnalysis | null>(null);
+  const [changeDetailsOpen, setChangeDetailsOpen] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -434,11 +455,64 @@ export function DeckBuilderScreen() {
     [deck],
   );
 
-  function rememberDeck(nextDeck: Deck, message?: string) {
+  function rememberDeck(
+    nextDeck: Deck,
+    message?: string,
+    options: { recordHistory?: boolean; beforeDeck?: Deck; kind?: DeckChangeKind } = {},
+  ) {
+    const beforeDeck = options.beforeDeck ?? deck;
+    if (options.recordHistory && beforeDeck && beforeDeck.id === nextDeck.id) {
+      undoStackRef.current.push(cloneDeck(beforeDeck));
+      redoStackRef.current = [];
+      setCanUndo(true);
+      setCanRedo(false);
+      setChangeAnalysis(analyzeDeckChange(beforeDeck, nextDeck, ownedCards, options.kind));
+      setChangeDetailsOpen(false);
+    }
     setDeck(nextDeck);
     if (message) {
       setStatusMessage(message);
     }
+  }
+
+  async function undoLastChange() {
+    if (!deck || undoStackRef.current.length === 0) return;
+    const previousDeck = undoStackRef.current.pop();
+    if (!previousDeck) return;
+    const currentDeck = cloneDeck(deck);
+    redoStackRef.current.push(currentDeck);
+    try {
+      const restored = await restoreDeckState(previousDeck);
+      setDeck(restored);
+      setChangeAnalysis(analyzeDeckChange(currentDeck, restored, ownedCards));
+      setStatusMessage("Last deck change undone.");
+    } catch {
+      undoStackRef.current.push(previousDeck);
+      redoStackRef.current.pop();
+      setStatusMessage("Undo could not be saved. Your current deck is unchanged.");
+    }
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(redoStackRef.current.length > 0);
+  }
+
+  async function redoLastChange() {
+    if (!deck || redoStackRef.current.length === 0) return;
+    const nextDeck = redoStackRef.current.pop();
+    if (!nextDeck) return;
+    const currentDeck = cloneDeck(deck);
+    undoStackRef.current.push(currentDeck);
+    try {
+      const restored = await restoreDeckState(nextDeck);
+      setDeck(restored);
+      setChangeAnalysis(analyzeDeckChange(currentDeck, restored, ownedCards));
+      setStatusMessage("Last deck change restored.");
+    } catch {
+      redoStackRef.current.push(nextDeck);
+      undoStackRef.current.pop();
+      setStatusMessage("Redo could not be saved. Your current deck is unchanged.");
+    }
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(redoStackRef.current.length > 0);
   }
 
   function openAddCardModal(
@@ -495,7 +569,10 @@ export function DeckBuilderScreen() {
           ? await replaceDeckCard(deck.id, replacementCardId, input)
           : await addDeckCard(deck.id, input, input.destination);
 
-    rememberDeck(nextDeck, `${input.name} saved locally.`);
+    rememberDeck(nextDeck, `${input.name} saved locally.`, {
+      recordHistory: true,
+      kind: replaceTarget ? "replace" : "add",
+    });
     setAddModal(null);
     setPendingWarning(null);
   }
@@ -584,6 +661,7 @@ export function DeckBuilderScreen() {
     rememberDeck(
       moveDeckCardLocally(deck, card, destination, cutReason),
       `${card.name} moved. Saving...`,
+      { recordHistory: true, kind: "move", beforeDeck: deck },
     );
     setQuickMenuCardId("");
 
@@ -604,6 +682,7 @@ export function DeckBuilderScreen() {
     rememberDeck(
       moveDeckCardLocally(deck, cutModal.card, "cuts", cutModal.reason),
       `${cutModal.card.name} moved to Cuts. Saving...`,
+      { recordHistory: true, kind: "move", beforeDeck: deck },
     );
     setCutModal(null);
     setDetailCardId("");
@@ -627,7 +706,11 @@ export function DeckBuilderScreen() {
     }
 
     const previousDeck = deck;
-    rememberDeck(removeDeckCardLocally(deck, card.id), `${card.name} removed. Saving...`);
+    rememberDeck(removeDeckCardLocally(deck, card.id), `${card.name} removed. Saving...`, {
+      recordHistory: true,
+      kind: "remove",
+      beforeDeck: deck,
+    });
     setQuickMenuCardId("");
     setDetailCardId("");
 
@@ -646,7 +729,11 @@ export function DeckBuilderScreen() {
 
     const previousDeck = deck;
     const optimisticDeck = updateDeckCardLocally(deck, card.id, patch);
-    rememberDeck(optimisticDeck, `${card.name} updated. Saving...`);
+    rememberDeck(optimisticDeck, `${card.name} updated. Saving...`, {
+      recordHistory: true,
+      kind: "update",
+      beforeDeck: deck,
+    });
     const optimisticCard = getDeckCardById(optimisticDeck, card.id);
     if (optimisticCard && detailCardId === card.id) {
       openDetail(optimisticCard);
@@ -682,12 +769,17 @@ export function DeckBuilderScreen() {
     }
 
     if (pendingWarning.moveCard && deck) {
+      const beforeDeck = deck;
       const nextDeck = await moveDeckCard(
         deck.id,
         pendingWarning.moveCard.id,
         "main",
       );
-      rememberDeck(nextDeck, `${pendingWarning.moveCard.name} moved locally.`);
+      rememberDeck(nextDeck, `${pendingWarning.moveCard.name} moved locally.`, {
+        recordHistory: true,
+        kind: "move",
+        beforeDeck,
+      });
       setPendingWarning(null);
       return;
     }
@@ -701,6 +793,7 @@ export function DeckBuilderScreen() {
     }
 
     if (pendingWarning.moveCard) {
+      const beforeDeck = deck;
       const nextDeck = await moveDeckCard(
         deck.id,
         pendingWarning.moveCard.id,
@@ -709,6 +802,7 @@ export function DeckBuilderScreen() {
       rememberDeck(
         nextDeck,
         `${pendingWarning.moveCard.name} moved to Maybeboard.`,
+        { recordHistory: true, kind: "move", beforeDeck },
       );
       setPendingWarning(null);
       return;
@@ -726,6 +820,7 @@ export function DeckBuilderScreen() {
     }
 
     if (pendingWarning.moveCard) {
+      const beforeDeck = deck;
       const replacementCard = getDeckCardById(
         deck,
         pendingWarning.selectedReplacementId,
@@ -740,7 +835,11 @@ export function DeckBuilderScreen() {
         `Opened room for ${pendingWarning.moveCard.name}`,
       );
       const nextDeck = await moveDeckCard(deck.id, pendingWarning.moveCard.id, "main");
-      rememberDeck(nextDeck, `${pendingWarning.moveCard.name} restored locally.`);
+      rememberDeck(nextDeck, `${pendingWarning.moveCard.name} restored locally.`, {
+        recordHistory: true,
+        kind: "replace",
+        beforeDeck,
+      });
       setPendingWarning(null);
       return;
     }
@@ -766,21 +865,37 @@ export function DeckBuilderScreen() {
     }
 
     if (metadataModal === "rename") {
+      const beforeDeck = deck;
       const nextName = metadataDraft.trim();
       if (!nextName) {
         setStatusMessage("Deck name is required.");
         return;
       }
-      rememberDeck(await updateDeckMetadata(deck.id, { name: nextName }));
+      rememberDeck(await updateDeckMetadata(deck.id, { name: nextName }), undefined, {
+        recordHistory: true,
+        kind: "metadata",
+        beforeDeck,
+      });
     } else if (metadataModal === "notes") {
-      rememberDeck(await updateDeckMetadata(deck.id, { notes: metadataDraft }));
+      const beforeDeck = deck;
+      rememberDeck(await updateDeckMetadata(deck.id, { notes: metadataDraft }), undefined, {
+        recordHistory: true,
+        kind: "metadata",
+        beforeDeck,
+      });
     } else if (metadataModal === "goals") {
+      const beforeDeck = deck;
       rememberDeck(
         await updateDeckMetadata(deck.id, { goals: toGoalList(metadataDraft) }),
+        undefined,
+        { recordHistory: true, kind: "metadata", beforeDeck },
       );
     } else if (metadataModal === "bracket" && bracketDraft) {
+      const beforeDeck = deck;
       rememberDeck(
         await updateDeckMetadata(deck.id, { bracketLock: bracketDraft }),
+        undefined,
+        { recordHistory: true, kind: "metadata", beforeDeck },
       );
     }
 
@@ -890,6 +1005,26 @@ export function DeckBuilderScreen() {
           <ArrowLeft aria-hidden="true" />
           Library
         </Link>
+        <button
+          aria-label="Undo last deck change"
+          className="secondary-action builder-history-button"
+          disabled={!canUndo}
+          onClick={() => void undoLastChange()}
+          title="Undo last deck change"
+          type="button"
+        >
+          <RotateCcw aria-hidden="true" />
+        </button>
+        <button
+          aria-label="Redo last deck change"
+          className="secondary-action builder-history-button"
+          disabled={!canRedo}
+          onClick={() => void redoLastChange()}
+          title="Redo last deck change"
+          type="button"
+        >
+          <Redo2 aria-hidden="true" />
+        </button>
         <StatusPill tone={hasIllegalWarnings ? "violet" : "cyan"}>
           {formatBracketLock(deck.bracketLock)}
         </StatusPill>
@@ -931,6 +1066,14 @@ export function DeckBuilderScreen() {
         <div className="builder-status" role="status">
           {statusMessage}
         </div>
+      ) : null}
+
+      {changeAnalysis ? (
+        <DeckChangeSummary
+          analysis={changeAnalysis}
+          expanded={changeDetailsOpen}
+          onToggle={() => setChangeDetailsOpen((current) => !current)}
+        />
       ) : null}
 
       <section
@@ -1203,6 +1346,38 @@ export function DeckBuilderScreen() {
         />
       ) : null}
     </div>
+  );
+}
+
+function DeckChangeSummary({
+  analysis,
+  expanded,
+  onToggle,
+}: {
+  analysis: DeckChangeAnalysis;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <section className="builder-change-summary" aria-label="Deck change intelligence" aria-live="polite">
+      <div className="builder-change-summary__main">
+        <Sparkles aria-hidden="true" />
+        <div>
+          <strong>Change intelligence</strong>
+          <p>{analysis.summary.join(" · ")}</p>
+        </div>
+        {analysis.details.length > 0 ? (
+          <button className="secondary-action" onClick={onToggle} type="button">
+            {expanded ? "Hide details" : "Why?"}
+          </button>
+        ) : null}
+      </div>
+      {expanded ? (
+        <ul className="builder-change-summary__details">
+          {analysis.details.map((detail) => <li key={detail}>{detail}</li>)}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 

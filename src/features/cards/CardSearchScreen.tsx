@@ -16,6 +16,7 @@ import {
   Search,
   ShoppingCart,
   Square,
+  X,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -1050,12 +1051,12 @@ export function CardSearchScreen() {
                 <Library aria-hidden="true" /> {selectedCard.name}
               </h2>
               <button type="button" onClick={() => setSelectedCard(null)} aria-label="Close card detail">
-                x
+                <X aria-hidden="true" />
               </button>
             </div>
             <div className="card-detail card-detail--scryfall">
               {pickCardImage(selectedCard.imageUris, "normal") ? (
-                <img src={pickCardImage(selectedCard.imageUris, "normal")} alt="" loading="lazy" />
+                <img src={pickCardImage(selectedCard.imageUris, "normal")} alt={`${selectedCard.name} card artwork`} loading="lazy" />
               ) : null}
               <p>
                 <strong>Mana cost:</strong> {selectedCard.manaCost ?? "None"}
@@ -1076,6 +1077,38 @@ export function CardSearchScreen() {
               <p>
                 <strong>Printing:</strong> {selectedCard.setName} #{selectedCard.collectorNumber}
               </p>
+              <div className="card-detail__decision-section">
+                <h3>Deck and collection</h3>
+                <p>
+                  <strong>Owned:</strong>{" "}
+                  {ownedCards
+                    .filter((owned) => owned.oracleId === selectedCard.oracleId || owned.name.trim().toLowerCase() === selectedCard.name.trim().toLowerCase())
+                    .reduce((total, owned) => total + owned.quantityOwned, 0)}
+                </p>
+                <div className="result-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openAddTo([selectedCard], deck ? "current_deck" : "wishlist", null);
+                      setSelectedCard(null);
+                    }}
+                  >
+                    <PlusCircle aria-hidden="true" /> {deck ? "Add to Current Deck" : "Add to Want List"}
+                  </button>
+                  {deck ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openAddTo([selectedCard], "maybeboard", null);
+                        setSelectedCard(null);
+                      }}
+                    >
+                      <ShoppingCart aria-hidden="true" /> Add to Maybeboard
+                    </button>
+                  ) : null}
+                  <button type="button" onClick={() => navigate("/owned")}>View Collection</button>
+                </div>
+              </div>
               <div className="collector-detail-section" data-testid="card-detail-pricing">
                 <h3>
                   <DollarSign aria-hidden="true" /> Collector / Price
