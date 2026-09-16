@@ -7,15 +7,15 @@ Resume and checkpoint the completed mobile interaction/performance pass.
 Keep a durable, verifiable checkpoint for future silent continuation sessions.
 
 ## LAST VERIFIED MILESTONE
-The continuous Home orbit pass is committed, pushed, deployed, and live-verified.
+The continuous Home orbit pass and resumability checkpoint are committed, pushed, deployed, and live-verified.
 
 ## COMPLETED
 - Continuous fractional orbit transforms with direct pointer dragging, bounded momentum, snap interruption, tap-to-center, keyboard fallback, reduced-motion handling, and pointer/orientation cleanup.
 - Home render/performance improvements: on-demand orbit animation, scoped parallax input, scheduled particle rendering, cached card ref callbacks, and restrained touch feedback.
 - Focused orbit math, scene, interaction, responsive, scanner/import regression, full unit, typecheck, lint, production, and GitHub Pages builds passed.
 - Mobile and desktop Playwright interaction suites passed; live mobile Home, Library, Search, Import, and Scanner routes were inspected at 390x844 with no horizontal overflow or black screen. Live import parsing/review was exercised.
-- Commit `37279b26c2cdc24b00986de78836c04f64908296` is present on `origin/main`.
-- GitHub Pages workflow runs for the commit completed successfully.
+- The current commit is present on `origin/main`.
+- GitHub Pages workflow runs for the current commit completed successfully.
 
 ## IN PROGRESS
 None.
@@ -57,10 +57,10 @@ None for the completed checkpoint. Run the repository's actual suites for any ne
 None.
 
 ## GIT STATE
-Clean `main` worktree at commit `37279b26c2cdc24b00986de78836c04f64908296`; `origin/main` matches.
+Clean `main` worktree; `origin/main` matches the current commit.
 
 ## DEPLOYMENT STATE
-GitHub Pages deployment workflow for the commit completed successfully.
+GitHub Pages deployment workflow for the current commit completed successfully.
 
 ## LIVE VERIFICATION STATE
 Live URL `https://haroldh1995.github.io/Deck-Nexus/` was checked with cache-busting and service workers blocked at a 390x844 viewport. Home drag/intermediate/snap states, route navigation, Import review parsing, Scanner permission shell, no-overflow, no-black-screen, and no-obsolete-bottom-dashboard checks passed.
