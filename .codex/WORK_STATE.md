@@ -19,13 +19,13 @@ Deck Change Intelligence is implemented as a reusable before/after analysis serv
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-COMPLETE
+IN PROGRESS
 
 ## IN PROGRESS
-- None.
+- CI deployment retry after making the existing IndexedDB-backed unit-test job deterministic.
 
 ## REMAINING
-- None for the current master task.
+- Verify the new deployment workflow succeeds and recheck the live application.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -57,16 +57,16 @@ No new issue established yet. Existing `npm audit` reports two moderate transiti
 None known.
 
 ## GIT STATE
-Production implementation commit `8974b7a` (`Complete deck builder intelligence workflow`) is pushed to `origin/main`; final checkpoint update is pending commit.
+Production implementation commit `8974b7a` is pushed to `origin/main`. The prior checkpoint commit `19f92d3` is also pushed; its build job exposed a pre-existing parallel IndexedDB test flake.
 
 ## DEPLOYMENT STATE
-GitHub Pages build and deployment workflows for `8974b7a` completed successfully.
+The production implementation workflows for `8974b7a` completed successfully. Checkpoint-only commit `19f92d3` had Pages deployment success but its build job failed on a parallel IndexedDB timeout assertion; CI serialization is now applied for the retry.
 
 ## LIVE VERIFICATION STATE
-Live application verified at 390x844 with service workers blocked/cache-busted: Home loaded without overflow, Deck Builder creation/add/change/undo worked, and the live change-intelligence summary rendered without page errors. Existing live route verification remains valid for Search, Scanner, Import, Collection, Analyzer, and settings.
+Live application was verified at 390x844 with service workers blocked/cache-busted before this CI-only workflow adjustment: Home loaded without overflow, Deck Builder creation/add/change/undo worked, Search/Card Detail showed collection context and owned state, and no page errors were observed. Recheck after the new workflow completes.
 
 ## NEXT ACTION
-Await next Deck Nexus task.
+Commit/push the CI test serialization, wait for both Pages workflows, then perform the final live smoke check and mark this task complete.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
