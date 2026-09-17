@@ -27,6 +27,7 @@ import {
 } from "../../collector";
 import { HolographicPanel } from "../../components/HolographicPanel";
 import { PageHeader } from "../../components/PageHeader";
+import { ResidentImage } from "../../components/ResidentImage";
 import { StatusPill } from "../../components/StatusPill";
 import { db } from "../../db/database";
 import { useDecks, useOwnedCards } from "../../db/hooks";
@@ -872,7 +873,7 @@ export function CardSearchScreen() {
             ) : null}
             <div className="result-art" aria-hidden="true">
               {pickCardImage(result.card.imageUris, view === "compact" ? "small" : "normal") ? (
-                <img src={pickCardImage(result.card.imageUris, view === "compact" ? "small" : "normal")} alt="" loading="lazy" />
+                <ResidentImage src={pickCardImage(result.card.imageUris, view === "compact" ? "small" : "normal")} alt="" loading="lazy" />
               ) : (
                 <ImageIcon />
               )}
@@ -1056,7 +1057,7 @@ export function CardSearchScreen() {
             </div>
             <div className="card-detail card-detail--scryfall">
               {pickCardImage(selectedCard.imageUris, "normal") ? (
-                <img src={pickCardImage(selectedCard.imageUris, "normal")} alt={`${selectedCard.name} card artwork`} loading="lazy" />
+                <ResidentImage src={pickCardImage(selectedCard.imageUris, "normal")} alt={`${selectedCard.name} card artwork`} loading="lazy" />
               ) : null}
               <p>
                 <strong>Mana cost:</strong> {selectedCard.manaCost ?? "None"}

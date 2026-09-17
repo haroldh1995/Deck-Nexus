@@ -6,6 +6,7 @@ import {
   permanentHomeOrbitItems,
   reorderHomeOrbitItems,
 } from "../features/home/homeOrbit";
+import { buildHomeHologramCards } from "../features/home/scene/homeSceneContent";
 
 describe("home orbit architecture", () => {
   it("keeps the twelve permanent orbit cards available", () => {
@@ -85,5 +86,16 @@ describe("home orbit architecture", () => {
 
     expect(reordered[1].id).toBe("settings");
     expect(reordered.map((item) => item.id)).toContain("create-deck");
+  });
+
+  it("reuses unchanged Home card identities across equivalent rebuild requests", () => {
+    const firstItems = buildHomeOrbitItems([], []);
+    const secondItems = buildHomeOrbitItems([], []);
+    const firstCards = buildHomeHologramCards(firstItems);
+    const secondCards = buildHomeHologramCards([...secondItems]);
+
+    expect(secondItems).toBe(firstItems);
+    expect(secondCards).toBe(firstCards);
+    expect(secondCards[0]).toBe(firstCards[0]);
   });
 });

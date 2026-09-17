@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { primeStaticImages } from "../../app/imageReadiness";
+import { criticalHomeAssets } from "../../app/staticAssets";
 import { useSettings } from "../../app/useSettings";
-import { useDecks } from "../../db/hooks";
-import { listFavorites } from "../../db/repositories";
-import type { FavoriteItem } from "../../types/domain";
+import { useDecks, useFavorites } from "../../db/hooks";
 import type { HomeOrbitItem } from "../../types/navigation";
 import "../../styles/homeHologram.css";
 import { buildHomeOrbitItems, moveHomeOrbitItem } from "./homeOrbit";
@@ -12,28 +12,10 @@ import { HomeHologramScene } from "./scene/HomeHologramScene";
 export function HomeScreen() {
   const { settings, updateSettings } = useSettings();
   const { decks } = useDecks();
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const { favorites } = useFavorites();
 
   useEffect(() => {
-    let mounted = true;
-
-    async function refreshFavorites() {
-      const nextFavorites = await listFavorites();
-      if (mounted) {
-        setFavorites(nextFavorites);
-      }
-    }
-
-    void refreshFavorites();
-    window.addEventListener("deck-nexus:favorites-updated", refreshFavorites);
-
-    return () => {
-      mounted = false;
-      window.removeEventListener(
-        "deck-nexus:favorites-updated",
-        refreshFavorites,
-      );
-    };
+    void primeStaticImages(criticalHomeAssets).catch(() => undefined);
   }, []);
 
   const orbitItems = useMemo(

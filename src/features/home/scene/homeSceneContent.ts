@@ -68,10 +68,44 @@ const permanentCardCopy: Record<
   },
 };
 
+const cardBuildCache = new Map<string, HomeHologramCard[]>();
+
+function rememberCardBuild(key: string, cards: HomeHologramCard[]) {
+  if (cardBuildCache.size >= 32) {
+    const oldestKey = cardBuildCache.keys().next().value;
+    if (oldestKey) {
+      cardBuildCache.delete(oldestKey);
+    }
+  }
+  cardBuildCache.set(key, cards);
+}
+
+function getCardBuildKey(orbitItems: readonly HomeOrbitItem[]) {
+  return orbitItems
+    .map((item) =>
+      [
+        item.id,
+        item.label,
+        item.shortLabel,
+        item.route,
+        item.icon,
+        item.kind,
+        item.subtitle ?? "",
+      ].join("\u001f"),
+    )
+    .join("\u001e");
+}
+
 export function buildHomeHologramCards(
   orbitItems: readonly HomeOrbitItem[],
 ): HomeHologramCard[] {
-  return orbitItems.map((item) => {
+  const cacheKey = getCardBuildKey(orbitItems);
+  const cachedCards = cardBuildCache.get(cacheKey);
+  if (cachedCards) {
+    return cachedCards;
+  }
+
+  const nextCards = orbitItems.map((item) => {
     const permanentCopy = permanentCardCopy[item.id];
     const subtitle =
       item.subtitle ??
@@ -85,6 +119,9 @@ export function buildHomeHologramCards(
       visualGlyph: permanentCopy?.visualGlyph ?? "FV",
     };
   });
+
+  rememberCardBuild(cacheKey, nextCards);
+  return nextCards;
 }
 
 export function getHomeStatusCopy(deckState: HomeSceneDeckState) {

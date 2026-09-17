@@ -40,13 +40,13 @@ import {
 } from "lucide-react";
 import { HolographicPanel } from "../../components/HolographicPanel";
 import { PageHeader } from "../../components/PageHeader";
+import { ResidentImage } from "../../components/ResidentImage";
 import { StatusPill } from "../../components/StatusPill";
 import {
   addDeckCard,
   createGoalFromName,
   deleteDeck,
   duplicateDeck,
-  getDeck,
   moveDeckCard,
   removeDeckCard,
   replaceDeckCard,
@@ -101,8 +101,9 @@ import {
   type SectionSortOption,
 } from "./deckWorkspace";
 import { formatBracketLock, formatCommanderNames } from "./deckPresentation";
+import { staticAppAssets } from "../../app/staticAssets";
 import { analyzeDeckChange, type DeckChangeAnalysis, type DeckChangeKind } from "./deckChangeIntelligence";
-import { useOwnedCards } from "../../db/hooks";
+import { useDecks, useOwnedCards } from "../../db/hooks";
 import "../../styles/deckWorkspace.css";
 
 type CardFormState = {
@@ -372,12 +373,18 @@ function bracketValue(bracket: Bracket): number {
 export function DeckBuilderScreen() {
   const { deckId } = useParams();
   const navigate = useNavigate();
+  const { decks, loading: decksLoading } = useDecks();
   const { ownedCards } = useOwnedCards();
   const longPressTimer = useRef<number | undefined>(undefined);
   const undoStackRef = useRef<Deck[]>([]);
   const redoStackRef = useRef<Deck[]>([]);
-  const [deck, setDeck] = useState<Deck | null>(null);
-  const [loading, setLoading] = useState(Boolean(deckId));
+  const [deckOverride, setDeck] = useState<Deck | null>(null);
+  const residentDeck = useMemo(
+    () => (deckId ? decks.find((candidate) => candidate.id === deckId) ?? null : null),
+    [deckId, decks],
+  );
+  const deck = deckOverride?.id === deckId ? deckOverride : residentDeck;
+  const loading = Boolean(deckId && decksLoading && !residentDeck);
   const [activeTab, setActiveTab] = useState<BuilderTab>("main");
   const [ruleMode, setRuleMode] =
     useState<RuleEnforcementMode>("guided");
@@ -409,29 +416,6 @@ export function DeckBuilderScreen() {
   const [changeDetailsOpen, setChangeDetailsOpen] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadDeck() {
-      if (!deckId) {
-        setLoading(false);
-        return;
-      }
-
-      const nextDeck = await getDeck(deckId);
-      if (mounted) {
-        setDeck(nextDeck ?? null);
-        setLoading(false);
-      }
-    }
-
-    void loadDeck();
-
-    return () => {
-      mounted = false;
-    };
-  }, [deckId]);
 
   const focusedCard = useMemo(
     () => (deck && focusedCardId ? getDeckCardById(deck, focusedCardId) : null),
@@ -996,7 +980,7 @@ export function DeckBuilderScreen() {
     (warning) => warning.severity === "illegal",
   );
   const deckCountSummary = getDeckCountSummary(deck, hasIllegalWarnings);
-  const workspaceReferenceSrc = `${import.meta.env.BASE_URL}assets/deck-workspace-reference.jpg`;
+  const workspaceReferenceSrc = staticAppAssets.deckWorkspaceReference;
 
   return (
     <div className="screen deck-builder-screen">
@@ -1081,7 +1065,7 @@ export function DeckBuilderScreen() {
         aria-label="Commander deck builder"
         data-active-tab={activeTab}
       >
-        <img
+        <ResidentImage
           alt=""
           aria-hidden="true"
           className="deck-workspace-reference-layer"

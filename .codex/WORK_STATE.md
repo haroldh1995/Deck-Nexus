@@ -1,13 +1,13 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-MASTER PRODUCT COMPLETION & INTELLIGENCE OVERHAUL
+UI RESIDENCY / STATIC ASSET / PERSISTED DATA REPAIR
 
 ## CURRENT OBJECTIVE
-Resume the completed master checkpoint after the targeted ZERO VISIBLE BUILDING / BACKGROUND WORK ISOLATION REPAIR. The targeted repair is complete and deployed; preserve all prior Deck Nexus functionality and use this checkpoint for the next task.
+Pause the completed Master Product Completion checkpoint while eliminating reload/reconstruction of already-loaded Home UI, static assets, persisted user data, and derived screen state. Restore the master checkpoint only after this repair is implemented, validated, deployed, and live-verified.
 
 ## LAST VERIFIED MILESTONE
-Targeted repair completed at `1bfc96e`: Home cards now reveal as a complete stable state, critical artwork is preloaded, route prefetch is deduplicated and idle-scheduled, background work defers during interaction, and particle drawing avoids per-particle gradient allocation. Local cold/warm/30-second interaction profiling and deployed mobile verification showed no late Home rebuild, no overflow, and no page errors.
+Prior targeted background-work repair is deployed through `0f5e702`. UI residency implementation is now complete in the working tree: resident caches cover settings, decks, owned cards, and Home favorites; unchanged Home orbit/card arrays reuse stable identities; critical static assets have a manifest, preload/readiness registry, and service-worker shell coverage; shared card images retain session readiness.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -24,18 +24,21 @@ Targeted repair completed at `1bfc96e`: Home cards now reveal as a complete stab
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-COMPLETE
+IN PROGRESS
 
 ## IN PROGRESS
-None.
+Commit/push the validated residency repair, verify the deployment, then perform live residency torture checks before restoring the Master Product Completion checkpoint.
 
 ## REMAINING
-None for the current master checkpoint.
+Commit/push, deployment, live verification, and restoration of the master checkpoint.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
 - `src/app/AppShell.tsx`
 - `src/app/SettingsContext.tsx`
+- `src/app/imageReadiness.ts`
+- `src/app/staticAssets.ts`
+- `src/components/ResidentImage.tsx`
 - `src/features/home/HomeScreen.tsx`
 - `src/features/home/scene/HomeHologramScene.tsx`
 - `src/features/home/scene/OrbitCard.tsx`
@@ -53,6 +56,9 @@ None for the current master checkpoint.
 - `src/tests/backgroundWork.test.ts`
 - `index.html`
 - `.codex/RESUME.md`
+- `src/db/residentData.ts`
+- `src/tests/imageReadiness.test.ts`
+- `src/tests/residentData.test.ts`
 
 ## TESTS ALREADY RUN
 - Focused Home/orbit tests: 2 files, 21 tests passed.
@@ -70,6 +76,10 @@ None for the current master checkpoint.
 - `npm run build`
 - `npm run build -- --mode github-pages`
 - `npm audit --audit-level=high` (reports two moderate Vitest transitive advisories)
+- Residency focused tests: 5 files, 26 tests passed.
+- Full unit suite after the residency changes: 31 files, 160 tests passed.
+- Full E2E suite after the residency changes: 36 tests passed on Chromium and mobile Chromium.
+- Production build after the residency changes passed.
 
 ## TESTS STILL REQUIRED
 None for the completed repair/checkpoint.
@@ -81,20 +91,20 @@ No new issue established yet. Existing `npm audit` reports two moderate transiti
 None known.
 
 ## GIT STATE
-Targeted repair commit `1bfc96e` and checkpoint commit `7232f70` are pushed to `origin/main`; remote `main` matches `7232f70de568081cf449694b40e211c487b4efd4`. Worktree is clean.
+Residency implementation is present in the working tree and has not been committed yet. No unrelated changes are present.
 
 ## DEPLOYMENT STATE
-GitHub Actions deployment workflows for `1bfc96e` and checkpoint commit `7232f70` completed successfully:
+Previous GitHub Actions deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35162772500
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35162771524
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35163291394
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35163290953
 
 ## LIVE VERIFICATION STATE
-Live Deck Nexus was checked at 390x844 using service workers blocked and a cache-busting query after a 5-second wait and sustained drag. All 12 Home cards were complete/opaque, document overflow was `0`, and page errors were empty. Screenshot: `output/playwright/live-zero-building.png`.
+Previous live verification passed at 390x844 for the background-work repair. Residency live verification is pending commit/deployment.
 
 ## NEXT ACTION
-Await next Deck Nexus task.
+Commit the intended residency changes, push `main`, verify Actions deployment, then live-test Home residency and offline/revisit behavior before restoring the master checkpoint.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.

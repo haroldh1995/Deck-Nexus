@@ -15,5 +15,6 @@ When asked to resume Deck Nexus work:
 9. Preserve Deck Nexus architecture, user data, migrations, ownership boundaries, pricing, BoardState compatibility, offline behavior, and established features. Never reset IndexedDB or delete legacy data to solve development problems.
 10. Never use Xcode or build a native iPhone app unless a future task explicitly changes that requirement.
 11. Preserve the visible-interaction principle: critical UI should appear as a complete stable state, and nonessential background work must be idle-scheduled, deduplicated, and deferred while the user is interacting.
+12. Apply the UI residency rule: static application UI loads once per application version, persisted data hydrates into resident state, derived data invalidates by source revision, remote data uses cached-first refresh, loaded images do not flash back to loading, and route changes do not reboot global caches or providers.
 
 These files are internal development state only and must not be bundled into the production UI.

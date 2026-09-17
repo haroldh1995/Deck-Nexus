@@ -209,4 +209,7 @@ export const db = new DeckNexusDatabase();
 export async function resetDatabaseForTests(): Promise<void> {
   await db.delete();
   await db.open();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("deck-nexus:resident-reset"));
+  }
 }

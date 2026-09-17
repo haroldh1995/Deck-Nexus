@@ -13,6 +13,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { scheduleBackgroundWork } from "../../../app/backgroundWork";
 import { preloadAppRoute } from "../../../app/routePreloaders";
 import { AppIcon } from "../../../components/AppIcon";
+import { ResidentImage } from "../../../components/ResidentImage";
 import type { HomeOrbitItem } from "../../../types/navigation";
 import {
   getRotationForIndex,
@@ -117,9 +118,9 @@ export function HomeHologramScene({
   const statusCopy = getHomeStatusCopy(deckState);
   const controlsPortal = typeof document === "undefined" ? null : document.body;
   const focusedCard = cards[orbit.focusedIndex] ?? cards[0];
-  const renderOrbitCards = () =>
-    cards.map((card, index) => {
-      return (
+  const orbitCards = useMemo(
+    () =>
+      cards.map((card, index) => (
         <OrbitCard
           card={card}
           cardRef={orbit.registerCardElement(card.id)}
@@ -129,8 +130,14 @@ export function HomeHologramScene({
           reducedMotion={settings.reducedMotion}
           total={cards.length}
         />
-      );
-    });
+      )),
+    [
+      cards,
+      focusedCard?.id,
+      orbit.registerCardElement,
+      settings.reducedMotion,
+    ],
+  );
 
   useEffect(() => {
     return () => {
@@ -328,7 +335,7 @@ export function HomeHologramScene({
         }
         tabIndex={0}
       >
-        <img
+        <ResidentImage
           alt=""
           aria-hidden="true"
           className="home-reference-layer"
@@ -356,7 +363,7 @@ export function HomeHologramScene({
           data-initial-rotation={getRotationForIndex(initialFocusedIndex, cards.length)}
           data-testid="orbit-layer-active"
         >
-          {renderOrbitCards()}
+          {orbitCards}
         </div>
 
         <CentralCrystalAssembly

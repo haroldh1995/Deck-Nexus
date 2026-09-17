@@ -12,11 +12,50 @@ export const permanentHomeOrbitItems: HomeOrbitItem[] =
     kind: "permanent",
   }));
 
+const orbitBuildCache = new Map<string, HomeOrbitItem[]>();
+
+function rememberOrbitBuild(key: string, items: HomeOrbitItem[]) {
+  if (orbitBuildCache.size >= 32) {
+    const oldestKey = orbitBuildCache.keys().next().value;
+    if (oldestKey) {
+      orbitBuildCache.delete(oldestKey);
+    }
+  }
+  orbitBuildCache.set(key, items);
+}
+
+function getFavoriteSignature(favorites: readonly FavoriteItem[]) {
+  return favorites
+    .map((favorite) =>
+      [
+        favorite.id,
+        favorite.type,
+        favorite.targetId,
+        favorite.title,
+        favorite.subtitle ?? "",
+        favorite.route,
+        favorite.order,
+        favorite.updatedAt,
+      ].join("\u001f"),
+    )
+    .join("\u001e");
+}
+
 export function buildHomeOrbitItems(
   favorites: readonly FavoriteItem[],
   order: readonly string[],
   hiddenIds: readonly string[] = [],
 ): HomeOrbitItem[] {
+  const cacheKey = [
+    getFavoriteSignature(favorites),
+    order.join("\u001f"),
+    hiddenIds.join("\u001f"),
+  ].join("\u001e");
+  const cachedItems = orbitBuildCache.get(cacheKey);
+  if (cachedItems) {
+    return cachedItems;
+  }
+
   const hiddenIdSet = new Set(hiddenIds);
   const dynamicItems: HomeOrbitItem[] = favorites.map((favorite) => ({
     id: `favorite:${favorite.id}`,
@@ -31,7 +70,7 @@ export function buildHomeOrbitItems(
   const items = [...permanentHomeOrbitItems, ...dynamicItems];
   const orderedIds = new Map(order.map((id, index) => [id, index]));
 
-  return items
+  const nextItems = items
     .filter((item) => item.kind === "permanent" || !hiddenIdSet.has(item.id))
     .sort((a, b) => {
       const aOrder = orderedIds.get(a.id);
@@ -51,6 +90,9 @@ export function buildHomeOrbitItems(
 
       return items.indexOf(a) - items.indexOf(b);
     });
+
+  rememberOrbitBuild(cacheKey, nextItems);
+  return nextItems;
 }
 
 export function moveHomeOrbitItem(

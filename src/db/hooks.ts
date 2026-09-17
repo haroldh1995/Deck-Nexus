@@ -1,28 +1,49 @@
-import { useEffect, useState } from "react";
-import type { Deck, OwnedCard } from "../types/domain";
-import { listDecks, listOwnedCards } from "./repositories";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import {
+  getResidentDecks,
+  getResidentFavorites,
+  getResidentOwnedCards,
+  hasResidentDecks,
+  hasResidentFavorites,
+  hasResidentOwnedCards,
+  hydrateResidentDecks,
+  hydrateResidentFavorites,
+  hydrateResidentOwnedCards,
+  refreshResidentDecks,
+  refreshResidentFavorites,
+  refreshResidentOwnedCards,
+  subscribeResidentDecks,
+  subscribeResidentFavorites,
+  subscribeResidentOwnedCards,
+} from "./residentData";
 
 export function useDecks() {
-  const [decks, setDecks] = useState<Deck[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !hasResidentDecks());
+  const decks = useSyncExternalStore(
+    subscribeResidentDecks,
+    getResidentDecks,
+    getResidentDecks,
+  );
 
   useEffect(() => {
     let mounted = true;
 
-    async function refreshDecks() {
-      const nextDecks = await listDecks();
-      if (mounted) {
-        setDecks(nextDecks);
-        setLoading(false);
-      }
-    }
+    void hydrateResidentDecks()
+      .catch(() => undefined)
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
+        }
+      });
 
-    void refreshDecks();
+    const refresh = () => {
+      void refreshResidentDecks().catch(() => undefined);
+    };
 
-    window.addEventListener("deck-nexus:decks-updated", refreshDecks);
+    window.addEventListener("deck-nexus:decks-updated", refresh);
     return () => {
       mounted = false;
-      window.removeEventListener("deck-nexus:decks-updated", refreshDecks);
+      window.removeEventListener("deck-nexus:decks-updated", refresh);
     };
   }, []);
 
@@ -30,30 +51,69 @@ export function useDecks() {
 }
 
 export function useOwnedCards() {
-  const [ownedCards, setOwnedCards] = useState<OwnedCard[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !hasResidentOwnedCards());
+  const ownedCards = useSyncExternalStore(
+    subscribeResidentOwnedCards,
+    getResidentOwnedCards,
+    getResidentOwnedCards,
+  );
 
   useEffect(() => {
     let mounted = true;
 
-    async function refreshOwnedCards() {
-      const nextOwnedCards = await listOwnedCards();
-      if (mounted) {
-        setOwnedCards(nextOwnedCards);
-        setLoading(false);
-      }
-    }
+    void hydrateResidentOwnedCards()
+      .catch(() => undefined)
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
+        }
+      });
 
-    void refreshOwnedCards();
+    const refresh = () => {
+      void refreshResidentOwnedCards().catch(() => undefined);
+    };
 
-    window.addEventListener("deck-nexus:owned-updated", refreshOwnedCards);
-    window.addEventListener("deck-nexus:scanner-updated", refreshOwnedCards);
+    window.addEventListener("deck-nexus:owned-updated", refresh);
+    window.addEventListener("deck-nexus:scanner-updated", refresh);
     return () => {
       mounted = false;
-      window.removeEventListener("deck-nexus:owned-updated", refreshOwnedCards);
-      window.removeEventListener("deck-nexus:scanner-updated", refreshOwnedCards);
+      window.removeEventListener("deck-nexus:owned-updated", refresh);
+      window.removeEventListener("deck-nexus:scanner-updated", refresh);
     };
   }, []);
 
   return { ownedCards, loading };
+}
+
+export function useFavorites() {
+  const [loading, setLoading] = useState(() => !hasResidentFavorites());
+  const favorites = useSyncExternalStore(
+    subscribeResidentFavorites,
+    getResidentFavorites,
+    getResidentFavorites,
+  );
+
+  useEffect(() => {
+    let mounted = true;
+
+    void hydrateResidentFavorites()
+      .catch(() => undefined)
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
+        }
+      });
+
+    const refresh = () => {
+      void refreshResidentFavorites().catch(() => undefined);
+    };
+
+    window.addEventListener("deck-nexus:favorites-updated", refresh);
+    return () => {
+      mounted = false;
+      window.removeEventListener("deck-nexus:favorites-updated", refresh);
+    };
+  }, []);
+
+  return { favorites, loading };
 }

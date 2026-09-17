@@ -8,6 +8,7 @@ import {
   listBackupPackages,
 } from "../db/repositories";
 import { ExportScreen } from "../features/export/ExportScreen";
+import { SettingsProvider } from "../app/SettingsContext";
 
 describe("Export screen local backup controls", () => {
   beforeEach(async () => {
@@ -31,7 +32,9 @@ describe("Export screen local backup controls", () => {
   it("exports a real local backup package without cloud-provider claims", async () => {
     render(
       <MemoryRouter initialEntries={["/export"]}>
-        <ExportScreen />
+        <SettingsProvider>
+          <ExportScreen />
+        </SettingsProvider>
       </MemoryRouter>,
     );
 

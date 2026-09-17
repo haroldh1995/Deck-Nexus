@@ -1,7 +1,14 @@
 /* global self, caches, fetch, URL, Response */
 
-const CACHE_NAME = "deck-nexus-shell-2026-09-07-collector";
-const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./assets/deck-nexus-mark.svg"];
+const CACHE_NAME = "deck-nexus-shell-2026-09-16-residency";
+const APP_SHELL = [
+  "./",
+  "./index.html",
+  "./manifest.webmanifest",
+  "./assets/deck-nexus-mark.svg",
+  "./assets/deck-nexus-home-reference.jpg",
+  "./assets/deck-workspace-reference.jpg",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

@@ -8,31 +8,47 @@ import {
 import { defaultAppSettings } from "../data/defaults";
 import type { AppSettings } from "../types/domain";
 import {
-  ensureAppSettings,
   type SettingsPatch,
   updateAppSettings,
 } from "../db/repositories";
+import {
+  getResidentSettings,
+  hydrateResidentSettings,
+  refreshResidentSettings,
+  setResidentSettings,
+} from "../db/residentData";
 import { SettingsContext } from "./useSettings";
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<AppSettings>(defaultAppSettings);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<AppSettings>(
+    () => getResidentSettings() ?? defaultAppSettings,
+  );
+  const [loading, setLoading] = useState(() => !getResidentSettings());
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadSettings() {
-      const nextSettings = await ensureAppSettings();
-      if (mounted) {
-        setSettings(nextSettings);
-        setLoading(false);
-      }
-    }
-
-    void loadSettings();
+    void hydrateResidentSettings()
+      .then((nextSettings) => {
+        if (mounted) {
+          setSettings(nextSettings);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
+        }
+      });
 
     const refreshSettings = () => {
-      void loadSettings();
+      void refreshResidentSettings()
+        .then((nextSettings) => {
+          if (mounted) {
+            setSettings(nextSettings);
+          }
+        })
+        .catch(() => undefined);
     };
 
     window.addEventListener("deck-nexus:settings-updated", refreshSettings);
@@ -46,13 +62,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateSettings = useCallback(async (patch: SettingsPatch) => {
-    setSettings((current) => ({
-      ...current,
+    const currentSettings = getResidentSettings() ?? defaultAppSettings;
+    const optimisticSettings: AppSettings = {
+      ...currentSettings,
       ...patch,
       localFirstMode: true,
       updatedAt: new Date().toISOString(),
-    }));
+    };
+    setSettings(optimisticSettings);
+    setResidentSettings(optimisticSettings);
     const nextSettings = await updateAppSettings(patch);
+    setResidentSettings(nextSettings);
     setSettings(nextSettings);
     return nextSettings;
   }, []);

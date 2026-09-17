@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { HolographicPanel } from "../../components/HolographicPanel";
 import { PageHeader } from "../../components/PageHeader";
@@ -16,13 +16,12 @@ import {
   serializePrimaryJson,
 } from "../../ecosystem";
 import {
-  ensureAppSettings,
   createFullBackupPackage,
-  listDecks,
-  listOwnedCards,
   restoreFullBackupPackage,
 } from "../../db/repositories";
-import type { AppSettings, BackupPackage, Deck, OwnedCard } from "../../types/domain";
+import { useDecks, useOwnedCards } from "../../db/hooks";
+import { useSettings } from "../../app/useSettings";
+import type { BackupPackage } from "../../types/domain";
 import { BoardStateValidationPanel } from "./BoardStateValidationPanel";
 import { ImmutableSnapshotsPanel } from "./ImmutableSnapshotsPanel";
 
@@ -45,35 +44,17 @@ function downloadFile(fileName: string, blob: Blob): void {
 
 export function ExportScreen() {
   const [searchParams] = useSearchParams();
-  const [decks, setDecks] = useState<Deck[]>([]);
-  const [ownedCards, setOwnedCards] = useState<OwnedCard[]>([]);
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const { decks } = useDecks();
+  const { ownedCards } = useOwnedCards();
+  const { settings } = useSettings();
   const [selectedDeckId, setSelectedDeckId] = useState(searchParams.get("deckId") ?? "");
   const [message, setMessage] = useState("Canonical snapshot exports are local-only and ready.");
 
-  useEffect(() => {
-    let active = true;
-    void Promise.all([listDecks(), listOwnedCards(), ensureAppSettings()]).then(
-      ([loadedDecks, loadedOwnedCards, loadedSettings]) => {
-        if (!active) {
-          return;
-        }
-        setDecks(loadedDecks);
-        setOwnedCards(loadedOwnedCards);
-        setSettings(loadedSettings);
-        if (!selectedDeckId && loadedDecks[0]) {
-          setSelectedDeckId(loadedDecks[0].id);
-        }
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [selectedDeckId]);
+  const effectiveSelectedDeckId = selectedDeckId || decks[0]?.id || "";
 
   const selectedDeck = useMemo(
-    () => decks.find((deck) => deck.id === selectedDeckId),
-    [decks, selectedDeckId],
+    () => decks.find((deck) => deck.id === effectiveSelectedDeckId),
+    [decks, effectiveSelectedDeckId],
   );
   const selectedSnapshot = useMemo(
     () =>
