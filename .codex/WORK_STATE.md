@@ -1,13 +1,13 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-UI RESIDENCY / STATIC ASSET / PERSISTED DATA REPAIR
+MASTER PRODUCT COMPLETION & INTELLIGENCE OVERHAUL
 
 ## CURRENT OBJECTIVE
-Pause the completed Master Product Completion checkpoint while eliminating reload/reconstruction of already-loaded Home UI, static assets, persisted user data, and derived screen state. Restore the master checkpoint only after this repair is implemented, validated, deployed, and live-verified.
+Master Product Completion remains complete. The intervening UI residency, static asset, and persisted-data repair is complete and deployed; preserve it for future Deck Nexus work.
 
 ## LAST VERIFIED MILESTONE
-Prior targeted background-work repair is deployed through `0f5e702`. UI residency implementation is now complete in the working tree: resident caches cover settings, decks, owned cards, and Home favorites; unchanged Home orbit/card arrays reuse stable identities; critical static assets have a manifest, preload/readiness registry, and service-worker shell coverage; shared card images retain session readiness.
+UI residency repair committed as `839bcff`, pushed to `origin/main`, deployed successfully, and live-verified at 390x844. Home retained 12 complete cards through a 50-cycle rapid drag torture test, route revisits, and offline mode with zero horizontal overflow and no console errors.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -24,13 +24,13 @@ Prior targeted background-work repair is deployed through `0f5e702`. UI residenc
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-IN PROGRESS
+COMPLETE
 
 ## IN PROGRESS
-Commit/push the validated residency repair, verify the deployment, then perform live residency torture checks before restoring the Master Product Completion checkpoint.
+None.
 
 ## REMAINING
-Commit/push, deployment, live verification, and restoration of the master checkpoint.
+None for the completed Master Product Completion checkpoint.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -80,6 +80,8 @@ Commit/push, deployment, live verification, and restoration of the master checkp
 - Full unit suite after the residency changes: 31 files, 160 tests passed.
 - Full E2E suite after the residency changes: 36 tests passed on Chromium and mobile Chromium.
 - Production build after the residency changes passed.
+- UI residency repair: stable Home card identities and resident data resources for settings, decks, owned cards, and favorites; static asset manifest and image readiness registry; cached Home/workspace artwork; route consumers moved off repeated deck/collection/settings reads.
+- Live residency verification: Home remained complete after 5 seconds, 50 rapid direction-reversing drags, Library/Search/Owned/Import revisits, and offline mode. Live screenshot: `output/playwright/live-residency-839bcff.png`.
 
 ## TESTS STILL REQUIRED
 None for the completed repair/checkpoint.
@@ -91,9 +93,13 @@ No new issue established yet. Existing `npm audit` reports two moderate transiti
 None known.
 
 ## GIT STATE
-Residency implementation is present in the working tree and has not been committed yet. No unrelated changes are present.
+Remote `main` contains `839bcffb554543f66b1d4308f1fbd0407d6e74d2` for the residency repair. The final checkpoint update is pending commit/push. No unrelated changes are present.
 
 ## DEPLOYMENT STATE
+The residency repair deployment workflows completed successfully:
+- https://github.com/haroldh1995/Deck-Nexus/actions/runs/35183398098
+- https://github.com/haroldh1995/Deck-Nexus/actions/runs/35183398687
+
 Previous GitHub Actions deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35162772500
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35162771524
@@ -101,10 +107,10 @@ Previous GitHub Actions deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35163290953
 
 ## LIVE VERIFICATION STATE
-Previous live verification passed at 390x844 for the background-work repair. Residency live verification is pending commit/deployment.
+Verified live at `https://haroldh1995.github.io/Deck-Nexus/?verify=839bcffb` in an iPhone-sized 390x844 browser session after deployment. Home had 12 complete resident cards and a complete decoded reference image; route revisits for Library, Search, Owned, and Import returned to complete Home; offline mode retained all 12 cards; rapid interaction recorded no DOM child-list or image-source mutations; console errors were zero.
 
 ## NEXT ACTION
-Commit the intended residency changes, push `main`, verify Actions deployment, then live-test Home residency and offline/revisit behavior before restoring the master checkpoint.
+Await next Deck Nexus task.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
