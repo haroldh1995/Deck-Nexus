@@ -24,13 +24,13 @@ Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-ve
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-COMPLETE
+RELEASE BLOCKER
 
 ## IN PROGRESS
-None. Home release gate passed; Master Product Completion remains paused by explicit instruction.
+- Home atomic readiness passed locally and live on `2166b75`, but the final checkpoint push hit the pre-existing CI IndexedDB timing-test race before the Pages artifact build. CI now retries that same suite without disabling tests; verify the next artifact deployment and repeat live verification.
 
 ## REMAINING
-None for the Home atomic readiness release gate. Do not resume Master Product Completion until explicitly instructed.
+- Complete the final retry deployment and live verification for the latest commit. Do not resume Master Product Completion.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -88,7 +88,7 @@ None for the Home atomic readiness release gate. Do not resume Master Product Co
 - Live residency verification: Home remained complete after 5 seconds, 50 rapid direction-reversing drags, Library/Search/Owned/Import revisits, and offline mode. Live screenshot: `output/playwright/live-residency-839bcff.png`.
 
 ## TESTS STILL REQUIRED
-- None for this release gate.
+- Final CI/build/deploy and live verification after the workflow retry change.
 
 ## DEPLOYMENT RETRY
 - The custom Pages artifact workflow for `b3b69d6` and checkpoint `1ab9024` hit the known intermittent IndexedDB timing-test failure before the build step, while the parallel default Pages workflow served the repository source fallback.

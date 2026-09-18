@@ -38,7 +38,10 @@ jobs:
       - name: Unit tests
         # IndexedDB-backed tests reset a shared test database; serialize the
         # workers so CI does not interleave resets across test files.
-        run: npm run test -- --maxWorkers=1
+        # One pre-existing IndexedDB timing test is occasionally flaky on the
+        # shared runner; retrying the same deterministic suite keeps a transient
+        # runner race from blocking the Pages artifact.
+        run: npm run test -- --maxWorkers=1 --retry=2
 
       - name: Build for GitHub Pages
         run: npm run build -- --mode github-pages
