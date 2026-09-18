@@ -100,6 +100,8 @@ Home release-blocker commit `36ba3d279beb0e0c88b4bbe92e8751aff54b07e5` deployed 
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35291700452
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35291699894
 
+The checkpoint-only workflow for `e8d148c25fd8c2bc3d84b5256f57e44d8e1d9b3d` had a transient failure in the pre-existing BoardState validation timing test; its independent Pages build/deployment completed successfully. A retry is triggered by the checkpoint below.
+
 Previous residency deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35183398098
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35183398687
