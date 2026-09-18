@@ -24,13 +24,13 @@ UI residency repair committed as `839bcff`, pushed to `origin/main`, deployed su
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-IN PROGRESS
+COMPLETE
 
 ## IN PROGRESS
-- Complete final diff review, commit/push, deployment, and live torture verification for the Home release gate.
+None.
 
 ## REMAINING
-- Complete release-gate deployment and live verification before resuming the paused master task.
+None for the Home release gate. The Master Product Completion task remains paused and must resume from its existing checkpoint only as a separate future task.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -84,18 +84,22 @@ IN PROGRESS
 - Live residency verification: Home remained complete after 5 seconds, 50 rapid direction-reversing drags, Library/Search/Owned/Import revisits, and offline mode. Live screenshot: `output/playwright/live-residency-839bcff.png`.
 
 ## TESTS STILL REQUIRED
-- Deployed live Home torture test, route-return test, and offline static-asset test.
+None for the Home release gate.
 
 ## KNOWN ISSUES
-Local release-gate validation is complete; deployment/live verification remains. Existing `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree.
+Existing `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree. Physical iPhone Safari was not available; mobile Chromium/iPhone-sized production validation was completed.
 
 ## EXTERNAL BLOCKERS
 None known.
 
 ## GIT STATE
-Remote `main` contains `839bcffb554543f66b1d4308f1fbd0407d6e74d2` for the residency repair. Current Home release-blocker changes are uncommitted and limited to the Home orbit/scene/style files, focused orbit coverage, deterministic stress coverage, and this checkpoint. No unrelated changes are present.
+Remote `main` contains `36ba3d279beb0e0c88b4bbe92e8751aff54b07e5` for the Home release-blocker repair. The final checkpoint update is pending commit/push. No unrelated changes are present.
 
 ## DEPLOYMENT STATE
+Home release-blocker commit `36ba3d279beb0e0c88b4bbe92e8751aff54b07e5` deployed successfully:
+- https://github.com/haroldh1995/Deck-Nexus/actions/runs/35291700452
+- https://github.com/haroldh1995/Deck-Nexus/actions/runs/35291699894
+
 Previous residency deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35183398098
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35183398687
@@ -107,10 +111,10 @@ Previous GitHub Actions deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35163290953
 
 ## LIVE VERIFICATION STATE
-The previous residency repair is live-verified. The current Home release-blocker changes have not yet been deployed or live-verified.
+Verified live at `https://haroldh1995.github.io/Deck-Nexus/?home-zero-lag=36ba3d2` in an iPhone-sized 390x844 browser session after deployment. A 60-second rapid swipe/reverse/interrupt torture test retained all 12 card identities, complete artwork, stable image source, zero child-list mutations, zero image-source mutations, no overflow, and no page errors. Live route-return checks covered Library, Search, Owned, Scanner, and Import; a further offline Home torture test retained all 12 complete cards and the decoded artwork.
 
 ## NEXT ACTION
-Review and commit the validated Home repair, push it, monitor deployment, then run the deployed Home torture/route/offline gate. Keep Master Product Completion paused until live verification passes.
+Commit and push this final checkpoint. Await the next task; keep Master Product Completion paused until explicitly resumed.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
