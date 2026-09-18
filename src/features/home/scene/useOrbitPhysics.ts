@@ -14,7 +14,7 @@ import {
   applyOrbitFriction,
   advanceOrbitRotation,
   calculateMagneticSettleStep,
-  calculateOrbitTransforms,
+  calculateOrbitTransformsInto,
   calculateTapTargetStep,
   clampOrbitVelocity,
   getPositionSelectedOrbitIndex,
@@ -26,7 +26,11 @@ import {
   orbitDragIntentThreshold,
   orbitSnapStrength,
 } from "./homeSceneConstants";
-import type { HomeHologramCard, ResponsiveSceneScale } from "./homeSceneTypes";
+import type {
+  HomeHologramCard,
+  OrbitTransform,
+  ResponsiveSceneScale,
+} from "./homeSceneTypes";
 
 const dragDegreesPerPixel = 0.18;
 const longPressDelay = 560;
@@ -50,6 +54,7 @@ type PendingPointerSample = {
 type CardVisualState = {
   glow: string;
   isFrontCandidate: boolean;
+  isFocused: boolean;
   isNearFront: boolean;
   isRear: boolean;
   isTapTarget: boolean;
@@ -99,9 +104,8 @@ export function useOrbitPhysics({
   const cardRegistrationRef = useRef(
     new Map<string, (element: HTMLButtonElement | null) => void>(),
   );
-  const lastTransformsRef = useRef<ReturnType<typeof calculateOrbitTransforms>>(
-    [],
-  );
+  const transformBufferRef = useRef<OrbitTransform[]>([]);
+  const lastTransformsRef = useRef<OrbitTransform[]>([]);
   const rotationRef = useRef(initialRotation);
   const velocityRef = useRef(0);
   const focusedIndexRef = useRef(initialIndex);
@@ -110,6 +114,7 @@ export function useOrbitPhysics({
     reducedMotion ? "reduced_motion" : "idle",
   );
   const draggingRef = useRef(false);
+  const interactionPriorityRef = useRef(false);
   const dragIntentActiveRef = useRef(false);
   const settlingRef = useRef(false);
   const startXRef = useRef(0);
@@ -139,6 +144,16 @@ export function useOrbitPhysics({
     scaleRef.current = scale;
   }, [scale]);
 
+  const syncInteractionPriority = useCallback(() => {
+    const nextActive = draggingRef.current || settlingRef.current;
+    if (interactionPriorityRef.current === nextActive) {
+      return;
+    }
+
+    interactionPriorityRef.current = nextActive;
+    setUserInteractionActive(nextActive);
+  }, []);
+
   useEffect(() => {
     if (reducedMotion && interactionModeRef.current !== "dragging") {
       interactionModeRef.current = "reduced_motion";
@@ -153,12 +168,12 @@ export function useOrbitPhysics({
     }
 
     draggingRef.current = nextDragging;
-    setUserInteractionActive(nextDragging);
+    syncInteractionPriority();
     if (!nextDragging) {
       restoreVisualsRef.current = true;
     }
     setDragging(nextDragging);
-  }, []);
+  }, [syncInteractionPriority]);
 
   const setSettlingState = useCallback((nextSettling: boolean) => {
     if (settlingRef.current === nextSettling) {
@@ -166,8 +181,9 @@ export function useOrbitPhysics({
     }
 
     settlingRef.current = nextSettling;
+    syncInteractionPriority();
     setSettling(nextSettling);
-  }, []);
+  }, [syncInteractionPriority]);
 
   const applyTransforms = useCallback((rotation: number) => {
     const nextCards = cardsRef.current;
@@ -176,12 +192,22 @@ export function useOrbitPhysics({
       return;
     }
 
-    const transforms = calculateOrbitTransforms({
+    const transforms = calculateOrbitTransformsInto({
       cards: nextCards,
       rotation,
       scale: nextScale,
+      transforms: transformBufferRef.current,
     });
     lastTransformsRef.current = transforms;
+    let visualFrontCardId = transforms[0]?.id ?? null;
+    let visualFrontness = transforms[0]?.frontness ?? -1;
+    for (let index = 1; index < transforms.length; index += 1) {
+      const transform = transforms[index];
+      if (transform.frontness > visualFrontness) {
+        visualFrontCardId = transform.id;
+        visualFrontness = transform.frontness;
+      }
+    }
 
     for (const transform of transforms) {
       const element = cardElementsRef.current.get(transform.id);
@@ -190,7 +216,7 @@ export function useOrbitPhysics({
       }
 
       const selectedFrontCard =
-        transform.id === focusedIdRef.current && transform.frontness > 0.62;
+        transform.id === visualFrontCardId && transform.frontness > 0.62;
       const zIndex = selectedFrontCard
         ? Math.max(transform.zIndex, 112)
         : transform.zIndex;
@@ -209,6 +235,7 @@ export function useOrbitPhysics({
       const nextState: CardVisualState = {
         glow: String(transform.glow),
         isFrontCandidate,
+        isFocused: selectedFrontCard,
         isNearFront,
         isRear,
         isTapTarget,
@@ -267,6 +294,16 @@ export function useOrbitPhysics({
           element.classList.toggle("is-tap-target", nextState.isTapTarget);
         }
       }
+
+      if (previousState?.isFocused !== nextState.isFocused) {
+        element.classList.toggle("is-focused", nextState.isFocused);
+        element.dataset.focused = String(nextState.isFocused);
+        if (nextState.isFocused) {
+          element.setAttribute("aria-current", "true");
+        } else {
+          element.removeAttribute("aria-current");
+        }
+      }
       cardVisualStateRef.current.set(transform.id, nextState);
     }
 
@@ -297,19 +334,6 @@ export function useOrbitPhysics({
       return normalizedIndex;
     },
     [],
-  );
-
-  const commitPositionSelectedIndex = useCallback(
-    (rotation: number) => {
-      commitFocusedIndex(
-        getPositionSelectedOrbitIndex({
-          currentIndex: focusedIndexRef.current,
-          itemCount: cardsRef.current.length,
-          rotation,
-        }),
-      );
-    },
-    [commitFocusedIndex],
   );
 
   const registerCardElement = useCallback(
@@ -348,9 +372,8 @@ export function useOrbitPhysics({
     velocityRef.current = reducedMotion
       ? 0
       : clampOrbitVelocity((dx * dragDegreesPerPixel) / dt);
-    commitPositionSelectedIndex(rotationRef.current);
     return true;
-  }, [commitPositionSelectedIndex, reducedMotion]);
+  }, [reducedMotion]);
 
   const focusIndex = useCallback(
     (nextIndex: number) => {
@@ -644,14 +667,12 @@ export function useOrbitPhysics({
       tapTargetRotationRef.current = null;
       interactionModeRef.current = "inertial";
       applyTransforms(nextRotation);
-      commitPositionSelectedIndex(nextRotation);
       setSettlingState(true);
       requestAnimationRef.current?.();
     },
     [
       applyTransforms,
       cancelLongPress,
-      commitPositionSelectedIndex,
       reducedMotion,
       setSettlingState,
       staticHomeScreen,
@@ -795,7 +816,6 @@ export function useOrbitPhysics({
               velocity: currentVelocity,
             });
             didUpdateTransform = true;
-            commitPositionSelectedIndex(nextRotation);
             setSettlingState(true);
           } else if (settlingRef.current) {
             interactionModeRef.current = reducedMotion
@@ -820,8 +840,6 @@ export function useOrbitPhysics({
             nextRotation = settleStep.nextRotation;
             nextVelocity = 0;
             didUpdateTransform = true;
-            commitPositionSelectedIndex(nextRotation);
-
             if (settleStep.settled) {
               nextRotation = targetRotation;
               settleTargetIndexRef.current = null;
@@ -856,7 +874,6 @@ export function useOrbitPhysics({
     };
   }, [
     applyTransforms,
-    commitPositionSelectedIndex,
     commitFocusedIndex,
     consumePendingPointerSample,
     reducedMotion,
@@ -903,9 +920,9 @@ export function useOrbitPhysics({
 
   useEffect(() => {
     return () => {
-      if (draggingRef.current) {
+      if (interactionPriorityRef.current) {
         setUserInteractionActive(false);
-        draggingRef.current = false;
+        interactionPriorityRef.current = false;
       }
     };
   }, []);

@@ -6,9 +6,11 @@ function clamp(value: number, min: number, max: number) {
 
 export function useSceneParallax({
   enabled,
+  paused = false,
   deviceTiltEnabled,
 }: {
   enabled: boolean;
+  paused?: boolean;
   deviceTiltEnabled: boolean;
 }) {
   const elementRef = useRef<HTMLElement | null>(null);
@@ -34,6 +36,10 @@ export function useSceneParallax({
   );
 
   useEffect(() => {
+    if (paused) {
+      return undefined;
+    }
+
     if (!enabled) {
       const frame = window.requestAnimationFrame(() => {
         applyParallax(0, 0);
@@ -101,7 +107,7 @@ export function useSceneParallax({
         window.cancelAnimationFrame(frame);
       }
     };
-  }, [applyParallax, deviceTiltEnabled, enabled]);
+  }, [applyParallax, deviceTiltEnabled, enabled, paused]);
 
   return registerParallaxSurface;
 }

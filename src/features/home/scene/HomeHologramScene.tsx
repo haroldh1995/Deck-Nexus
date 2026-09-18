@@ -71,10 +71,6 @@ export function HomeHologramScene({
   const visible = useSceneVisibility();
   const staticHome = settings.staticHomeScreen;
   const { introMode, markIntroPlayed } = useHomeIntro(settings.reducedMotion);
-  const registerParallaxSurface = useSceneParallax({
-    deviceTiltEnabled: settings.deviceTiltParallax,
-    enabled: !settings.reducedMotion && !settings.staticHomeScreen,
-  });
   const initialFocusedIndex = useMemo(() => {
     if (typeof window === "undefined") {
       return 0;
@@ -114,6 +110,12 @@ export function HomeHologramScene({
     scale: sceneScale,
     staticHomeScreen: staticHome,
     visible,
+  });
+  const orbitInteracting = orbit.dragging || orbit.settling;
+  const registerParallaxSurface = useSceneParallax({
+    deviceTiltEnabled: settings.deviceTiltParallax,
+    enabled: !settings.reducedMotion && !settings.staticHomeScreen,
+    paused: orbitInteracting,
   });
   const statusCopy = getHomeStatusCopy(deckState);
   const controlsPortal = typeof document === "undefined" ? null : document.body;
@@ -346,6 +348,7 @@ export function HomeHologramScene({
         <div className="cosmic-void-layer" aria-hidden="true" />
         <div className="distant-nebula-layer" aria-hidden="true" />
         <HologramParticlesCanvas
+          interacting={orbitInteracting}
           performanceMode={settings.homePerformanceMode}
           reducedMotion={settings.reducedMotion}
           visible={visible}
@@ -367,7 +370,7 @@ export function HomeHologramScene({
         </div>
 
         <CentralCrystalAssembly
-          active={orbit.dragging || orbit.settling}
+          active={orbitInteracting}
         />
 
         <div className="home-core-status" aria-live="polite">

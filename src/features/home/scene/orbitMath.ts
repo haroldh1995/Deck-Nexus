@@ -167,19 +167,21 @@ export function calculateResponsiveSceneScale({
   };
 }
 
-export function calculateOrbitTransform({
+function populateOrbitTransform({
+  target,
   card,
   index,
   itemCount,
   rotation,
   scale,
 }: {
+  target: OrbitTransform;
   card: HomeHologramCard;
   index: number;
   itemCount: number;
   rotation: number;
   scale: ResponsiveSceneScale;
-}): OrbitTransform {
+}): void {
   const baseAngle = itemCount > 0 ? (index / itemCount) * 360 : 0;
   const angle = normalizeAngle(baseAngle + rotation);
   const radians = (angle * Math.PI) / 180;
@@ -204,24 +206,40 @@ export function calculateOrbitTransform({
   const rotationX = lerp(-11, 5, frontness);
   const layerBias = cos < -0.08 ? 18 : 72;
 
-  return {
-    id: card.id,
-    angle,
-    normalizedAngle: angle,
-    x,
-    y,
-    z,
-    scale: cardScale,
-    opacity,
-    blur,
-    saturation,
-    glow,
-    zIndex: layerBias + Math.round(frontness * 24),
-    rotationY,
-    rotationX,
-    frontness,
-    rear: cos < -0.08,
-  };
+  target.id = card.id;
+  target.angle = angle;
+  target.normalizedAngle = angle;
+  target.x = x;
+  target.y = y;
+  target.z = z;
+  target.scale = cardScale;
+  target.opacity = opacity;
+  target.blur = blur;
+  target.saturation = saturation;
+  target.glow = glow;
+  target.zIndex = layerBias + Math.round(frontness * 24);
+  target.rotationY = rotationY;
+  target.rotationX = rotationX;
+  target.frontness = frontness;
+  target.rear = cos < -0.08;
+}
+
+export function calculateOrbitTransform({
+  card,
+  index,
+  itemCount,
+  rotation,
+  scale,
+}: {
+  card: HomeHologramCard;
+  index: number;
+  itemCount: number;
+  rotation: number;
+  scale: ResponsiveSceneScale;
+}): OrbitTransform {
+  const target = {} as OrbitTransform;
+  populateOrbitTransform({ target, card, index, itemCount, rotation, scale });
+  return target;
 }
 
 export function calculateOrbitTransforms({
@@ -242,6 +260,34 @@ export function calculateOrbitTransforms({
       scale,
     }),
   );
+}
+
+export function calculateOrbitTransformsInto({
+  cards,
+  rotation,
+  scale,
+  transforms,
+}: {
+  cards: readonly HomeHologramCard[];
+  rotation: number;
+  scale: ResponsiveSceneScale;
+  transforms: OrbitTransform[];
+}): OrbitTransform[] {
+  for (let index = 0; index < cards.length; index += 1) {
+    const target = transforms[index] ?? ({} as OrbitTransform);
+    transforms[index] = target;
+    populateOrbitTransform({
+      target,
+      card: cards[index],
+      index,
+      itemCount: cards.length,
+      rotation,
+      scale,
+    });
+  }
+
+  transforms.length = cards.length;
+  return transforms;
 }
 
 export function getDepthSortedOrbitTransforms(

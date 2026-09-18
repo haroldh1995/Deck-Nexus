@@ -1,13 +1,13 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-MASTER PRODUCT COMPLETION & INTELLIGENCE OVERHAUL
+HOME UI ZERO-LAG RELEASE BLOCKER
 
 ## CURRENT OBJECTIVE
-Master Product Completion remains complete. The intervening UI residency, static asset, and persisted-data repair is complete and deployed; preserve it for future Deck Nexus work.
+Eliminate the remaining application-controlled Home interaction catch-up under aggressive input. The Master Product Completion task is paused until this release gate passes.
 
 ## LAST VERIFIED MILESTONE
-UI residency repair committed as `839bcff`, pushed to `origin/main`, deployed successfully, and live-verified at 390x844. Home retained 12 complete cards through a 50-cycle rapid drag torture test, route revisits, and offline mode with zero horizontal overflow and no console errors.
+UI residency repair committed as `839bcff`, pushed to `origin/main`, deployed successfully, and live-verified at 390x844. The current blocker repair is locally validated: semantic selection commits no longer run on every visual orbit frame, transforms reuse a stable buffer, parallax/particles pause during active orbit motion, active orbit work keeps background jobs deferred through settling, and the production-build 500-interaction stress gate passed on Chromium and mobile Chromium.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -24,13 +24,13 @@ UI residency repair committed as `839bcff`, pushed to `origin/main`, deployed su
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-COMPLETE
+IN PROGRESS
 
 ## IN PROGRESS
-None.
+- Complete final diff review, commit/push, deployment, and live torture verification for the Home release gate.
 
 ## REMAINING
-None for the completed Master Product Completion checkpoint.
+- Complete release-gate deployment and live verification before resuming the paused master task.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -84,19 +84,19 @@ None for the completed Master Product Completion checkpoint.
 - Live residency verification: Home remained complete after 5 seconds, 50 rapid direction-reversing drags, Library/Search/Owned/Import revisits, and offline mode. Live screenshot: `output/playwright/live-residency-839bcff.png`.
 
 ## TESTS STILL REQUIRED
-None for the completed repair/checkpoint.
+- Deployed live Home torture test, route-return test, and offline static-asset test.
 
 ## KNOWN ISSUES
-No new issue established yet. Existing `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree.
+Local release-gate validation is complete; deployment/live verification remains. Existing `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree.
 
 ## EXTERNAL BLOCKERS
 None known.
 
 ## GIT STATE
-Remote `main` contains `839bcffb554543f66b1d4308f1fbd0407d6e74d2` for the residency repair. The final checkpoint update is pending commit/push. No unrelated changes are present.
+Remote `main` contains `839bcffb554543f66b1d4308f1fbd0407d6e74d2` for the residency repair. Current Home release-blocker changes are uncommitted and limited to the Home orbit/scene/style files, focused orbit coverage, deterministic stress coverage, and this checkpoint. No unrelated changes are present.
 
 ## DEPLOYMENT STATE
-The residency repair deployment workflows completed successfully:
+Previous residency deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35183398098
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35183398687
 
@@ -107,10 +107,10 @@ Previous GitHub Actions deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35163290953
 
 ## LIVE VERIFICATION STATE
-Verified live at `https://haroldh1995.github.io/Deck-Nexus/?verify=839bcffb` in an iPhone-sized 390x844 browser session after deployment. Home had 12 complete resident cards and a complete decoded reference image; route revisits for Library, Search, Owned, and Import returned to complete Home; offline mode retained all 12 cards; rapid interaction recorded no DOM child-list or image-source mutations; console errors were zero.
+The previous residency repair is live-verified. The current Home release-blocker changes have not yet been deployed or live-verified.
 
 ## NEXT ACTION
-Await next Deck Nexus task.
+Review and commit the validated Home repair, push it, monitor deployment, then run the deployed Home torture/route/offline gate. Keep Master Product Completion paused until live verification passes.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.

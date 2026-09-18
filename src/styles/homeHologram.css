@@ -516,9 +516,7 @@
 
 .home-hologram-scene--interacting .home-orbit-card {
   will-change: transform;
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease;
+  transition: none;
 }
 
 .home-orbit-card__surface {

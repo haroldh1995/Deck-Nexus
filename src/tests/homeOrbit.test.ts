@@ -7,6 +7,11 @@ import {
   reorderHomeOrbitItems,
 } from "../features/home/homeOrbit";
 import { buildHomeHologramCards } from "../features/home/scene/homeSceneContent";
+import {
+  calculateOrbitTransforms,
+  calculateOrbitTransformsInto,
+} from "../features/home/scene/orbitMath";
+import type { ResponsiveSceneScale } from "../features/home/scene/homeSceneTypes";
 
 describe("home orbit architecture", () => {
   it("keeps the twelve permanent orbit cards available", () => {
@@ -97,5 +102,41 @@ describe("home orbit architecture", () => {
     expect(secondItems).toBe(firstItems);
     expect(secondCards).toBe(firstCards);
     expect(secondCards[0]).toBe(firstCards[0]);
+  });
+
+  it("reuses the transform buffer without changing calculated positions", () => {
+    const cards = buildHomeHologramCards(permanentHomeOrbitItems);
+    const scale: ResponsiveSceneScale = {
+      sceneScale: 1,
+      cardWidth: 148,
+      cardHeight: 208,
+      radiusX: 280,
+      radiusZ: 190,
+      centerY: 360,
+      upperRingScale: 1,
+      lowerRingScale: 1,
+      beamWidth: 60,
+    };
+    const buffer = calculateOrbitTransformsInto({
+      cards,
+      rotation: 14,
+      scale,
+      transforms: [],
+    });
+    const firstTransform = buffer[0];
+
+    calculateOrbitTransformsInto({
+      cards,
+      rotation: 27,
+      scale,
+      transforms: buffer,
+    });
+
+    expect(buffer[0]).toBe(firstTransform);
+    expect(buffer).toEqual(calculateOrbitTransforms({
+      cards,
+      rotation: 27,
+      scale,
+    }));
   });
 });

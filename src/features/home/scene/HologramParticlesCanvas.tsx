@@ -30,16 +30,30 @@ function makeParticle(width: number, height: number, index: number): Particle {
 }
 
 export function HologramParticlesCanvas({
+  interacting,
   reducedMotion,
   performanceMode,
   visible,
 }: {
+  interacting?: boolean;
   reducedMotion: boolean;
   performanceMode: HomePerformanceMode;
   visible: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const particlesRef = useRef<Particle[]>([]);
+  const pausedRef = useRef(Boolean(interacting));
+  const pauseRef = useRef<(() => void) | null>(null);
+  const resumeRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    pausedRef.current = Boolean(interacting);
+    if (pausedRef.current) {
+      pauseRef.current?.();
+    } else {
+      resumeRef.current?.();
+    }
+  }, [interacting]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -84,7 +98,7 @@ export function HologramParticlesCanvas({
     }
 
     function scheduleNextDraw() {
-      if (!visible || reducedMotion) {
+      if (!visible || reducedMotion || pausedRef.current) {
         return;
       }
 
@@ -95,11 +109,19 @@ export function HologramParticlesCanvas({
 
       timeout = window.setTimeout(() => {
         timeout = 0;
+        if (pausedRef.current) {
+          return;
+        }
         frame = window.requestAnimationFrame(draw);
       }, frameInterval);
     }
 
     function draw(now: number) {
+      if (pausedRef.current) {
+        frame = 0;
+        return;
+      }
+
       if (now - lastDrawTime < frameInterval) {
         scheduleNextDraw();
         return;
@@ -162,12 +184,35 @@ export function HologramParticlesCanvas({
       }
     }
 
+    pauseRef.current = () => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+        frame = 0;
+      }
+      if (timeout) {
+        window.clearTimeout(timeout);
+        timeout = 0;
+      }
+    };
+    resumeRef.current = () => {
+      if (!visible || reducedMotion || pausedRef.current || frame || timeout) {
+        return;
+      }
+      frame = window.requestAnimationFrame(draw);
+    };
+
     return () => {
       resizeObserver?.disconnect();
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);
       if (timeout) {
         window.clearTimeout(timeout);
+      }
+      if (pauseRef.current) {
+        pauseRef.current = null;
+      }
+      if (resumeRef.current) {
+        resumeRef.current = null;
       }
     };
   }, [performanceMode, reducedMotion, visible]);
