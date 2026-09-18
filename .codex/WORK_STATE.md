@@ -97,7 +97,7 @@ Existing `npm audit` reports two moderate transitive advisories in Vitest's test
 None known.
 
 ## GIT STATE
-Remote `main` contains `e1f1c01d7c7ba9bbb4a1dfc71e97c5b49658beb9` for the Home release-blocker repair and final checkpoint. Working tree is clean. No unrelated changes are present.
+Remote `main` contains the Home release-blocker code through `36ba3d279beb0e0c88b4bbe92e8751aff54b07e5` and the final checkpoint commits after it. Working tree is clean. No unrelated changes are present.
 
 ## DEPLOYMENT STATE
 Home release-blocker commit `36ba3d279beb0e0c88b4bbe92e8751aff54b07e5` deployed successfully:
@@ -119,6 +119,10 @@ The final checkpoint commit `c5386885cd5dfa8db0c6560fcc6172842cd7451b` completed
 The final checkpoint commit `e1f1c01d7c7ba9bbb4a1dfc71e97c5b49658beb9` completed both repository validation and Pages deployment successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35293237611
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35293237114
+
+The latest state-only checkpoint `da47d6ca334bb3fc6de8fa4e76c3d50d479c9403` produced a successful Pages build/deployment; its separate repository validation workflow repeated the pre-existing BoardState timing-test failure, while the Home artifact remained unchanged.
+- https://github.com/haroldh1995/Deck-Nexus/actions/runs/35293374933
+- https://github.com/haroldh1995/Deck-Nexus/actions/runs/35293373718
 
 Previous residency deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35183398098
