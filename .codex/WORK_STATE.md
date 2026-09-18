@@ -92,6 +92,9 @@ RELEASE BLOCKER
 ## TESTS STILL REQUIRED
 - Commit/push, GitHub Pages deployment, and live cold/warm/rapid/offline verification.
 
+## DEPLOYMENT RETRY
+- The custom Pages artifact workflow for `b3b69d6` hit its known intermittent IndexedDB timing-test failure before the build step, while the parallel default Pages workflow served the repository source fallback. Trigger a fresh custom workflow run and verify the built artifact before live testing.
+
 ## LOCAL VALIDATION MILESTONE
 - Focused Home/unit checks: 3 files, 29 tests passed.
 - Full unit suite: 31 files, 161 tests passed.
