@@ -24,13 +24,13 @@ Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-ve
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-RELEASE BLOCKER
+COMPLETE
 
 ## IN PROGRESS
-- Home atomic readiness passed locally and live on `2166b75`, but the final checkpoint push hit the pre-existing CI IndexedDB timing-test race before the Pages artifact build. CI now retries that same suite without disabling tests; verify the next artifact deployment and repeat live verification.
+None. Home atomic readiness release gate passed; Master Product Completion remains paused by explicit instruction.
 
 ## REMAINING
-- Complete the final retry deployment and live verification for the latest commit. Do not resume Master Product Completion.
+None for the Home atomic readiness release gate. Do not resume Master Product Completion until explicitly instructed.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -88,11 +88,12 @@ RELEASE BLOCKER
 - Live residency verification: Home remained complete after 5 seconds, 50 rapid direction-reversing drags, Library/Search/Owned/Import revisits, and offline mode. Live screenshot: `output/playwright/live-residency-839bcff.png`.
 
 ## TESTS STILL REQUIRED
-- Final CI/build/deploy and live verification after the workflow retry change.
+- None for this release gate.
 
 ## DEPLOYMENT RETRY
 - The custom Pages artifact workflow for `b3b69d6` and checkpoint `1ab9024` hit the known intermittent IndexedDB timing-test failure before the build step, while the parallel default Pages workflow served the repository source fallback.
 - Final retry commit `2166b75ca395e87cfc9e397454f7c5689ddfa802` completed both custom validation/build/deploy and the parallel Pages workflow successfully: runs `35306054762` and `35306054169`.
+- Workflow retry commit `0cc990bce5173f7b7905d305503aa90e44db1d9a` completed both workflows successfully: runs `35306802500` and `35306799748`.
 
 ## LOCAL VALIDATION MILESTONE
 - Focused Home/unit checks: 3 files, 29 tests passed.
@@ -114,7 +115,7 @@ Existing `npm audit` reports two moderate transitive advisories in Vitest's test
 None known.
 
 ## GIT STATE
-Remote `main` contains the Home atomic readiness implementation at `b3b69d645b5870f9adef4e306a2d0258b03ab161` and deployment checkpoints through `2166b75ca395e87cfc9e397454f7c5689ddfa802`. Working tree is clean. No unrelated changes are present.
+Remote `main` contains the Home atomic readiness implementation at `b3b69d645b5870f9adef4e306a2d0258b03ab161` and the verified deployment checkpoint `0cc990bce5173f7b7905d305503aa90e44db1d9a`. This final state checkpoint is being recorded now. No unrelated changes are present.
 
 ## DEPLOYMENT STATE
 Home release-blocker commit `36ba3d279beb0e0c88b4bbe92e8751aff54b07e5` deployed successfully:
@@ -157,6 +158,7 @@ Previous GitHub Actions deployment workflows completed successfully:
 
 ## LIVE VERIFICATION STATE
 Verified live at `https://haroldh1995.github.io/Deck-Nexus/?live-motion=2166b75` in a production iPhone-sized 390x844 Chromium session after deployment. A 60-second rapid swipe/reverse/interrupt torture test completed 164 mixed gestures with all 12 cards complete before and after, zero static asset requests during motion, and no page errors. Screenshot `output/playwright/live-atomic-motion-2166b75.png` shows complete frame, icon, title, description, and action content. Live route-return checks covered Library, Search, Owned, Scanner, and Import; offline reload retained all 12 complete cards.
+Final deployed build recheck at `https://haroldh1995.github.io/Deck-Nexus/?live-final=0cc990b` confirmed 12 complete cards before and after 250 mixed gestures, zero static image requests during motion, and zero page errors. Screenshot: `output/playwright/live-final-0cc990b.png`.
 
 ## NEXT ACTION
 Await explicit instruction; keep Master Product Completion paused and do not start other Deck Nexus work automatically.
