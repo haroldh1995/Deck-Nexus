@@ -97,6 +97,53 @@
   transform-style: preserve-3d;
 }
 
+.home-hologram-scene--preparing {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.home-atomic-preparation {
+  position: absolute;
+  inset: 0;
+  z-index: 240;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #eafcff;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(49, 209, 255, 0.16), transparent 28%),
+    linear-gradient(180deg, #01030e 0%, #050a25 56%, #02040d 100%);
+  text-align: center;
+}
+
+.home-atomic-preparation__content {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  padding: 1.5rem;
+}
+
+.home-atomic-preparation__mark {
+  width: 3.4rem;
+  aspect-ratio: 1;
+  border: 1px solid rgba(104, 237, 255, 0.76);
+  border-radius: 50% 50% 50% 8%;
+  box-shadow:
+    0 0 22px rgba(52, 226, 255, 0.58),
+    inset 0 0 18px rgba(123, 104, 255, 0.46);
+  transform: rotate(45deg);
+}
+
+.home-atomic-preparation__content strong {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.home-atomic-preparation__content span {
+  color: rgba(203, 237, 255, 0.76);
+  font-size: 0.8rem;
+}
+
 .home-hologram-scene::before,
 .home-hologram-scene::after {
   position: absolute;
@@ -540,6 +587,10 @@
   pointer-events: none;
 }
 
+.home-orbit-card__static-content {
+  display: contents;
+}
+
 .home-orbit-card::before,
 .home-orbit-card::after,
 .home-orbit-card__edge,
@@ -659,7 +710,7 @@
   z-index: 4;
   display: grid;
   gap: 0.2rem;
-  opacity: clamp(0.36, calc((var(--card-presence, 1) - 0.28) * 3.2), 1);
+  opacity: 1;
   text-align: center;
 }
 
@@ -747,17 +798,8 @@
   animation: focused-rune-pulse 1.8s ease-in-out infinite;
 }
 
-.home-orbit-card.is-near-front .home-orbit-card__copy {
-  opacity: clamp(0.68, calc((var(--card-presence, 1) - 0.36) * 2.5), 1);
-}
-
 .home-orbit-card.is-rear {
   pointer-events: none;
-}
-
-.home-orbit-card.is-rear .home-orbit-card__copy,
-.home-orbit-card.is-rear .home-orbit-card__action {
-  opacity: 0;
 }
 
 .home-orbit-card.is-rear .home-orbit-card__back-rune {
@@ -1300,11 +1342,6 @@
     crystal-float 5.6s 320ms ease-in-out infinite;
 }
 
-.home-hologram-scene--intro-full .home-orbit-card {
-  animation: intro-card-summon 320ms ease both;
-}
-
-.home-hologram-scene--intro-return .home-orbit-card,
 .home-hologram-scene--intro-return .central-crystal {
   animation: intro-return-fade 460ms ease both;
 }
@@ -1616,22 +1653,6 @@
     opacity: 1;
     filter: blur(0);
     scale: 1;
-  }
-}
-
-@keyframes intro-card-summon {
-  from {
-    opacity: 0;
-    filter: blur(10px);
-  }
-
-  55% {
-    opacity: 0.42;
-  }
-
-  to {
-    opacity: var(--card-opacity, 1);
-    filter: var(--card-filter, none);
   }
 }
 

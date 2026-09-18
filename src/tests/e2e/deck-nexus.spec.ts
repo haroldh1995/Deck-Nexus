@@ -348,7 +348,9 @@ test.describe("Deck Nexus local-first flow", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByTestId("home-hologram-scene").focus();
+    const homeScene = page.getByTestId("home-hologram-scene");
+    await expect(homeScene).toHaveAttribute("data-home-readiness", "ready");
+    await homeScene.focus();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/create$/);
 

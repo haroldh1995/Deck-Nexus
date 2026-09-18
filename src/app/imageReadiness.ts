@@ -28,9 +28,20 @@ export function preloadImage(src: string | undefined): Promise<void> {
   const image = new window.Image();
   image.decoding = "async";
   const promise = new Promise<void>((resolve, reject) => {
+    let settled = false;
     const complete = () => {
-      markImageReady(src);
-      resolve();
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      const decoded = typeof image.decode === "function"
+        ? image.decode().catch(() => undefined)
+        : Promise.resolve();
+      void decoded.then(() => {
+        markImageReady(src);
+        resolve();
+      });
     };
     image.addEventListener("load", complete, { once: true });
     image.addEventListener("error", () => reject(new Error(`Image failed to load: ${src}`)), {

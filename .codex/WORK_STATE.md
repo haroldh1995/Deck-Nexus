@@ -1,10 +1,10 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-HOME UI ZERO-LAG RELEASE BLOCKER
+HOME ATOMIC READINESS / ZERO POST-REVEAL LOADING
 
 ## CURRENT OBJECTIVE
-Eliminate the remaining application-controlled Home interaction catch-up under aggressive input. The Master Product Completion task is paused until this release gate passes.
+Eliminate incomplete Home navigation cards by preparing the complete static Nexus atomically before reveal. The Master Product Completion task is paused until this release gate passes.
 
 ## LAST VERIFIED MILESTONE
 Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-verified. The repair removes per-frame semantic React commits, reuses the orbit transform buffer, pauses parallax/particles during active orbit motion, keeps background jobs deferred through settling, and passed the production-build 500-interaction stress gate on Chromium and mobile Chromium.
@@ -24,13 +24,15 @@ Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-ve
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-COMPLETE
+RELEASE BLOCKER
 
 ## IN PROGRESS
-None.
+- Implemented the Home atomic preparation barrier and removed card-level detail demotion.
+- Local production validation is complete; final commit, deployment, and live release-gate verification remain.
 
 ## REMAINING
-None for the Home release gate. The Master Product Completion task remains paused and must resume from its existing checkpoint only as a separate future task.
+- Complete local and production validation of the atomic Home readiness gate.
+- Commit, push, deploy, and live-verify before any Master Product Completion work resumes.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -88,10 +90,23 @@ None for the Home release gate. The Master Product Completion task remains pause
 - Live residency verification: Home remained complete after 5 seconds, 50 rapid direction-reversing drags, Library/Search/Owned/Import revisits, and offline mode. Live screenshot: `output/playwright/live-residency-839bcff.png`.
 
 ## TESTS STILL REQUIRED
-None for the Home release gate.
+- Commit/push, GitHub Pages deployment, and live cold/warm/rapid/offline verification.
+
+## LOCAL VALIDATION MILESTONE
+- Focused Home/unit checks: 3 files, 29 tests passed.
+- Full unit suite: 31 files, 161 tests passed.
+- Typecheck, lint, and production build passed.
+- Production-preview E2E: 38 tests passed on Chromium and mobile Chromium.
+- The deterministic Home gate now performs 1,000 mixed interactions on each browser project and passed with zero incomplete DOM/visual samples, zero child-list mutations, zero static asset requests caused by orbit movement, stable card identities, stable image source, bounded RAFs, and no page errors.
+- Production preview screenshot spot-check showed every card retaining frame, icon, title, description, and action at initial and moved positions.
 
 ## KNOWN ISSUES
 Existing `npm audit` reports two moderate transitive advisories in Vitest's test-only dependency tree. Physical iPhone Safari was not available; mobile Chromium/iPhone-sized production validation was completed.
+
+## ATOMIC HOME ROOT CAUSE AND CORRECTION
+- Root cause: Home orbit depth styling intentionally set `.home-orbit-card__copy` opacity from frontness and set copy/action opacity to `0` for `.is-rear`; the initial/return intro also animated individual cards from hidden to visible. This made the DOM retain a card while its title, description, and action visually disappeared as the orbit moved, matching the supplied frame/icon-only screenshots.
+- Correction: Home cards now expose one complete static subtree with stable destination identity, no detail-level content hiding, no card summon animation, and a monotonic scene-level `PREPARING` to `READY` barrier. Static artwork is preloaded and decoded with fonts before reveal; every required card element is verified before the scene becomes interactive.
+- Regression coverage: production E2E now runs 1,000 mixed orbit interactions and asserts complete DOM/visual card content, stable card identity, no static asset requests/source mutations, no child-list mutations, bounded RAFs, and no page errors.
 
 ## EXTERNAL BLOCKERS
 None known.
@@ -142,7 +157,7 @@ Previous GitHub Actions deployment workflows completed successfully:
 Verified live at `https://haroldh1995.github.io/Deck-Nexus/?home-zero-lag=36ba3d2` in an iPhone-sized 390x844 browser session after deployment. A 60-second rapid swipe/reverse/interrupt torture test retained all 12 card identities, complete artwork, stable image source, zero child-list mutations, zero image-source mutations, no overflow, and no page errors. Live route-return checks covered Library, Search, Owned, Scanner, and Import; a further offline Home torture test retained all 12 complete cards and the decoded artwork.
 
 ## NEXT ACTION
-Await the next task; keep Master Product Completion paused until explicitly resumed.
+Continue the Home atomic readiness release blocker; keep Master Product Completion paused.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.

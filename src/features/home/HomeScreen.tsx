@@ -1,6 +1,4 @@
 import { useEffect, useMemo } from "react";
-import { primeStaticImages } from "../../app/imageReadiness";
-import { criticalHomeAssets } from "../../app/staticAssets";
 import { useSettings } from "../../app/useSettings";
 import { useDecks, useFavorites } from "../../db/hooks";
 import type { HomeOrbitItem } from "../../types/navigation";
@@ -8,6 +6,7 @@ import "../../styles/homeHologram.css";
 import { buildHomeOrbitItems, moveHomeOrbitItem } from "./homeOrbit";
 import { buildHomeHologramCards } from "./scene/homeSceneContent";
 import { HomeHologramScene } from "./scene/HomeHologramScene";
+import { prepareHomeStaticAssets } from "./scene/homeReadiness";
 
 export function HomeScreen() {
   const { settings, updateSettings } = useSettings();
@@ -15,7 +14,7 @@ export function HomeScreen() {
   const { favorites } = useFavorites();
 
   useEffect(() => {
-    void primeStaticImages(criticalHomeAssets).catch(() => undefined);
+    void prepareHomeStaticAssets().catch(() => undefined);
   }, []);
 
   const orbitItems = useMemo(

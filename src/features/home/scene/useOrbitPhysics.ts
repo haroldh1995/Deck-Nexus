@@ -55,13 +55,11 @@ type CardVisualState = {
   glow: string;
   isFrontCandidate: boolean;
   isFocused: boolean;
-  isNearFront: boolean;
   isRear: boolean;
   isTapTarget: boolean;
   layer: string;
   opacity: string;
   pointerEvents: string;
-  presence: string;
   zIndex: string;
 };
 
@@ -227,7 +225,6 @@ export function useOrbitPhysics({
         ? "auto"
         : "none";
       const isRear = transform.rear;
-      const isNearFront = transform.frontness > 0.54;
       const isFrontCandidate = transform.frontness > 0.78;
       const isTapTarget =
         transform.id === cardsRef.current[tapTargetIndexRef.current ?? -1]?.id;
@@ -236,13 +233,11 @@ export function useOrbitPhysics({
         glow: String(transform.glow),
         isFrontCandidate,
         isFocused: selectedFrontCard,
-        isNearFront,
         isRear,
         isTapTarget,
         layer: isRear ? "rear-orbit-cards" : "front-orbit-cards",
         opacity: String(cardLayerOpacity),
         pointerEvents,
-        presence: String(transform.frontness),
         zIndex: String(zIndex),
       };
       const applyCosmetics =
@@ -267,9 +262,6 @@ export function useOrbitPhysics({
         if (previousState?.glow !== nextState.glow) {
           element.style.setProperty("--card-glow", nextState.glow);
         }
-        if (previousState?.presence !== nextState.presence) {
-          element.style.setProperty("--card-presence", nextState.presence);
-        }
         if (previousState?.isRear !== nextState.isRear) {
           element.dataset.depth = nextState.isRear ? "rear" : "front";
         }
@@ -283,9 +275,6 @@ export function useOrbitPhysics({
         }
         if (previousState?.isRear !== nextState.isRear) {
           element.classList.toggle("is-rear", nextState.isRear);
-        }
-        if (previousState?.isNearFront !== nextState.isNearFront) {
-          element.classList.toggle("is-near-front", nextState.isNearFront);
         }
         if (previousState?.isFrontCandidate !== nextState.isFrontCandidate) {
           element.classList.toggle("is-front-candidate", nextState.isFrontCandidate);

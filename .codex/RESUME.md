@@ -17,4 +17,6 @@ When asked to resume Deck Nexus work:
 11. Preserve the visible-interaction principle: critical UI should appear as a complete stable state, and nonessential background work must be idle-scheduled, deduplicated, and deferred while the user is interacting.
 12. Apply the UI residency rule: static application UI loads once per application version, persisted data hydrates into resident state, derived data invalidates by source revision, remote data uses cached-first refresh, loaded images do not flash back to loading, and route changes do not reboot global caches or providers.
 
+13. Apply the complete-before-reveal law: static UI prepares completely, is revealed once, and remains ready. The Home Nexus is an atomic unit; all navigation cards keep their complete frame, artwork, icon, title, description, and action content resident. Orbit position may change transforms and depth, but it may not select a partial card, unload content, or trigger asset loading.
+
 These files are internal development state only and must not be bundled into the production UI.

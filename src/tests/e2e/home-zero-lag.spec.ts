@@ -22,6 +22,7 @@ test.describe("Home zero-lag residency release gate", () => {
     await page.goto("/?home-zero-lag=release-gate");
     const scene = page.getByTestId("home-hologram-scene");
     await expect(scene).toBeVisible();
+    await expect(scene).toHaveAttribute("data-home-readiness", "ready");
     await expect(page.locator(".home-orbit-card")).toHaveCount(12);
     await page.waitForTimeout(1200);
 
@@ -34,6 +35,8 @@ test.describe("Home zero-lag residency release gate", () => {
         childListMutations: 0,
         imageSourceMutations: 0,
         selectionMutations: 0,
+        incompleteSamples: 0,
+        incompleteVisualSamples: 0,
         longTasks: 0,
         maxLongTask: 0,
         rafCallbacks: 0,
@@ -136,7 +139,52 @@ test.describe("Home zero-lag residency release gate", () => {
         );
       };
 
-      for (let index = 0; index < 500; index += 1) {
+      const requiredSelectors = [
+        ".home-orbit-card__surface",
+        ".home-orbit-card__icon-shell",
+        ".home-orbit-card__copy strong",
+        ".home-orbit-card__copy small",
+        ".home-orbit-card__action",
+      ];
+      const assertComplete = () => {
+        const cards = [...document.querySelectorAll<HTMLElement>(".home-orbit-card")];
+        const complete = cards.length === 12 && cards.every((card) =>
+          card.dataset.staticReady === "true" &&
+          requiredSelectors.every((selector) => card.querySelector(selector)),
+        );
+        const visuallyComplete = cards.every((card) => {
+          const copy = card.querySelector<HTMLElement>(".home-orbit-card__copy");
+          const action = card.querySelector<HTMLElement>(".home-orbit-card__action");
+          if (!copy || !action) {
+            return false;
+          }
+          const copyStyle = getComputedStyle(copy);
+          const actionStyle = getComputedStyle(action);
+          return copyStyle.display !== "none" && copyStyle.opacity !== "0" &&
+            actionStyle.display !== "none" && actionStyle.opacity !== "0";
+        });
+        const stress = (window as unknown as {
+          __homeStress?: {
+            metrics: {
+              incompleteSamples: number;
+              incompleteVisualSamples: number;
+            };
+          };
+        }).__homeStress;
+        if (!complete && stress) {
+          stress.metrics.incompleteSamples += 1;
+        }
+        if (!visuallyComplete && stress) {
+          stress.metrics.incompleteVisualSamples += 1;
+        }
+        return complete && visuallyComplete;
+      };
+
+      if (!assertComplete()) {
+        throw new Error("Home was revealed before every static card was complete");
+      }
+
+      for (let index = 0; index < 1000; index += 1) {
         const direction = index % 2 === 0 ? -1 : 1;
         const distance = 48 + (index % 5) * 18;
         const pointerId = index + 1;
@@ -150,6 +198,9 @@ test.describe("Home zero-lag residency release gate", () => {
           );
         }
         dispatch("pointerup", centerX + direction * distance, pointerId);
+        if (!assertComplete()) {
+          throw new Error(`Home card content became incomplete at interaction ${index}`);
+        }
         if ((index + 1) % 2 === 0) {
           await new Promise<void>((resolve) => {
             window.requestAnimationFrame(() => resolve());
@@ -172,6 +223,8 @@ test.describe("Home zero-lag residency release gate", () => {
             childListMutations: number;
             imageSourceMutations: number;
             selectionMutations: number;
+            incompleteSamples: number;
+            incompleteVisualSamples: number;
             longTasks: number;
             maxLongTask: number;
             rafCallbacks: number;
@@ -208,6 +261,8 @@ test.describe("Home zero-lag residency release gate", () => {
           childListMutations: -1,
           imageSourceMutations: -1,
           selectionMutations: -1,
+          incompleteSamples: -1,
+          incompleteVisualSamples: -1,
           longTasks: -1,
           maxLongTask: -1,
           rafCallbacks: -1,
@@ -221,6 +276,8 @@ test.describe("Home zero-lag residency release gate", () => {
     expect(after.imageSource).toBe(before.imageSource);
     expect(after.imageReady).toBe("true");
     expect(after.metrics.childListMutations).toBe(0);
+    expect(after.metrics.incompleteSamples).toBe(0);
+    expect(after.metrics.incompleteVisualSamples).toBe(0);
     expect(after.metrics.imageSourceMutations).toBe(0);
     expect(after.metrics.selectionMutations).toBeLessThan(5000);
     expect(after.metrics.peakPendingRafs).toBeLessThan(8);

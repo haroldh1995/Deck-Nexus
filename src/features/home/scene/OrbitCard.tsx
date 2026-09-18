@@ -27,6 +27,7 @@ export const OrbitCard = memo(function OrbitCard({
       className={`home-orbit-card${reducedMotion ? " is-reduced" : ""}`}
       data-focused={focused}
       data-card-id={card.id}
+      data-static-ready="true"
       data-testid={`orbit-card-${card.id}`}
       data-depth="front"
       data-index={index}
@@ -35,24 +36,26 @@ export const OrbitCard = memo(function OrbitCard({
       } as CSSProperties}
       type="button"
     >
-      <span className="home-orbit-card__surface" aria-hidden="true" />
-      <span className="home-orbit-card__edge" aria-hidden="true" />
-      <span className="home-orbit-card__corner home-orbit-card__corner--tl" />
-      <span className="home-orbit-card__corner home-orbit-card__corner--tr" />
-      <span className="home-orbit-card__corner home-orbit-card__corner--bl" />
-      <span className="home-orbit-card__corner home-orbit-card__corner--br" />
-      <span className="home-orbit-card__scan" aria-hidden="true" />
-      <span className="home-orbit-card__icon-shell" aria-hidden="true">
-        <AppIcon name={card.icon} />
-        <span className="home-orbit-card__glyph">{card.visualGlyph}</span>
-      </span>
-      <span className="home-orbit-card__copy">
-        <strong>{card.label}</strong>
-        <small>{card.subtitle}</small>
-      </span>
-      <span className="home-orbit-card__action">{card.actionLabel}</span>
-      <span className="home-orbit-card__back-rune" aria-hidden="true">
-        <span />
+      <span className="home-orbit-card__static-content">
+        <span className="home-orbit-card__surface" aria-hidden="true" />
+        <span className="home-orbit-card__edge" aria-hidden="true" />
+        <span className="home-orbit-card__corner home-orbit-card__corner--tl" />
+        <span className="home-orbit-card__corner home-orbit-card__corner--tr" />
+        <span className="home-orbit-card__corner home-orbit-card__corner--bl" />
+        <span className="home-orbit-card__corner home-orbit-card__corner--br" />
+        <span className="home-orbit-card__scan" aria-hidden="true" />
+        <span className="home-orbit-card__icon-shell" aria-hidden="true">
+          <AppIcon name={card.icon} />
+          <span className="home-orbit-card__glyph">{card.visualGlyph}</span>
+        </span>
+        <span className="home-orbit-card__copy">
+          <strong>{card.label}</strong>
+          <small>{card.subtitle}</small>
+        </span>
+        <span className="home-orbit-card__action">{card.actionLabel}</span>
+        <span className="home-orbit-card__back-rune" aria-hidden="true">
+          <span />
+        </span>
       </span>
     </button>
   );

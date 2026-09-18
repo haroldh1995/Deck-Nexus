@@ -37,6 +37,7 @@ import {
 import { HologramParticlesCanvas } from "./HologramParticlesCanvas";
 import { HomeMenuCustomizationOverlay } from "./HomeMenuCustomizationOverlay";
 import { OrbitCard } from "./OrbitCard";
+import { useHomeAtomicReadiness } from "./homeReadiness";
 import { useHomeIntro } from "./useHomeIntro";
 import { useOrbitPhysics } from "./useOrbitPhysics";
 import { useResponsiveSceneScale } from "./useResponsiveSceneScale";
@@ -71,6 +72,7 @@ export function HomeHologramScene({
   const visible = useSceneVisibility();
   const staticHome = settings.staticHomeScreen;
   const { introMode, markIntroPlayed } = useHomeIntro(settings.reducedMotion);
+  const homeSceneRef = useRef<HTMLElement | null>(null);
   const initialFocusedIndex = useMemo(() => {
     if (typeof window === "undefined") {
       return 0;
@@ -116,6 +118,17 @@ export function HomeHologramScene({
     deviceTiltEnabled: settings.deviceTiltParallax,
     enabled: !settings.reducedMotion && !settings.staticHomeScreen,
     paused: orbitInteracting,
+  });
+  const registerSceneSurface = useCallback(
+    (element: HTMLElement | null) => {
+      homeSceneRef.current = element;
+      registerParallaxSurface(element);
+    },
+    [registerParallaxSurface],
+  );
+  const { error: readinessError, ready: homeReady } = useHomeAtomicReadiness({
+    cards,
+    sceneRef: homeSceneRef,
   });
   const statusCopy = getHomeStatusCopy(deckState);
   const controlsPortal = typeof document === "undefined" ? null : document.body;
@@ -256,6 +269,7 @@ export function HomeHologramScene({
 
   const sceneClassName = [
     "home-hologram-scene",
+    !homeReady ? "home-hologram-scene--preparing" : "",
     staticHome ? "nexus-orbit--static home-hologram-scene--static" : "",
     `home-hologram-scene--intro-${introMode}`,
     settings.reducedMotion ? "home-hologram-scene--reduced" : "",
@@ -266,7 +280,25 @@ export function HomeHologramScene({
 
   return (
     <div className="home-screen home-screen--hologram">
-      {controlsPortal
+      {!homeReady ? (
+        <div
+          aria-live="polite"
+          className="home-atomic-preparation"
+          data-testid="home-atomic-preparation"
+          role="status"
+        >
+          <div className="home-atomic-preparation__content">
+            <span aria-hidden="true" className="home-atomic-preparation__mark" />
+            <strong>{readinessError ? "Nexus unavailable" : "Preparing Nexus"}</strong>
+            <span>
+              {readinessError
+                ? "Reload to restore the command chamber."
+                : "Preparing the command chamber"}
+            </span>
+          </div>
+        </div>
+      ) : null}
+      {homeReady && controlsPortal
         ? createPortal(
             <>
               <button
@@ -298,11 +330,13 @@ export function HomeHologramScene({
         className={sceneClassName}
         data-high-contrast={settings.highContrast}
         data-intro={introMode}
+        data-home-readiness={homeReady ? "ready" : "preparing"}
         data-orbit-system="chamber"
         data-performance={settings.homePerformanceMode}
         data-reduced-motion={settings.reducedMotion}
         data-testid="home-hologram-scene"
-        ref={registerParallaxSurface}
+        ref={registerSceneSurface}
+        aria-hidden={!homeReady}
         onKeyDown={(event) =>
           orbit.handleKeyDown(event, () => {
             const activationCard = cards[orbit.getActivationIndex()] ??
@@ -460,6 +494,7 @@ export function HomeHologramScene({
 
       <nav
         aria-label="Home command destinations"
+        aria-hidden={!homeReady}
         className="home-screen-reader-nav"
       >
         {cards.map((card) => (

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildHomeOrbitItems, permanentHomeOrbitItems } from "../features/home/homeOrbit";
 import { HomeHologramScene } from "../features/home/scene/HomeHologramScene";
 import { buildHomeHologramCards } from "../features/home/scene/homeSceneContent";
+import { homeCardRequiredSelectors } from "../features/home/scene/homeReadiness";
 import type { HomeSceneSettings } from "../features/home/scene/homeSceneTypes";
 import type { FavoriteItem } from "../types/domain";
 
@@ -82,9 +83,12 @@ describe("HomeHologramScene", () => {
     renderScene();
 
     for (const item of permanentHomeOrbitItems) {
-      expect(screen.getByTestId(`orbit-card-${item.id}`)).toHaveAccessibleName(
-        new RegExp(item.label),
-      );
+      const card = screen.getByTestId(`orbit-card-${item.id}`);
+      expect(card).toHaveAccessibleName(new RegExp(item.label));
+      expect(card).toHaveAttribute("data-static-ready", "true");
+      for (const selector of homeCardRequiredSelectors) {
+        expect(card.querySelector(selector)).not.toBeNull();
+      }
     }
 
     expect(
