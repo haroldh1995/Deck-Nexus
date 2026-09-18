@@ -24,15 +24,13 @@ Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-ve
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-RELEASE BLOCKER
+COMPLETE
 
 ## IN PROGRESS
-- Implemented the Home atomic preparation barrier and removed card-level detail demotion.
-- Local production validation is complete; final commit, deployment, and live release-gate verification remain.
+None. Home release gate passed; Master Product Completion remains paused by explicit instruction.
 
 ## REMAINING
-- Complete local and production validation of the atomic Home readiness gate.
-- Commit, push, deploy, and live-verify before any Master Product Completion work resumes.
+None for the Home atomic readiness release gate. Do not resume Master Product Completion until explicitly instructed.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -90,10 +88,11 @@ RELEASE BLOCKER
 - Live residency verification: Home remained complete after 5 seconds, 50 rapid direction-reversing drags, Library/Search/Owned/Import revisits, and offline mode. Live screenshot: `output/playwright/live-residency-839bcff.png`.
 
 ## TESTS STILL REQUIRED
-- Commit/push, GitHub Pages deployment, and live cold/warm/rapid/offline verification.
+- None for this release gate.
 
 ## DEPLOYMENT RETRY
-- The custom Pages artifact workflow for `b3b69d6` and checkpoint `1ab9024` hit the known intermittent IndexedDB timing-test failure before the build step, while the parallel default Pages workflow served the repository source fallback. Trigger another custom workflow run and verify the built artifact before live testing.
+- The custom Pages artifact workflow for `b3b69d6` and checkpoint `1ab9024` hit the known intermittent IndexedDB timing-test failure before the build step, while the parallel default Pages workflow served the repository source fallback.
+- Final retry commit `2166b75ca395e87cfc9e397454f7c5689ddfa802` completed both custom validation/build/deploy and the parallel Pages workflow successfully: runs `35306054762` and `35306054169`.
 
 ## LOCAL VALIDATION MILESTONE
 - Focused Home/unit checks: 3 files, 29 tests passed.
@@ -115,7 +114,7 @@ Existing `npm audit` reports two moderate transitive advisories in Vitest's test
 None known.
 
 ## GIT STATE
-Remote `main` contains the Home release-blocker code through `36ba3d279beb0e0c88b4bbe92e8751aff54b07e5` and the final checkpoint commits after it. Working tree is clean. No unrelated changes are present.
+Remote `main` contains the Home atomic readiness implementation at `b3b69d645b5870f9adef4e306a2d0258b03ab161` and deployment checkpoints through `2166b75ca395e87cfc9e397454f7c5689ddfa802`. Working tree is clean. No unrelated changes are present.
 
 ## DEPLOYMENT STATE
 Home release-blocker commit `36ba3d279beb0e0c88b4bbe92e8751aff54b07e5` deployed successfully:
@@ -157,10 +156,10 @@ Previous GitHub Actions deployment workflows completed successfully:
 - https://github.com/haroldh1995/Deck-Nexus/actions/runs/35163290953
 
 ## LIVE VERIFICATION STATE
-Verified live at `https://haroldh1995.github.io/Deck-Nexus/?home-zero-lag=36ba3d2` in an iPhone-sized 390x844 browser session after deployment. A 60-second rapid swipe/reverse/interrupt torture test retained all 12 card identities, complete artwork, stable image source, zero child-list mutations, zero image-source mutations, no overflow, and no page errors. Live route-return checks covered Library, Search, Owned, Scanner, and Import; a further offline Home torture test retained all 12 complete cards and the decoded artwork.
+Verified live at `https://haroldh1995.github.io/Deck-Nexus/?live-motion=2166b75` in a production iPhone-sized 390x844 Chromium session after deployment. A 60-second rapid swipe/reverse/interrupt torture test completed 164 mixed gestures with all 12 cards complete before and after, zero static asset requests during motion, and no page errors. Screenshot `output/playwright/live-atomic-motion-2166b75.png` shows complete frame, icon, title, description, and action content. Live route-return checks covered Library, Search, Owned, Scanner, and Import; offline reload retained all 12 complete cards.
 
 ## NEXT ACTION
-Continue the Home atomic readiness release blocker; keep Master Product Completion paused.
+Await explicit instruction; keep Master Product Completion paused and do not start other Deck Nexus work automatically.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
