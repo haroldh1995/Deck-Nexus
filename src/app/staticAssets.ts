@@ -8,4 +8,5 @@ export const staticAppAssets = Object.freeze({
 
 export const criticalHomeAssets = Object.freeze([
   staticAppAssets.homeReference,
+  staticAppAssets.nexusMark,
 ]);

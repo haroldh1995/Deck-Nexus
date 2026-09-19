@@ -1,10 +1,10 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-HOME ATOMIC READINESS / ZERO POST-REVEAL LOADING
+MASTER STARTUP EXPERIENCE — REAL STARTUP COORDINATOR + MAGICAL LOADING UI
 
 ## CURRENT OBJECTIVE
-Eliminate incomplete Home navigation cards by preparing the complete static Nexus atomically before reveal. The Master Product Completion task is paused until this release gate passes.
+Implement a truthful event-driven startup coordinator and magical loading experience above the completed atomic Home readiness barrier. The Master Product Completion task remains paused and must not resume automatically.
 
 ## LAST VERIFIED MILESTONE
 Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-verified. The repair removes per-frame semantic React commits, reuses the orbit transform buffer, pauses parallax/particles during active orbit motion, keeps background jobs deferred through settling, and passed the production-build 500-interaction stress gate on Chromium and mobile Chromium.
@@ -24,13 +24,13 @@ Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-ve
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-COMPLETE
+IN PROGRESS
 
 ## IN PROGRESS
-None. Home atomic readiness release gate passed; Master Product Completion remains paused by explicit instruction.
+Startup coordinator, status adapter, and complete-before-reveal loading UI.
 
 ## REMAINING
-None for the Home atomic readiness release gate. Do not resume Master Product Completion until explicitly instructed.
+Implement and validate the startup architecture, then commit, push, deploy, and live-verify. Do not resume Master Product Completion after this task.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -165,3 +165,13 @@ Await explicit instruction; keep Master Product Completion paused and do not sta
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
+
+## STARTUP IMPLEMENTATION CHECKPOINT
+- Added a singleton `StartupCoordinator` with typed task definitions, dependency checks, immutable snapshots, critical/noncritical state, real unit progress, cache-hit metadata, generation protection, retry, and in-flight request deduplication.
+- Startup tasks are mapped to the actual current pipeline: application core, settings hydration, resident workspace data, fonts, Home assets, Home structure, geometry, interaction, and optional owned-card hydration.
+- `HOME_READY` is derived once from the coordinator's critical Home dependency set. Home remains mounted behind an inert startup overlay and is not revealed until its complete card DOM is verified.
+- Added `StartupStatusAdapter` with deterministic task priority and magical/plain-language copy. Progress is coalesced at the presentation boundary and never synthesized by timers.
+- Added a compositor-driven magical startup screen with crystal, energy beam, rings, projections, real stage segments, accessible live status, failure retry, responsive mobile/landscape layouts, and reduced-motion behavior.
+- Added development-only `startup-sim=slow|failure|parallel` simulation facilities. Production has no artificial startup timing or fake progress.
+- Documented the permanent complete-before-reveal and startup truth laws in `docs/architecture/startup-truth.md`.
+- Focused startup/coordinator/status/loader tests: 3 files, 9 tests passed. Slow-startup E2E simulation passed on Chromium and mobile Chromium. Existing Home unit coverage passed.

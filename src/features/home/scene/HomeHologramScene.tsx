@@ -104,6 +104,10 @@ export function HomeHologramScene({
     },
     [cards],
   );
+  const { error: readinessError, ready: homeReady } = useHomeAtomicReadiness({
+    cards,
+    sceneRef: homeSceneRef,
+  });
   const orbit = useOrbitPhysics({
     cards,
     initialFocusedIndex,
@@ -112,6 +116,7 @@ export function HomeHologramScene({
     scale: sceneScale,
     staticHomeScreen: staticHome,
     visible,
+    interactionReady: homeReady,
   });
   const orbitInteracting = orbit.dragging || orbit.settling;
   const registerParallaxSurface = useSceneParallax({
@@ -126,10 +131,6 @@ export function HomeHologramScene({
     },
     [registerParallaxSurface],
   );
-  const { error: readinessError, ready: homeReady } = useHomeAtomicReadiness({
-    cards,
-    sceneRef: homeSceneRef,
-  });
   const statusCopy = getHomeStatusCopy(deckState);
   const controlsPortal = typeof document === "undefined" ? null : document.body;
   const focusedCard = cards[orbit.focusedIndex] ?? cards[0];
@@ -139,7 +140,7 @@ export function HomeHologramScene({
         <OrbitCard
           card={card}
           cardRef={orbit.registerCardElement(card.id)}
-          focused={focusedCard?.id === card.id}
+          focused={homeReady && focusedCard?.id === card.id}
           index={index}
           key={card.id}
           reducedMotion={settings.reducedMotion}

@@ -1,6 +1,7 @@
 import {
   lazy,
   Suspense,
+  useEffect,
   useState,
   type CSSProperties,
 } from "react";
@@ -11,6 +12,24 @@ import { getRecoverableScanBatch, updateScanBatch } from "../db/repositories";
 import { FoundationScreen } from "../features/foundation/FoundationScreen";
 import type { ScanBatch } from "../types/domain";
 import { useSettings } from "./useSettings";
+import { MagicalStartupScreen } from "./startup/MagicalStartupScreen";
+import {
+  adaptStartupSnapshot,
+} from "./startup/startupStatusAdapter";
+import {
+  startupCoordinator,
+  useStartupSnapshot,
+} from "./startup/startupCoordinator";
+import {
+  getStartupSimulationMode,
+  simulateStartupTask,
+} from "./startup/startupSimulation";
+import { prepareHomeStaticAssets } from "../features/home/scene/homeReadiness";
+import {
+  hasResidentOwnedCards,
+  hydrateResidentOwnedCards,
+} from "../db/residentData";
+import "../styles/startup.css";
 
 const HomeScreen = lazy(async () => ({
   default: (await import("../features/home/HomeScreen")).HomeScreen,
@@ -57,12 +76,79 @@ function RouteLoading() {
   );
 }
 
+let launchedGeneration = 0;
+
+function launchStartup(generation: number) {
+  if (launchedGeneration === generation) {
+    return;
+  }
+  launchedGeneration = generation;
+  const simulationMode = getStartupSimulationMode();
+
+  void startupCoordinator
+    .runTask("app-core", async (reporter) => {
+      reporter.started("hit");
+      await simulateStartupTask("app-core", reporter, simulationMode);
+    }, generation)
+    .then(() => {
+      const fonts = startupCoordinator.runTask(
+        "fonts",
+        async (reporter) => {
+          const fontsAvailable =
+            typeof document !== "undefined" && Boolean(document.fonts?.ready);
+          reporter.started(fontsAvailable ? "miss" : "hit");
+          if (typeof document !== "undefined" && document.fonts?.ready) {
+            await document.fonts.ready;
+          }
+        },
+        generation,
+      );
+
+      void fonts
+        .then(() => startupCoordinator.runTask(
+          "home-assets",
+          async (reporter) => {
+            reporter.started("miss");
+            await simulateStartupTask("home-assets", reporter, simulationMode);
+            await prepareHomeStaticAssets();
+          },
+          generation,
+        ))
+        .catch(() => undefined);
+
+      void startupCoordinator.runTask(
+        "optional-collection-hydration",
+        async (reporter) => {
+          reporter.started(hasResidentOwnedCards() ? "hit" : "miss");
+          await hydrateResidentOwnedCards();
+        },
+        generation,
+      ).catch(() => undefined);
+    })
+    .catch(() => undefined);
+}
+
 export function AppShell() {
-  const { settings } = useSettings();
+  const { settings, loading: settingsLoading } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
+  const startupSnapshot = useStartupSnapshot();
   const isHomeRoute = location.pathname === "/";
   const [protectedBatch, setProtectedBatch] = useState<ScanBatch | null>(null);
+
+  useEffect(() => {
+    const generation = startupCoordinator.ensureStarted();
+    launchStartup(generation);
+  }, []);
+
+  useEffect(() => {
+    const generation = startupCoordinator.ensureStarted();
+    if (settingsLoading) {
+      startupCoordinator.taskStarted("preferences", generation, "miss");
+    } else {
+      startupCoordinator.taskReady("preferences", generation, "hit");
+    }
+  }, [settingsLoading, startupSnapshot.generation]);
 
   const textScale =
     settings.textSize === "large"
@@ -176,6 +262,16 @@ export function AppShell() {
           </Routes>
         </Suspense>
       </main>
+
+      {isHomeRoute && !startupSnapshot.homeReady ? (
+        <MagicalStartupScreen
+          onRetry={() => {
+            const generation = startupCoordinator.retry();
+            launchStartup(generation);
+          }}
+          presentation={adaptStartupSnapshot(startupSnapshot)}
+        />
+      ) : null}
 
       {protectedBatch ? (
         <div className="builder-modal-backdrop" role="presentation">

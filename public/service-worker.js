@@ -1,6 +1,6 @@
 /* global self, caches, fetch, URL, Response */
 
-const CACHE_NAME = "deck-nexus-shell-2026-09-16-residency";
+const CACHE_NAME = "deck-nexus-shell-2026-09-18-startup";
 const APP_SHELL = [
   "./",
   "./index.html",

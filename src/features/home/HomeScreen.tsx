@@ -1,21 +1,29 @@
 import { useEffect, useMemo } from "react";
 import { useSettings } from "../../app/useSettings";
 import { useDecks, useFavorites } from "../../db/hooks";
+import {
+  startupCoordinator,
+  useStartupGeneration,
+} from "../../app/startup/startupCoordinator";
 import type { HomeOrbitItem } from "../../types/navigation";
 import "../../styles/homeHologram.css";
 import { buildHomeOrbitItems, moveHomeOrbitItem } from "./homeOrbit";
 import { buildHomeHologramCards } from "./scene/homeSceneContent";
 import { HomeHologramScene } from "./scene/HomeHologramScene";
-import { prepareHomeStaticAssets } from "./scene/homeReadiness";
 
 export function HomeScreen() {
   const { settings, updateSettings } = useSettings();
-  const { decks } = useDecks();
-  const { favorites } = useFavorites();
+  const { decks, loading: decksLoading } = useDecks();
+  const { favorites, loading: favoritesLoading } = useFavorites();
+  const startupGeneration = useStartupGeneration();
 
   useEffect(() => {
-    void prepareHomeStaticAssets().catch(() => undefined);
-  }, []);
+    const generation = startupGeneration;
+    startupCoordinator.taskStarted("workspace-data", generation, "miss");
+    if (!decksLoading && !favoritesLoading) {
+      startupCoordinator.taskReady("workspace-data", generation, "hit");
+    }
+  }, [decksLoading, favoritesLoading, startupGeneration]);
 
   const orbitItems = useMemo(
     () =>

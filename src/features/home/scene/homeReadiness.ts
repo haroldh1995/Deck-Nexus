@@ -1,4 +1,8 @@
 import { useLayoutEffect, useState, type RefObject } from "react";
+import {
+  startupCoordinator,
+  useStartupSnapshot,
+} from "../../../app/startup/startupCoordinator";
 import { primeStaticImages } from "../../../app/imageReadiness";
 import { criticalHomeAssets } from "../../../app/staticAssets";
 import type { HomeHologramCard } from "./homeSceneTypes";
@@ -105,13 +109,27 @@ export function useHomeAtomicReadiness({
   cards: readonly HomeHologramCard[];
   sceneRef: RefObject<HTMLElement | null>;
 }) {
-  const [ready, setReady] = useState(import.meta.env.MODE === "test");
+  const startupSnapshot = useStartupSnapshot();
   const [error, setError] = useState<Error | null>(null);
+  const ready = import.meta.env.MODE === "test" || startupSnapshot.homeReady;
 
   useLayoutEffect(() => {
+    if (import.meta.env.MODE === "test") {
+      return undefined;
+    }
+
     let active = true;
     let firstFrame = 0;
     let revealFrame = 0;
+
+    const isReady = (taskId: string) => {
+      const task = startupSnapshot.tasks.find((candidate) => candidate.id === taskId);
+      return task?.status === "ready" || task?.status === "skipped";
+    };
+
+    if (!isReady("home-assets") || !isReady("workspace-data")) {
+      return undefined;
+    }
 
     void prepareHomeStaticAssets()
       .then(() => {
@@ -126,12 +144,20 @@ export function useHomeAtomicReadiness({
             }
 
             if (!verifyHomeCardDom(sceneRef.current, cards)) {
-              setError(new Error("Home static card manifest is incomplete."));
+              const nextError = new Error("Home static card manifest is incomplete.");
+              startupCoordinator.taskFailed(
+                "home-structure",
+                nextError,
+                startupSnapshot.generation,
+              );
+              setError(nextError);
               return;
             }
 
+            startupCoordinator.taskReady("home-structure", startupSnapshot.generation, "hit");
+            startupCoordinator.taskReady("home-geometry", startupSnapshot.generation, "hit");
+            startupCoordinator.taskReady("home-interaction", startupSnapshot.generation, "hit");
             setError(null);
-            setReady(true);
           });
         });
       })
@@ -154,7 +180,7 @@ export function useHomeAtomicReadiness({
         window.cancelAnimationFrame(revealFrame);
       }
     };
-  }, [cards, sceneRef]);
+  }, [cards, sceneRef, startupSnapshot.generation, startupSnapshot.tasks]);
 
   return { error, ready };
 }

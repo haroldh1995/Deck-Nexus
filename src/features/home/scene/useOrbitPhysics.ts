@@ -71,6 +71,7 @@ export interface OrbitPhysicsOptions {
   scale: ResponsiveSceneScale;
   staticHomeScreen: boolean;
   visible: boolean;
+  interactionReady: boolean;
 }
 
 export function useOrbitPhysics({
@@ -81,6 +82,7 @@ export function useOrbitPhysics({
   scale,
   staticHomeScreen,
   visible,
+  interactionReady,
 }: OrbitPhysicsOptions) {
   const itemCount = cards.length;
   const initialIndex =
@@ -120,6 +122,8 @@ export function useOrbitPhysics({
   const lastXRef = useRef(0);
   const lastMoveTimeRef = useRef(0);
   const activePointerIdRef = useRef<number | null>(null);
+  const pointerCardIdRef = useRef<string | null>(null);
+  const suppressNextClickRef = useRef(false);
   const pendingPointerSampleRef = useRef<PendingPointerSample | null>(null);
   const suppressClickUntilRef = useRef(0);
   const longPressTimerRef = useRef<number | null>(null);
@@ -213,7 +217,7 @@ export function useOrbitPhysics({
         continue;
       }
 
-      const selectedFrontCard =
+      const selectedFrontCard = interactionReady &&
         transform.id === visualFrontCardId && transform.frontness > 0.62;
       const zIndex = selectedFrontCard
         ? Math.max(transform.zIndex, 112)
@@ -299,7 +303,7 @@ export function useOrbitPhysics({
     if (!draggingRef.current) {
       restoreVisualsRef.current = false;
     }
-  }, []);
+  }, [interactionReady]);
 
   const commitFocusedIndex = useCallback(
     (nextIndex: number, notify = true) => {
@@ -428,6 +432,8 @@ export function useOrbitPhysics({
   const beginPointerDrag = useCallback(
     (event: PointerEvent<HTMLElement>, cardId?: string) => {
       activePointerIdRef.current = event.pointerId;
+      pointerCardIdRef.current = cardId ?? null;
+      suppressNextClickRef.current = false;
       event.currentTarget.setPointerCapture?.(event.pointerId);
 
       if (staticHomeScreen) {
@@ -542,6 +548,20 @@ export function useOrbitPhysics({
         return;
       }
 
+      const tappedCardId = pointerCardIdRef.current;
+      let didFocusTap = false;
+      pointerCardIdRef.current = null;
+      if (!wasDragging && tappedCardId) {
+        const tappedIndex = cardsRef.current.findIndex(
+          (card) => card.id === tappedCardId,
+        );
+        if (tappedIndex >= 0 && tappedIndex !== focusedIndexRef.current) {
+          focusIndex(tappedIndex);
+          didFocusTap = true;
+          suppressNextClickRef.current = true;
+        }
+      }
+
       if (dragIntentActiveRef.current) {
         suppressClickUntilRef.current = performance.now() +
           clickSuppressMilliseconds;
@@ -549,7 +569,7 @@ export function useOrbitPhysics({
 
       dragIntentActiveRef.current = false;
       setDraggingState(false);
-      if (!staticHomeScreen) {
+      if (!staticHomeScreen && !didFocusTap) {
         interactionModeRef.current =
           Math.abs(velocityRef.current) > 0.002 && !reducedMotion
             ? "inertial"
@@ -562,6 +582,7 @@ export function useOrbitPhysics({
       applyTransforms,
       cancelLongPress,
       consumePendingPointerSample,
+      focusIndex,
       reducedMotion,
       setDraggingState,
       setSettlingState,
@@ -570,7 +591,13 @@ export function useOrbitPhysics({
   );
 
   const isClickSuppressed = useCallback(
-    () => performance.now() < suppressClickUntilRef.current,
+    () => {
+      if (suppressNextClickRef.current) {
+        suppressNextClickRef.current = false;
+        return true;
+      }
+      return performance.now() < suppressClickUntilRef.current;
+    },
     [],
   );
 
