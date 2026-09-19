@@ -186,6 +186,7 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 ## STARTUP GIT / DEPLOYMENT
 - Commit `41dc8d52d36c18404c1e8b68714e80ebd9ed1af0` pushed to `origin/main`.
 - GitHub Pages deployment succeeded: build/deploy run `35408582723`; repository validation/deploy run `35408583409`.
+- Final state checkpoint `8f2773bac579be7c7acd85b2578a74ba0cd82b36` pushed after verification; its Pages deployment/build runs `35408863255` and `35408863961` also completed successfully.
 - Service-worker cache version advanced to `deck-nexus-shell-2026-09-18-startup`.
 
 ## STARTUP LIVE VERIFICATION
