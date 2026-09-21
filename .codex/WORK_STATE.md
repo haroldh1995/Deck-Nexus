@@ -183,8 +183,16 @@ Await explicit instruction; keep Master Product Completion paused and do not sta
 - Full production-preview E2E regression passed on Chromium and mobile Chromium: 40 tests passed. Physical-camera video and physical-device Safari were unavailable; deterministic media harness validation was used and no physical Fodder Cannon live scan is claimed.
 
 ## SCANNER GIT / DEPLOYMENT
-- Working tree contains only the scanner correctness, Scryfall model, target lifecycle, mobile review, focused tests, architecture documentation, and this checkpoint. No unrelated product work was resumed.
-- Commit, push, deployment, and live verification are still required for this checkpoint.
+- Scanner implementation commit `ead0ff9520dc0d11347f655f50558e002d650e1f` was pushed to `origin/main`.
+- GitHub Actions completed successfully for the scanner build/deployment: deploy run `35564401044`; Pages build/deployment run `35564400222`.
+- The working tree contains only the scanner correctness, Scryfall model, target lifecycle, mobile review, focused tests, architecture documentation, and this checkpoint. No unrelated product work was resumed.
+
+## SCANNER LIVE VERIFICATION
+- Live production smoke verification completed at `https://haroldh1995.github.io/Deck-Nexus/?scanner-live=ead0ff9` and `/Deck-Nexus/scan?scanner-live=ead0ff9` using Chromium at a 390x844 mobile viewport.
+- Home reached `data-home-readiness="ready"`; Scanner loaded with the current production bundle, no page errors, no body overflow, and the camera-permission surface was present. Screenshot: `output/playwright/live-scanner-ead0ff9.png`.
+- Physical Fodder Cannon scanning and physical-device Safari were unavailable. No physical scan, exact live printing verification, or physical-device result is claimed.
+- Deterministic camera-harness E2E covered scan completion, duplicate suppression, feeder recovery, Batch Review, correction paths, and mobile geometry. Live production Batch Review was not claimed without a physical or deterministic media session on the deployed bundle.
+- Master Product Completion remains paused. Await explicit instruction; do not resume unrelated Deck Nexus work automatically.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
