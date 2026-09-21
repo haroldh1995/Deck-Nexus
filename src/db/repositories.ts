@@ -1159,9 +1159,15 @@ export async function listScanRecords(batchId: string): Promise<ScanRecord[]> {
 }
 
 export async function addScanRecord(record: ScanRecord): Promise<ScanRecord> {
-  const batch = await db.scannerBatches.get(record.batchId);
+  let storedRecord = record;
 
   await db.transaction("rw", db.scanRecords, db.scannerBatches, async () => {
+    const existing = await db.scanRecords.get(record.id);
+    if (existing) {
+      storedRecord = existing;
+      return;
+    }
+    const batch = await db.scannerBatches.get(record.batchId);
     await db.scanRecords.put(record);
     if (batch) {
       await db.scannerBatches.put({
@@ -1174,7 +1180,7 @@ export async function addScanRecord(record: ScanRecord): Promise<ScanRecord> {
   });
 
   dispatchLocalEvent("deck-nexus:scanner-updated");
-  return record;
+  return storedRecord;
 }
 
 export async function updateScanRecord(
@@ -1203,9 +1209,11 @@ export async function applyScanBatchToOwned(batchId: string): Promise<number> {
   const batch = await db.scannerBatches.get(batchId);
   const records = await listScanRecords(batchId);
   const applicableRecords = records.filter((record) =>
-    record.status === "confirmed" ||
-    record.identityStatus === "verified" ||
-    (record.status === "matched" && !record.identityStatus),
+    record.status !== "applied" && record.status !== "removed" && (
+      record.status === "confirmed" ||
+      record.identityStatus === "verified" ||
+      (record.status === "matched" && !record.identityStatus)
+    ),
   );
 
   if (!batch) {
@@ -1213,9 +1221,18 @@ export async function applyScanBatchToOwned(batchId: string): Promise<number> {
   }
 
   for (const record of applicableRecords) {
+    const existing = await db.ownedCards
+      .filter((owned) => owned.name.trim().toLowerCase() === record.name.trim().toLowerCase())
+      .first();
+    const printingKey = record.printingId ?? record.scryfallId ?? record.oracleId ?? `local:${record.name.toLowerCase()}`;
+    const existingPrinting = existing?.printings?.find((printing) =>
+      printing.id === printingKey || printing.scryfallId === printingKey,
+    );
+    const nextTotalQuantity = (existing?.quantityOwned ?? 0) + record.quantity;
+    const nextPrintingQuantity = (existingPrinting?.quantityOwned ?? 0) + record.quantity;
     await upsertOwnedCard({
       name: record.name,
-      quantityOwned: record.quantity,
+      quantityOwned: nextTotalQuantity,
       oracleId: record.oracleId,
       scryfallId: record.scryfallId,
       typeLine: record.typeLine,
@@ -1228,6 +1245,7 @@ export async function applyScanBatchToOwned(batchId: string): Promise<number> {
       rarity: record.rarity,
       duplicateFlag: "none",
       printing: {
+        id: existingPrinting?.id ?? printingKey,
         name: record.name,
         oracleId: record.oracleId,
         scryfallId: record.scryfallId,
@@ -1241,7 +1259,7 @@ export async function applyScanBatchToOwned(batchId: string): Promise<number> {
         prices: record.prices,
         priceUpdatedAt: record.priceUpdatedAt ?? record.prices?.fetchedAt,
         rarity: record.rarity,
-        quantityOwned: record.quantity,
+        quantityOwned: nextPrintingQuantity,
         lastScannedAt: nowIso(),
       },
     });
@@ -1252,8 +1270,10 @@ export async function applyScanBatchToOwned(batchId: string): Promise<number> {
   }
 
   await updateScanBatch(batchId, {
-    status: "applied",
-    recordsCreated: records.length,
+    status: records.some((record) => !["applied", "removed"].includes(record.status))
+      ? "partially_applied"
+      : "applied",
+    recordsCreated: records.reduce((total, record) => total + record.quantity, 0),
   });
 
   return applicableRecords.length;

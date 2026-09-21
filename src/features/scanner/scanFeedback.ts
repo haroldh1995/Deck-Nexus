@@ -1,6 +1,7 @@
 import type { ScannerConfirmationVolume } from "../../types/domain";
 
 export interface ScanFeedbackPreferences {
+  captureId: string;
   soundEnabled: boolean;
   volume: ScannerConfirmationVolume;
   hapticEnabled: boolean;
@@ -36,6 +37,7 @@ export function gainForScanVolume(volume: ScannerConfirmationVolume): number {
 
 export function createScanFeedbackController(): ScanFeedbackController {
   let context: AudioContext | undefined;
+  const completedCaptureIds = new Set<string>();
 
   async function getContext(): Promise<AudioContext | undefined> {
     const AudioContextClass = getAudioContextConstructor();
@@ -60,6 +62,21 @@ export function createScanFeedbackController(): ScanFeedbackController {
     },
 
     async playAccepted(preferences) {
+      if (completedCaptureIds.has(preferences.captureId)) {
+        return;
+      }
+      completedCaptureIds.add(preferences.captureId);
+      if (completedCaptureIds.size > 4096) {
+        const oldest = completedCaptureIds.values().next().value;
+        if (oldest) completedCaptureIds.delete(oldest);
+      }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("deck-nexus:scan-capture-succeeded", {
+          detail: { captureId: preferences.captureId },
+        }));
+      }
+
       if (preferences.hapticEnabled && "vibrate" in navigator) {
         try {
           navigator.vibrate?.(28);
@@ -97,7 +114,9 @@ export function createScanFeedbackController(): ScanFeedbackController {
         gain.disconnect();
       };
 
-      window.dispatchEvent(new CustomEvent("deck-nexus:scan-beep"));
+      window.dispatchEvent(new CustomEvent("deck-nexus:scan-beep", {
+        detail: { captureId: preferences.captureId },
+      }));
     },
 
     async close() {

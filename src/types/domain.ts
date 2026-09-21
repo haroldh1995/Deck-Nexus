@@ -522,6 +522,10 @@ export type ScanPrintingStatus = "verified" | "review_required" | "unknown";
 export interface ScanRecord {
   id: string;
   batchId: string;
+  captureId?: string;
+  scanSessionId?: string;
+  targetId?: string;
+  captureGeneration?: number;
   rawText: string;
   scryfallId?: string;
   oracleId?: string;

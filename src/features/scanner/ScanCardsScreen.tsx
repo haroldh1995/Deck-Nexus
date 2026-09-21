@@ -91,9 +91,12 @@ type ScannerLoopState =
   | "idle"
   | "waiting_for_camera"
   | "watching"
+  | "monitoring"
+  | "possible_new_target"
   | "stabilizing"
   | "capturing"
   | "resolving"
+  | "success_feedback"
   | "queued"
   | "paused"
   | "error";
@@ -231,10 +234,12 @@ export function ScanCardsScreen() {
   const stackingTransitionRef = useRef(false);
   const tooCloseStartedAtRef = useRef<number | undefined>(undefined);
   const lastFeedbackRef = useRef("");
+  const manualScannerMessageRef = useRef(false);
   const feedbackControllerRef = useRef(createScanFeedbackController());
   const abortRecognitionRef = useRef<AbortController | null>(null);
   const [lifecycle] = useState(() => createScannerLifecycle("scan-session"));
   const lastReviewTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const autoCameraAttemptedRef = useRef(false);
 
   useEffect(() => {
     if (!reviewOpen) {
@@ -359,6 +364,10 @@ export function ScanCardsScreen() {
           action: "Try Again",
         });
       }
+      if (permissionState === "granted" && !autoCameraAttemptedRef.current && !cameraReadyRef.current) {
+        autoCameraAttemptedRef.current = true;
+        void requestCamera();
+      }
     });
   }, []);
 
@@ -377,6 +386,9 @@ export function ScanCardsScreen() {
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.hidden) {
+        abortRecognitionRef.current?.abort();
+        lifecycle.invalidateTarget();
+        frameMemoryRef.current = {};
         setScannerPaused(true);
         setLoopState("paused");
         setMessage("Recognition paused while the page is hidden. The batch remains saved.");
@@ -493,10 +505,9 @@ export function ScanCardsScreen() {
     setLoopState("waiting_for_camera");
 
     try {
+      abortRecognitionRef.current?.abort();
       lifecycle.invalidateTarget();
-      lastAcceptedFingerprintRef.current = undefined;
       await feedbackControllerRef.current.prime();
-      const activeBatch = await getOrCreateBatch();
       stopCameraStream(streamRef.current);
       const requestedDeviceId =
         deviceIdOverride || selectedCameraId || settings.scannerDefaultCameraId;
@@ -523,12 +534,14 @@ export function ScanCardsScreen() {
         const enabled = await applyTorchToStream(result.stream, true).catch(() => false);
         setTorchOn(enabled);
       }
-      await updateScanBatch(activeBatch.id, {
-        status: "scanning",
-        cameraDeviceId: result.selectedDeviceId,
-        mode,
-        destination,
-      });
+      if (batchRef.current) {
+        await updateScanBatch(batchRef.current.id, {
+          status: "scanning",
+          cameraDeviceId: result.selectedDeviceId,
+          mode,
+          destination,
+        });
+      }
       setMessage("Camera live. Scans save to the current batch.");
     } catch (error) {
       const mapped = mapCameraError(error);
@@ -587,7 +600,10 @@ export function ScanCardsScreen() {
     setMessage(`${card.name} added to batch as ${status.replace("_", " ")}.`);
   }
 
-  const queueRecognizedScan = useCallback(async (frameAnalysis: FrameAnalysis) => {
+  const queueRecognizedScan = useCallback(async (
+    frameAnalysis: FrameAnalysis,
+    targetGeometry?: { x: number; y: number; width: number; height: number },
+  ) => {
     const video = videoRef.current;
     const captureCanvas = captureCanvasRef.current;
     const captureContext = captureCanvas?.getContext("2d", {
@@ -612,10 +628,19 @@ export function ScanCardsScreen() {
       return;
     }
 
-    const activeBatch = await getOrCreateBatch();
+    if (recognizingRef.current) {
+      return;
+    }
+    recognizingRef.current = true;
+    const activeBatch = await getOrCreateBatch().catch(() => undefined);
+    if (!activeBatch) {
+      recognizingRef.current = false;
+      setLoopState("error");
+      setMessage("The scan batch could not be prepared. Existing work remains safe.");
+      return;
+    }
     const target = lifecycle.acquireTarget(frameAnalysis.fingerprint);
     const ownership = lifecycle.createOwnership(activeBatch.id, frameAnalysis.fingerprint);
-    recognizingRef.current = true;
     setLoopState("capturing");
     const captureWidth = 520;
     const captureHeight = 728;
@@ -650,12 +675,32 @@ export function ScanCardsScreen() {
       const record = createScanRecordFromResolvedCard({
         batchId: activeBatch.id,
         result,
+        capture: {
+          scanSessionId: ownership.scanSessionId,
+          targetId: ownership.targetId,
+          captureGeneration: ownership.captureGeneration,
+        },
       });
       if (!lifecycle.isCurrent(ownership)) return;
       await addScanRecord(record);
+      recordScannerTrace({
+        ...ownershipToTrace(ownership),
+        videoIntrinsic: { width: video.videoWidth, height: video.videoHeight },
+        videoDisplay: { width: video.clientWidth, height: video.clientHeight },
+        frame: frameAnalysis,
+        finalCardIdentity: result.scryfallId,
+        finalPrintingIdentity: result.printingId,
+        cardIdentityConfidence: result.confidence,
+        printingIdentityConfidence: result.printingConfidence,
+        batchEntryId: record.id,
+      });
+      lifecycle.commitCapture(ownership, {
+        fingerprint: frameAnalysis.fingerprint,
+        candidate: targetGeometry,
+      });
       lastAcceptedFingerprintRef.current = frameAnalysis.fingerprint;
       stackingTransitionRef.current = false;
-      setLoopState("queued");
+      setLoopState("success_feedback");
       await updateScanBatch(activeBatch.id, {
         lastAcceptedFingerprint: frameAnalysis.fingerprint,
         lastAcceptedAt: new Date().toISOString(),
@@ -664,10 +709,11 @@ export function ScanCardsScreen() {
             ? "waiting_for_next_transition"
             : modeRef.current === "automatic_feeder"
               ? "waiting_for_removal"
-              : "watching",
-      });
-      await refreshRecords(activeBatch.id);
+              : "monitoring_for_next_target",
+      }).catch(() => undefined);
+      await refreshRecords(activeBatch.id).catch(() => undefined);
       await feedbackControllerRef.current.playAccepted({
+        captureId: record.captureId ?? record.id,
         soundEnabled: settings.scannerConfirmationSound,
         volume: settings.scannerConfirmationVolume,
         hapticEnabled: settings.scannerHapticConfirmation,
@@ -682,6 +728,8 @@ export function ScanCardsScreen() {
       if (modeRef.current === "stacking_feeder") {
         setStackingState("wait_for_next_too_close_cue");
       }
+      manualScannerMessageRef.current = false;
+      setLoopState("monitoring");
     } catch (error) {
       if (!controller.signal.aborted) {
         setLoopState("error");
@@ -735,13 +783,38 @@ export function ScanCardsScreen() {
         return;
       }
 
-      lifecycle.acquireTarget(nextAnalysis.fingerprint, timestamp);
+      const previousTargetId = lifecycle.currentTarget()?.targetId;
+      const targetGeometry = nextAnalysis.candidate
+        ? {
+            x: nextAnalysis.candidate.x / size.width,
+            y: nextAnalysis.candidate.y / size.height,
+            width: nextAnalysis.candidate.width / size.width,
+            height: nextAnalysis.candidate.height / size.height,
+          }
+        : undefined;
+      const nextTarget = lifecycle.acquireTarget(
+        nextAnalysis.fingerprint,
+        timestamp,
+        targetGeometry,
+        { tooClose: nextAnalysis.tooClose },
+      );
+      const newTargetDetected = Boolean(previousTargetId && nextTarget.targetId !== previousTargetId);
+      if (newTargetDetected) {
+        frameMemoryRef.current = {};
+        lastAcceptedFingerprintRef.current = undefined;
+        stackingTransitionRef.current = false;
+        setLoopState("possible_new_target");
+        setMessage("New card detected. Reading the next physical target.");
+        return;
+      }
 
       setAnalysis(nextAnalysis);
       const nextFeedback = nextAnalysis.feedback;
       if (nextFeedback !== lastFeedbackRef.current) {
         lastFeedbackRef.current = nextFeedback;
-        setMessage(nextFeedback);
+        if (!manualScannerMessageRef.current) {
+          setMessage(nextFeedback);
+        }
       }
 
       if (!nextAnalysis.candidateVisible) {
@@ -788,12 +861,9 @@ export function ScanCardsScreen() {
 
       if (nextAnalysis.stable) {
         setLoopState("stabilizing");
-        const mayCaptureStacking =
-          modeRef.current !== "stacking_feeder" ||
-          stackingTransitionRef.current ||
-          recordsRef.current.length === 0;
+        const mayCaptureStacking = modeRef.current !== "stacking_feeder" || !lifecycle.currentTarget()?.captureCommitted;
         if (mayCaptureStacking && !recognizingRef.current) {
-          await queueRecognizedScan(nextAnalysis);
+          await queueRecognizedScan(nextAnalysis, targetGeometry);
         }
       } else if (!nextAnalysis.tooClose) {
         setLoopState("watching");
@@ -863,6 +933,7 @@ export function ScanCardsScreen() {
     setStackingState(cycle.stackingState ?? "idle_watching_tray");
     setTooCloseDuration((current) => current + 900);
     stackingTransitionRef.current = true;
+    manualScannerMessageRef.current = true;
     setMessage("Too-close cue detected. New card arrival registered for stacking feeder mode.");
   }
 
@@ -874,6 +945,7 @@ export function ScanCardsScreen() {
     });
     setStackingState(cycle.stackingState ?? "idle_watching_tray");
     setTooCloseDuration(0);
+    manualScannerMessageRef.current = false;
     setMessage(`Stacking feeder: ${(cycle.stackingState ?? "").replaceAll("_", " ")}.`);
     if (cycle.shouldCapture) {
       await simulateScan("assumed", 0.78);
@@ -899,7 +971,7 @@ export function ScanCardsScreen() {
   }
 
   async function confirmAllHighConfidence() {
-    for (const record of records.filter((candidate) => candidate.identityStatus === "verified" || candidate.status === "matched")) {
+    for (const record of records.filter((candidate) => candidate.status !== "removed" && (candidate.identityStatus === "verified" || candidate.status === "matched"))) {
       await updateScanRecord(record.id, { status: "confirmed" });
     }
     if (batch) {
@@ -927,7 +999,7 @@ export function ScanCardsScreen() {
     }
 
     let applied = 0;
-    for (const record of records.filter((candidate) => candidate.status === "confirmed" || candidate.identityStatus === "verified" || (candidate.status === "matched" && !candidate.identityStatus))) {
+    for (const record of records.filter((candidate) => candidate.status !== "applied" && candidate.status !== "removed" && (candidate.status === "confirmed" || candidate.identityStatus === "verified" || (candidate.status === "matched" && !candidate.identityStatus)))) {
       const input = catalogCardToManualInput({
         card: {
           id: record.scryfallId ?? record.id,
@@ -997,6 +1069,56 @@ export function ScanCardsScreen() {
     setMessage("Batch saved for later. It will be recovered when scanner opens again.");
   }
 
+  async function openReview() {
+    abortRecognitionRef.current?.abort();
+    lifecycle.invalidateTarget();
+    frameMemoryRef.current = {};
+    setLoopState("paused");
+    setReviewOpen(true);
+    if (batchRef.current?.status === "scanning") {
+      const reviewing = await updateScanBatch(batchRef.current.id, { status: "reviewing" });
+      batchRef.current = reviewing;
+      setBatch(reviewing);
+    }
+  }
+
+  async function closeReview() {
+    setReviewOpen(false);
+    if (batchRef.current?.status === "reviewing") {
+      const resumed = await updateScanBatch(batchRef.current.id, { status: "scanning" });
+      batchRef.current = resumed;
+      setBatch(resumed);
+    }
+    setLoopState(cameraReadyRef.current ? "monitoring" : "idle");
+  }
+
+  async function toggleScannerPause() {
+    const nextPaused = !scannerPausedRef.current;
+    if (nextPaused) {
+      abortRecognitionRef.current?.abort();
+      lifecycle.invalidateTarget();
+      frameMemoryRef.current = {};
+      setScannerPaused(true);
+      setLoopState("paused");
+      setMessage("Scanning paused. The current batch remains saved.");
+      if (batchRef.current) {
+        const paused = await updateScanBatch(batchRef.current.id, { status: "paused" });
+        batchRef.current = paused;
+        setBatch(paused);
+      }
+      return;
+    }
+
+    setScannerPaused(false);
+    setLoopState("monitoring");
+    setMessage("Scanning resumed. Looking for the next physical card.");
+    if (batchRef.current?.status === "paused") {
+      const resumed = await updateScanBatch(batchRef.current.id, { status: "scanning", prompt: undefined });
+      batchRef.current = resumed;
+      setBatch(resumed);
+    }
+  }
+
   async function discardBatch() {
     if (!batch) {
       return;
@@ -1060,7 +1182,7 @@ export function ScanCardsScreen() {
           <button type="button" onClick={() => setShowRecovery(false)}>
             Resume
           </button>
-          <button type="button" onClick={() => setReviewOpen(true)}>
+          <button type="button" onClick={() => void openReview()}>
             Review
           </button>
           <button type="button" onClick={saveForLater}>
@@ -1129,7 +1251,7 @@ export function ScanCardsScreen() {
             <div className="scanner-frame__hud">
               <strong>{mode === "stacking_feeder" ? "Stacking tray watch" : "Live card scanner"}</strong>
               <span>{loopState.replaceAll("_", " ")}</span>
-              <span>{analysis ? `${Math.round(analysis.boundaryConfidence * 100)}% candidate` : "Waiting for frame"}</span>
+              <span>{analysis?.candidateVisible ? "Card detected" : "Looking for card"}</span>
             </div>
           </div>
           <canvas aria-hidden="true" className="scanner-analysis-canvas" ref={analysisCanvasRef} />
@@ -1182,15 +1304,12 @@ export function ScanCardsScreen() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setScannerPaused((current) => !current);
-                setLoopState(scannerPaused ? "watching" : "paused");
-              }}
+              onClick={() => void toggleScannerPause()}
             >
               {scannerPaused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
               {scannerPaused ? "Resume" : "Pause"}
             </button>
-            <button type="button" ref={lastReviewTriggerRef} onClick={() => setReviewOpen(true)}>
+            <button type="button" ref={lastReviewTriggerRef} onClick={() => void openReview()}>
               Review Batch
             </button>
           </div>
@@ -1268,14 +1387,16 @@ export function ScanCardsScreen() {
                 </label>
               ) : null}
             </div>
-            <div className="scanner-actions">
-              <button type="button" onClick={() => void simulateScan("assumed", 0.82)}>
-                Simulate Scan
-              </button>
-              <button type="button" onClick={() => void simulateScan("low_confidence", 0.48)}>
-                Low Confidence Scan
-              </button>
-            </div>
+            {import.meta.env.DEV ? (
+              <div className="scanner-actions" data-testid="scanner-development-controls">
+                <button type="button" onClick={() => void simulateScan("assumed", 0.82)}>
+                  Simulate Scan
+                </button>
+                <button type="button" onClick={() => void simulateScan("low_confidence", 0.48)}>
+                  Low Confidence Scan
+                </button>
+              </div>
+            ) : null}
             {mode === "automatic_feeder" ? (
               <div className="scanner-feeder-controls">
                 <h2>Automatic Feeder Loop</h2>
@@ -1334,7 +1455,7 @@ export function ScanCardsScreen() {
                 <h2 id="scanner-review-title">Batch Review</h2>
                 <span className="scanner-review-count">{summary.total} captured</span>
               </div>
-              <button type="button" onClick={() => setReviewOpen(false)} aria-label="Close batch review">
+              <button type="button" onClick={() => void closeReview()} aria-label="Close batch review">
                 <X aria-hidden="true" />
               </button>
             </div>
@@ -1430,7 +1551,7 @@ export function ScanCardsScreen() {
           <button type="button" onClick={emptyTrayDone}>
             <RotateCcw aria-hidden="true" /> Empty Tray Done
           </button>
-          <button type="button" onClick={() => setReviewOpen(true)}>
+          <button type="button" onClick={() => void openReview()}>
             Review Batch
           </button>
           <button type="button" onClick={saveForLater}>

@@ -123,7 +123,7 @@ export function getCameraSupportStatus(): CameraSupportStatus {
     supported: true,
     state: "prompt",
     title: "Camera ready",
-    detail: "Deckstate can request camera access when you tap Allow Camera.",
+    detail: "Deck Nexus will begin watching automatically after camera access is granted.",
   };
 }
 

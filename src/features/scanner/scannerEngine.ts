@@ -242,10 +242,12 @@ export function createScanRecordFromCard({
   destination?: ScanBatchDestination;
 }): ScanRecord {
   const now = nowIso();
+  const recordId = createId("scan-record");
 
   return {
-    id: createId("scan-record"),
+    id: recordId,
     batchId,
+    captureId: createId("scan-capture"),
     rawText: `${card.name} ${card.typeLine}`,
     scryfallId: card.scryfallId,
     oracleId: card.oracleId,
@@ -266,15 +268,26 @@ export function createScanRecordFromCard({
 export function createScanRecordFromResolvedCard({
   batchId,
   result,
+  capture,
 }: {
   batchId: string;
   result: ScannerResolvedCard;
+  capture?: {
+    scanSessionId: string;
+    targetId: string;
+    captureGeneration: number;
+  };
 }): ScanRecord {
   const now = nowIso();
+  const captureId = createId("scan-capture");
 
   return {
     id: createId("scan-record"),
     batchId,
+    captureId,
+    scanSessionId: capture?.scanSessionId,
+    targetId: capture?.targetId,
+    captureGeneration: capture?.captureGeneration,
     rawText: result.rawText,
     scryfallId: result.scryfallId,
     oracleId: result.oracleId,

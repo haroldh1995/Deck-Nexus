@@ -97,6 +97,7 @@ type OcrWorker = {
 };
 
 let ocrWorkerPromise: Promise<OcrWorker> | undefined;
+const scannerCandidateCache = new Map<string, DeckstateScryfallCard[]>();
 
 function cleanOcrText(value: string): string {
   return value.replace(/[|_[\]{}<>~`^]/g, " ").replace(/\s+/g, " ").trim();
@@ -171,7 +172,7 @@ function fromCatalogCard(card: CatalogCard, base: Omit<ScannerResolvedCard, "nam
 }
 
 function popScannerHarnessCard(): ScannerTestCard | undefined {
-  if (typeof window === "undefined" || !window.__deckNexusScannerTestHarness) return undefined;
+  if (!import.meta.env.DEV || typeof window === "undefined" || !window.__deckNexusScannerTestHarness) return undefined;
   return window.__deckNexusScannerTestCards?.shift();
 }
 
@@ -276,9 +277,31 @@ async function findCandidates(
   options: Parameters<typeof searchScryfallCards>[0],
   signal?: AbortSignal,
 ): Promise<DeckstateScryfallCard[]> {
+  const cacheKey = JSON.stringify({
+    query: options.query,
+    exactPhrase: options.exactPhrase,
+    typeText: options.typeText,
+    oracleText: options.oracleText,
+    unique: options.unique,
+    sort: options.sort,
+    priority: options.priority,
+  });
+  const memoryCached = scannerCandidateCache.get(cacheKey);
+  if (memoryCached) return memoryCached;
   const cached = await searchScryfallCards({ ...options, cachedOnly: true }, signal);
-  if (cached.cards.length > 0) return cached.cards;
-  return (await searchScryfallCards(options, signal)).cards;
+  if (cached.cards.length > 0) {
+    scannerCandidateCache.set(cacheKey, cached.cards);
+    return cached.cards;
+  }
+  const live = (await searchScryfallCards(options, signal)).cards;
+  if (live.length > 0) {
+    scannerCandidateCache.set(cacheKey, live);
+    if (scannerCandidateCache.size > 128) {
+      const oldest = scannerCandidateCache.keys().next().value;
+      if (oldest) scannerCandidateCache.delete(oldest);
+    }
+  }
+  return live;
 }
 
 export async function recognizeScannerFrame({ canvas, analysis, destination, saveThumbnail, signal }: ScannerRecognitionInput): Promise<ScannerResolvedCard> {

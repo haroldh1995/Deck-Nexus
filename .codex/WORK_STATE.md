@@ -1,13 +1,13 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-SCANNER CORRECTNESS + SCRYFALL PRINTING MATCHING + SCAN COMPLETION + MOBILE REVIEW SYSTEM REPAIR
+DECK NEXUS MASTER SCANNER PRODUCTION REBUILD
 
 ## CURRENT OBJECTIVE
-Repair scanner recognition and completion at the architectural root, distinguish canonical card identity from exact printing identity, and rebuild mobile Batch Review as a deliberate workflow. The Master Product Completion task remains paused and must not resume automatically.
+Production zero-touch handheld and feeder scanning, continuous new-physical-card detection, precision-first canonical/printing resolution, exactly-once capture feedback, durable collection/deck intake, and mobile review repair. The larger unrelated Deck Nexus completion effort remains paused.
 
 ## LAST VERIFIED MILESTONE
-Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-verified. The repair removes per-frame semantic React commits, reuses the orbit transform buffer, pauses parallax/particles during active orbit motion, keeps background jobs deferred through settling, and passed the production-build 500-interaction stress gate on Chromium and mobile Chromium.
+Scanner production-rebuild implementation is locally validated: 38 Vitest files/185 tests, 40 production-preview E2E tests across Chromium and mobile Chromium, typecheck, lint, and production build all pass. Commit/push/deployment/live verification for this extension is pending.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -27,10 +27,10 @@ Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-ve
 RELEASE BLOCKER
 
 ## IN PROGRESS
-Forensic audit complete. The current scanner reads one stretched low-resolution canvas region, treats the first OCR line as a card name, then accepts a Scryfall exact/fuzzy name response. It has no multi-field identity gate, separate printing confidence, target-generation ownership, or robust mobile review surface. Implementation is in progress.
+The definitive scanner rebuild is implemented and locally validated. The current implementation has capture-committed physical-target lifecycle, direct replacement detection, automatic camera start when permission is already granted, exactly-once semantic feedback, idempotent capture persistence, duplicate quantity preservation, review/pause/refresh ownership invalidation, and development-only harness gating. Deployment and live verification remain.
 
 ## REMAINING
-Implement and verify scanner correctness/completion, safe canonical/printing matching, stale-result protection, batch review geometry, focused regressions, full available validation, and deployment/live checks. Do not resume Master Product Completion automatically.
+Commit and push the validated extension, verify both deployment workflows, inspect the live production bundle, then record final deployment/live truth. Do not resume Master Product Completion automatically.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -88,7 +88,8 @@ Implement and verify scanner correctness/completion, safe canonical/printing mat
 - Live residency verification: Home remained complete after 5 seconds, 50 rapid direction-reversing drags, Library/Search/Owned/Import revisits, and offline mode. Live screenshot: `output/playwright/live-residency-839bcff.png`.
 
 ## TESTS STILL REQUIRED
-- None for this release gate.
+- Deployment workflow and live production-bundle smoke for the current extension.
+- Physical Fodder Cannon/iPhone Safari verification remains unavailable in this environment and must not be claimed.
 
 ## DEPLOYMENT RETRY
 - The custom Pages artifact workflow for `b3b69d6` and checkpoint `1ab9024` hit the known intermittent IndexedDB timing-test failure before the build step, while the parallel default Pages workflow served the repository source fallback.
@@ -193,6 +194,20 @@ Await explicit instruction; keep Master Product Completion paused and do not sta
 - Physical Fodder Cannon scanning and physical-device Safari were unavailable. No physical scan, exact live printing verification, or physical-device result is claimed.
 - Deterministic camera-harness E2E covered scan completion, duplicate suppression, feeder recovery, Batch Review, correction paths, and mobile geometry. Live production Batch Review was not claimed without a physical or deterministic media session on the deployed bundle.
 - Master Product Completion remains paused. Await explicit instruction; do not resume unrelated Deck Nexus work automatically.
+
+## MASTER SCANNER PRODUCTION REBUILD CHECKPOINT
+- Physical target identity is now explicitly capture-committed and separate from canonical card and printing identity. After a durable capture, two coherent changed frames can create a new target without requiring an empty frame; fingerprint, geometry, and too-close replacement evidence are used while ordinary movement remains suppressed.
+- Recognition acquisition is locked before asynchronous preparation, stale generations are rejected, and review/pause/visibility/camera refresh abort active work and invalidate ownership. Development harness cards are gated behind `import.meta.env.DEV`.
+- Scanner auto-starts when the browser reports camera permission already granted. Camera startup no longer creates an empty batch; the durable batch is created at first physical capture. Ordinary handheld scanning remains automatic after the initial permission gesture.
+- `CARD_CAPTURE_SUCCEEDED` is represented by a capture-id keyed semantic feedback path. One durable capture produces one success event and at most one confirmation beep/haptic attempt; sound failure does not fail capture and muted captures are still marked emitted.
+- Capture insertion is idempotent by stable record id. Owned collection commit skips applied/removed records, accumulates quantities by canonical name and stable printing key, and leaves unresolved/review records in `partially_applied` state instead of silently losing them.
+- Added direct-replacement lifecycle tests, exactly-once feedback tests, and repository quantity/idempotency tests. Focused validation currently passes: 3 files, 10 tests; scanner feeder/review E2E completed for Chromium and mobile Chromium after the extension. Typecheck and lint pass.
+
+## MASTER SCANNER FINAL LOCAL VALIDATION
+- Root cause remains the old coordinate-space divergence: the full video was stretched into a fixed canvas while the visible guide used an inset `object-fit: cover` region. The old name-only path then discarded region provenance and non-title evidence, and the displayed approximately 90% was an uncalibrated OCR/name-match heuristic rather than card-identity confidence.
+- Final local validation after the zero-touch/feeder extension: 38 Vitest files, 185 tests passed; full production-preview E2E 40 tests passed on Chromium and mobile Chromium with serialized workers; `npx tsc -b --pretty false`, `npm run lint -- --quiet`, and `npm run build` passed.
+- The full E2E run covers scanner auto acquisition through the deterministic development camera harness, durable batch persistence, feeder recovery, Batch Review, correction paths, mobile geometry, and repository regression. Physical camera/card and iPhone Safari testing remain unavailable.
+- Deployment and live production-bundle verification are the next action. Master Product Completion remains paused.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.

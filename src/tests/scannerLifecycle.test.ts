@@ -23,4 +23,33 @@ describe("scanner target ownership", () => {
     const second = lifecycle.acquireTarget("same", 10);
     expect(second.targetId).not.toBe(first.targetId);
   });
+
+  it("detects a direct replacement after two coherent changed frames without requiring an empty frame", () => {
+    const lifecycle = createScannerLifecycle("session");
+    const first = lifecycle.acquireTarget("00000000", 1, { x: 0.1, y: 0.1, width: 0.7, height: 0.8 });
+    const ownership = lifecycle.createOwnership("batch", "00000000");
+    expect(lifecycle.commitCapture(ownership, {
+      fingerprint: "00000000",
+      candidate: { x: 0.1, y: 0.1, width: 0.7, height: 0.8 },
+    })).toBe(true);
+
+    const firstReplacementFrame = lifecycle.acquireTarget("11111111", 2, { x: 0.1, y: 0.1, width: 0.7, height: 0.8 });
+    expect(firstReplacementFrame.targetId).toBe(first.targetId);
+    const secondReplacementFrame = lifecycle.acquireTarget("11111111", 3, { x: 0.1, y: 0.1, width: 0.7, height: 0.8 });
+    expect(secondReplacementFrame.targetId).not.toBe(first.targetId);
+    expect(secondReplacementFrame.captureCommitted).toBe(false);
+  });
+
+  it("does not create a new target for a small movement after capture", () => {
+    const lifecycle = createScannerLifecycle("session");
+    const first = lifecycle.acquireTarget("00000000", 1, { x: 0.1, y: 0.1, width: 0.7, height: 0.8 });
+    const ownership = lifecycle.createOwnership("batch", "00000000");
+    lifecycle.commitCapture(ownership, {
+      fingerprint: "00000000",
+      candidate: { x: 0.1, y: 0.1, width: 0.7, height: 0.8 },
+    });
+
+    const moved = lifecycle.acquireTarget("00010000", 2, { x: 0.12, y: 0.1, width: 0.69, height: 0.8 });
+    expect(moved.targetId).toBe(first.targetId);
+  });
 });
