@@ -7,7 +7,7 @@ DECK NEXUS MASTER SCANNER PRODUCTION REBUILD
 Production zero-touch handheld and feeder scanning, continuous new-physical-card detection, precision-first canonical/printing resolution, exactly-once capture feedback, durable collection/deck intake, and mobile review repair. The larger unrelated Deck Nexus completion effort remains paused.
 
 ## LAST VERIFIED MILESTONE
-Scanner production-rebuild implementation is locally validated: 38 Vitest files/185 tests, 40 production-preview E2E tests across Chromium and mobile Chromium, typecheck, lint, and production build all pass. Commit/push/deployment/live verification for this extension is pending.
+Scanner production-rebuild commit `955d89f5ac865d547da3436cb6a06479bad15e05` is pushed, both GitHub Pages workflows passed, and the current production bundle was live-verified at iPhone-sized Chromium viewport. Local validation remains 38 Vitest files/185 tests and 40 production-preview E2E tests.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -27,10 +27,10 @@ Scanner production-rebuild implementation is locally validated: 38 Vitest files/
 RELEASE BLOCKER
 
 ## IN PROGRESS
-The definitive scanner rebuild is implemented and locally validated. The current implementation has capture-committed physical-target lifecycle, direct replacement detection, automatic camera start when permission is already granted, exactly-once semantic feedback, idempotent capture persistence, duplicate quantity preservation, review/pause/refresh ownership invalidation, and development-only harness gating. Deployment and live verification remain.
+The definitive scanner rebuild is implemented, validated, pushed, deployed, and live-verified to the extent available. Master Product Completion remains paused.
 
 ## REMAINING
-Commit and push the validated extension, verify both deployment workflows, inspect the live production bundle, then record final deployment/live truth. Do not resume Master Product Completion automatically.
+None for the available environment. Physical Fodder Cannon hardware and iPhone Safari remain unavailable and are recorded as external verification limits. Do not resume Master Product Completion automatically.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -88,7 +88,7 @@ Commit and push the validated extension, verify both deployment workflows, inspe
 - Live residency verification: Home remained complete after 5 seconds, 50 rapid direction-reversing drags, Library/Search/Owned/Import revisits, and offline mode. Live screenshot: `output/playwright/live-residency-839bcff.png`.
 
 ## TESTS STILL REQUIRED
-- Deployment workflow and live production-bundle smoke for the current extension.
+- None for the available environment.
 - Physical Fodder Cannon/iPhone Safari verification remains unavailable in this environment and must not be claimed.
 
 ## DEPLOYMENT RETRY
@@ -208,6 +208,12 @@ Await explicit instruction; keep Master Product Completion paused and do not sta
 - Final local validation after the zero-touch/feeder extension: 38 Vitest files, 185 tests passed; full production-preview E2E 40 tests passed on Chromium and mobile Chromium with serialized workers; `npx tsc -b --pretty false`, `npm run lint -- --quiet`, and `npm run build` passed.
 - The full E2E run covers scanner auto acquisition through the deterministic development camera harness, durable batch persistence, feeder recovery, Batch Review, correction paths, mobile geometry, and repository regression. Physical camera/card and iPhone Safari testing remain unavailable.
 - Deployment and live production-bundle verification are the next action. Master Product Completion remains paused.
+
+## MASTER SCANNER DEPLOYMENT AND LIVE VALIDATION
+- Commit `955d89f5ac865d547da3436cb6a06479bad15e05` was pushed to `origin/main`.
+- GitHub Actions passed for the scanner extension: custom deploy run `35656348746`; Pages build/deployment run `35656347480`.
+- Live scanner smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?scanner-live=955d89f` loaded the current production bundle at an iPhone-sized Chromium viewport (`393x659` in the CLI device profile), with body width equal to viewport width and no visible development harness/simulation controls. The camera permission surface was present. Screenshot: `output/playwright/live-scanner-955d89f.png`.
+- No physical Fodder Cannon card scan, physical iPhone Safari scan, exact live printing verification, or hardware feeder verification is claimed. Deterministic media-harness tests remain the available scanner verification.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
