@@ -223,11 +223,15 @@ export function analyzeVideoFrame({
   canvas,
   memory,
   options,
+  guide,
+  cropToGuide,
 }: {
   video: HTMLVideoElement;
   canvas: HTMLCanvasElement;
   memory: FrameAnalyzerMemory;
   options: FrameAnalyzerOptions;
+  guide?: NormalizedRect;
+  cropToGuide?: boolean;
 }): FrameAnalysis | undefined {
   const context = canvas.getContext("2d", {
     alpha: false,
@@ -246,7 +250,11 @@ export function analyzeVideoFrame({
     canvas.height = targetHeight;
   }
 
-  context.drawImage(video, 0, 0, targetWidth, targetHeight);
+  if (cropToGuide) {
+    drawVisibleGuideToCanvas(video, canvas, guide);
+  } else {
+    context.drawImage(video, 0, 0, targetWidth, targetHeight);
+  }
   const imageData = context.getImageData(0, 0, targetWidth, targetHeight);
   return analyzeImageData(imageData, memory, options);
 }
@@ -268,3 +276,4 @@ export function shouldSuppressDuplicateScan({
 
   return hammingDistance(currentFingerprint, lastAcceptedFingerprint) / currentFingerprint.length < distanceThreshold;
 }
+import { drawVisibleGuideToCanvas, type NormalizedRect } from "./cameraGeometry";

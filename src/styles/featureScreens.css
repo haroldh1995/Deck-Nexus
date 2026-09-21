@@ -1186,6 +1186,89 @@
 
 .scanner-review-modal {
   width: min(880px, calc(100vw - 1rem));
+  display: flex;
+  max-height: min(90dvh, 760px);
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scanner-review-modal .builder-modal__header > div {
+  min-width: 0;
+}
+
+.scanner-review-count,
+.scanner-review-summary span,
+.scanner-record__main span,
+.scanner-record__main small {
+  color: var(--muted);
+}
+
+.scanner-review-count {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+}
+
+.scanner-review-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid rgba(89, 234, 255, 0.14);
+}
+
+.scanner-review-summary span {
+  border: 1px solid rgba(89, 234, 255, 0.18);
+  border-radius: 999px;
+  padding: 0.26rem 0.48rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.scanner-review-modal .scanner-review-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.45rem;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid rgba(89, 234, 255, 0.14);
+}
+
+.scanner-review-modal .scanner-review-actions button {
+  min-width: 0;
+  min-height: 2.45rem;
+}
+
+.scanner-review-modal .scanner-record-list {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0.65rem 0.9rem max(0.9rem, env(safe-area-inset-bottom));
+}
+
+.scanner-record__main {
+  display: grid;
+  min-width: 0;
+  gap: 0.16rem;
+}
+
+.scanner-record__main strong,
+.scanner-record__main span,
+.scanner-record__main small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.scanner-record__main strong {
+  color: var(--silver);
+}
+
+.scanner-record--unresolved {
+  border-color: rgba(255, 111, 145, 0.5);
+}
+
+.scanner-record--review_required,
+.scanner-record--ambiguous {
+  border-color: rgba(248, 214, 115, 0.5);
 }
 
 .scanner-batch-panel {
@@ -1611,6 +1694,55 @@
   .scanner-actions button,
   .scanner-review-actions button {
     flex: 1 1 9rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .scanner-review-backdrop {
+    place-items: stretch;
+    padding: 0;
+  }
+
+  .scanner-review-modal {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .scanner-review-modal .builder-modal__header {
+    padding-top: max(0.72rem, env(safe-area-inset-top));
+  }
+
+  .scanner-review-modal .scanner-review-actions {
+    grid-template-columns: 1fr;
+    padding-inline: max(0.75rem, env(safe-area-inset-left)) max(0.75rem, env(safe-area-inset-right));
+  }
+
+  .scanner-review-modal .scanner-review-actions button {
+    width: 100%;
+  }
+
+  .scanner-review-modal .scanner-record-list {
+    padding-inline: max(0.75rem, env(safe-area-inset-left)) max(0.75rem, env(safe-area-inset-right));
+  }
+
+  .scanner-review-modal .scanner-record {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .scanner-review-modal .scanner-record .badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .scanner-review-modal .scanner-record > button {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 2.55rem;
   }
 }
 

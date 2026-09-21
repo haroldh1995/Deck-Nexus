@@ -1203,7 +1203,9 @@ export async function applyScanBatchToOwned(batchId: string): Promise<number> {
   const batch = await db.scannerBatches.get(batchId);
   const records = await listScanRecords(batchId);
   const applicableRecords = records.filter((record) =>
-    ["confirmed", "assumed", "matched", "low_confidence"].includes(record.status),
+    record.status === "confirmed" ||
+    record.identityStatus === "verified" ||
+    (record.status === "matched" && !record.identityStatus),
   );
 
   if (!batch) {

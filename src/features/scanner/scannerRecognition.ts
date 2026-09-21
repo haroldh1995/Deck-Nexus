@@ -5,18 +5,31 @@ import type {
   CollectorFinish,
   DeckstateScryfallCard,
   ScanBatchDestination,
+  ScanIdentityStatus,
+  ScanPrintingStatus,
   ScanRecordStatus,
 } from "../../types/domain";
 import type { FrameAnalysis } from "./frameAnalysis";
+import {
+  matchScannerEvidence,
+  normalizeScannerText,
+  scannerFieldIsUsable,
+  type ObservedCardEvidence,
+  type ObservedCardField,
+} from "./scannerMatching";
 
 export interface ScannerResolvedCard {
   rawText: string;
   scryfallId?: string;
   oracleId?: string;
+  printingId?: string;
   name: string;
   quantity: number;
   status: ScanRecordStatus;
+  identityStatus: ScanIdentityStatus;
+  printingStatus: ScanPrintingStatus;
   confidence: number;
+  printingConfidence: number;
   possibleMatches: string[];
   typeLine?: string;
   colorIdentity?: DeckstateScryfallCard["colorIdentity"];
@@ -77,136 +90,59 @@ type OcrWorker = {
   setParameters: (params: Record<string, string>) => Promise<unknown>;
   recognize: (
     image: HTMLCanvasElement,
-    options?: {
-      rectangle?: {
-        left: number;
-        top: number;
-        width: number;
-        height: number;
-      };
-    },
+    options?: { rectangle?: { left: number; top: number; width: number; height: number } },
     output?: Record<string, boolean>,
-  ) => Promise<{
-    data: {
-      text: string;
-      confidence?: number;
-    };
-  }>;
+  ) => Promise<{ data: { text: string; confidence?: number } }>;
   terminate: () => Promise<unknown>;
 };
 
 let ocrWorkerPromise: Promise<OcrWorker> | undefined;
 
-function cleanOcrLine(line: string): string {
-  return line
-    .replace(/[|_[\]{}<>~`^]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function cleanOcrText(value: string): string {
+  return value.replace(/[|_[\]{}<>~`^]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function isLikelyCardName(line: string): boolean {
-  return (
-    line.length >= 3 &&
-    /[a-z]/i.test(line) &&
-    !/^illus\.?/i.test(line) &&
-    !/^tm\b/i.test(line) &&
-    !/^\d+[a-z]?\s*[•/]\s*[A-Z]{2,5}$/i.test(line)
-  );
+function field(value: string, confidence: number, sourceRegion: string): ObservedCardField | undefined {
+  const cleaned = cleanOcrText(value);
+  if (!cleaned) return undefined;
+  return { value: cleaned, quality: Math.min(1, Math.max(0, confidence / 100)), sourceRegion };
 }
 
-function extractLikelyCardName(text: string): string | undefined {
-  const lines = text
-    .split(/\r?\n/)
-    .map(cleanOcrLine)
-    .filter(Boolean);
-
-  return lines.find(isLikelyCardName);
-}
-
-function extractSetCollector(text: string): {
-  setCode?: string;
-  collectorNumber?: string;
-} {
-  const compact = text.replace(/\s+/g, " ");
-  const match =
-    compact.match(/\b([A-Z0-9]{2,5})\s*[•#-]?\s*(\d{1,4}[a-z]?)\b/i) ??
-    compact.match(/\b(\d{1,4}[a-z]?)\s*[•#-]?\s*([A-Z0-9]{2,5})\b/i);
-
-  if (!match) {
-    return {};
-  }
-
+function parseSetCollector(value: string): { set?: ObservedCardField; collector?: ObservedCardField } {
+  const compact = value.replace(/\s+/g, " ");
+  const match = compact.match(/\b([A-Z0-9]{2,5})\s*[•#-]?\s*(\d{1,4}[A-Z]?)\b/i) ??
+    compact.match(/\b(\d{1,4}[A-Z]?)\s*[•#-]?\s*([A-Z0-9]{2,5})\b/i);
+  if (!match) return {};
   const first = match[1];
   const second = match[2];
-  if (/^\d/.test(first)) {
-    return {
-      collectorNumber: first,
-      setCode: second.toLowerCase(),
-    };
-  }
-
-  return {
-    setCode: first.toLowerCase(),
-    collectorNumber: second,
-  };
-}
-
-function confidenceStatus(confidence: number): ScanRecordStatus {
-  if (confidence >= 0.88) {
-    return "matched";
-  }
-
-  if (confidence >= 0.68) {
-    return "assumed";
-  }
-
-  if (confidence >= 0.38) {
-    return "low_confidence";
-  }
-
-  return "unresolved";
+  return /^\d/.test(first)
+    ? { collector: field(first, 52, "set-collector"), set: field(second.toLowerCase(), 52, "set-collector") }
+    : { set: field(first.toLowerCase(), 52, "set-collector"), collector: field(second, 52, "set-collector") };
 }
 
 function cardImage(card: DeckstateScryfallCard): string | undefined {
-  return (
-    card.imageUris?.normal ??
-    card.imageUris?.small ??
-    card.cardFaces.find((face) => face.imageUris?.normal || face.imageUris?.small)?.imageUris?.normal ??
-    card.cardFaces.find((face) => face.imageUris?.small)?.imageUris?.small
-  );
+  return card.imageUris?.normal ?? card.imageUris?.small ?? card.cardFaces.find((face) => face.imageUris?.normal)?.imageUris?.normal;
 }
 
-function fromScryfallCard({
-  card,
-  rawText,
-  confidence,
-  destination,
-  capturedThumbnail,
-  frameFingerprint,
-  matchSource,
-  possibleMatches = [],
-}: {
+function scanStatus(identityStatus: ScanIdentityStatus, confidence: number): ScanRecordStatus {
+  if (identityStatus === "verified" && confidence >= 0.72) return "matched";
+  if (identityStatus === "review_required" || identityStatus === "ambiguous") return confidence >= 0.42 ? "assumed" : "low_confidence";
+  return "unresolved";
+}
+
+function fromCard({ card, result, matchSource }: {
   card: DeckstateScryfallCard;
-  rawText: string;
-  confidence: number;
-  destination: ScanBatchDestination;
-  capturedThumbnail?: string;
-  frameFingerprint: string;
+  result: Omit<ScannerResolvedCard, "name" | "scryfallId" | "oracleId" | "printingId" | "typeLine" | "colorIdentity" | "setCode" | "setName" | "collectorNumber" | "language" | "foil" | "finish" | "prices" | "priceUpdatedAt" | "rarity" | "imageUri" | "matchSource">;
   matchSource: ScannerResolvedCard["matchSource"];
-  possibleMatches?: string[];
 }): ScannerResolvedCard {
   return {
-    rawText,
+    ...result,
+    name: card.name,
     scryfallId: card.id,
     oracleId: card.oracleId,
-    name: card.name,
-    quantity: 1,
-    status: confidenceStatus(confidence),
-    confidence,
-    possibleMatches: [card.name, ...possibleMatches.filter((name) => name !== card.name)].slice(0, 5),
+    printingId: result.printingStatus === "verified" ? card.id : undefined,
     typeLine: card.typeLine,
     colorIdentity: card.colorIdentity,
-    destination,
     setCode: card.setCode,
     setName: card.setName,
     collectorNumber: card.collectorNumber,
@@ -217,54 +153,25 @@ function fromScryfallCard({
     priceUpdatedAt: card.prices?.fetchedAt,
     rarity: card.rarity,
     imageUri: cardImage(card),
-    capturedThumbnail,
-    frameFingerprint,
     matchSource,
-    scannerWarnings: [],
   };
 }
 
-function fromCatalogCard({
-  card,
-  rawText,
-  confidence,
-  destination,
-  capturedThumbnail,
-  frameFingerprint,
-  matchSource,
-}: {
-  card: CatalogCard;
-  rawText: string;
-  confidence: number;
-  destination: ScanBatchDestination;
-  capturedThumbnail?: string;
-  frameFingerprint: string;
-  matchSource: ScannerResolvedCard["matchSource"];
-}): ScannerResolvedCard {
+function fromCatalogCard(card: CatalogCard, base: Omit<ScannerResolvedCard, "name" | "scryfallId" | "oracleId" | "typeLine" | "colorIdentity" | "matchSource">): ScannerResolvedCard {
   return {
-    rawText,
+    ...base,
+    name: card.name,
     scryfallId: card.scryfallId,
     oracleId: card.oracleId,
-    name: card.name,
-    quantity: 1,
-    status: confidenceStatus(confidence),
-    confidence,
-    possibleMatches: [card.name],
     typeLine: card.typeLine,
     colorIdentity: card.colorIdentity,
-    destination,
-    capturedThumbnail,
-    frameFingerprint,
-    matchSource,
-    scannerWarnings: [],
+    printingStatus: "unknown",
+    matchSource: "ocr",
   };
 }
 
 function popScannerHarnessCard(): ScannerTestCard | undefined {
-  if (typeof window === "undefined" || !window.__deckNexusScannerTestHarness) {
-    return undefined;
-  }
-
+  if (typeof window === "undefined" || !window.__deckNexusScannerTestHarness) return undefined;
   return window.__deckNexusScannerTestCards?.shift();
 }
 
@@ -272,218 +179,222 @@ async function getOcrWorker(): Promise<OcrWorker> {
   if (!ocrWorkerPromise) {
     ocrWorkerPromise = (async () => {
       const module = (await import("tesseract.js")) as unknown as {
-        createWorker?: (
-          language?: string,
-          oem?: unknown,
-          options?: Record<string, unknown>,
-        ) => Promise<OcrWorker>;
-        default?: {
-          createWorker?: (
-            language?: string,
-            oem?: unknown,
-            options?: Record<string, unknown>,
-          ) => Promise<OcrWorker>;
-        };
+        createWorker?: (language?: string, oem?: unknown, options?: Record<string, unknown>) => Promise<OcrWorker>;
+        default?: { createWorker?: (language?: string, oem?: unknown, options?: Record<string, unknown>) => Promise<OcrWorker> };
       };
       const createWorker = module.createWorker ?? module.default?.createWorker;
-      if (!createWorker) {
-        throw new Error("OCR worker could not be loaded.");
-      }
-      const worker = await createWorker("eng", undefined, {
-        workerBlobURL: true,
-        logger: () => undefined,
-      });
-      await worker.setParameters({
-        preserve_interword_spaces: "1",
-        tessedit_pageseg_mode: "6",
-      });
+      if (!createWorker) throw new Error("OCR worker could not be loaded.");
+      const worker = await createWorker("eng", undefined, { workerBlobURL: true, logger: () => undefined });
+      await worker.setParameters({ preserve_interword_spaces: "1", tessedit_pageseg_mode: "6" });
       return worker;
     })();
   }
-
   return ocrWorkerPromise;
 }
 
-async function recognizeText(canvas: HTMLCanvasElement): Promise<{
-  text: string;
-  confidence: number;
-}> {
+async function recognizeEvidence(canvas: HTMLCanvasElement): Promise<{ evidence: ObservedCardEvidence; rawText: string }> {
   const worker = await getOcrWorker();
-  const nameRegion = {
-    left: Math.round(canvas.width * 0.08),
-    top: Math.round(canvas.height * 0.04),
-    width: Math.round(canvas.width * 0.84),
-    height: Math.round(canvas.height * 0.18),
+  const regions = {
+    title: { left: 0.07, top: 0.025, width: 0.72, height: 0.115 },
+    type: { left: 0.07, top: 0.405, width: 0.72, height: 0.085 },
+    rules: { left: 0.09, top: 0.49, width: 0.78, height: 0.31 },
+    stats: { left: 0.67, top: 0.82, width: 0.27, height: 0.1 },
+    setCollector: { left: 0.05, top: 0.91, width: 0.47, height: 0.065 },
+    artist: { left: 0.48, top: 0.91, width: 0.47, height: 0.065 },
+  } as const;
+  const reads = await Promise.all(Object.entries(regions).map(async ([name, rectangle]) => {
+    const result = await worker.recognize(canvas, { rectangle: {
+      left: Math.round(canvas.width * rectangle.left),
+      top: Math.round(canvas.height * rectangle.top),
+      width: Math.round(canvas.width * rectangle.width),
+      height: Math.round(canvas.height * rectangle.height),
+    } }, { text: true });
+    return { name, text: cleanOcrText(result.data.text), confidence: result.data.confidence ?? 0 };
+  }));
+  const byName = new Map(reads.map((read) => [read.name, read]));
+  const parsed = parseSetCollector(byName.get("setCollector")?.text ?? "");
+  const evidence: ObservedCardEvidence = {
+    rawText: reads.map((read) => read.text).filter(Boolean).join("\n"),
+    title: field(byName.get("title")?.text ?? "", byName.get("title")?.confidence ?? 0, "title"),
+    type: field(byName.get("type")?.text ?? "", byName.get("type")?.confidence ?? 0, "type"),
+    rules: field(byName.get("rules")?.text ?? "", byName.get("rules")?.confidence ?? 0, "rules"),
+    artist: field(byName.get("artist")?.text ?? "", byName.get("artist")?.confidence ?? 0, "artist"),
+    set: parsed.set,
+    collector: parsed.collector,
   };
-  const nameResult = await worker.recognize(canvas, { rectangle: nameRegion }, { text: true });
-  const nameText = cleanOcrLine(nameResult.data.text);
-
-  if (nameText.length >= 3) {
-    return {
-      text: nameText,
-      confidence: (nameResult.data.confidence ?? 48) / 100,
-    };
+  const stats = byName.get("stats");
+  const statMatch = stats?.text.match(/(\d+|\*)\s*[/\\]\s*(\d+|\*)/);
+  if (stats && statMatch) {
+    evidence.power = field(statMatch[1], stats.confidence, "stats");
+    evidence.toughness = field(statMatch[2], stats.confidence, "stats");
   }
-
-  const wholeResult = await worker.recognize(canvas, undefined, { text: true });
-  return {
-    text: wholeResult.data.text,
-    confidence: (wholeResult.data.confidence ?? 32) / 100,
-  };
+  return { evidence, rawText: evidence.rawText ?? "" };
 }
 
-function localFallbackMatch(candidateName: string): CatalogCard | undefined {
-  const normalized = candidateName.trim().toLowerCase();
-  if (!normalized) {
-    return undefined;
-  }
-
-  return localCardCatalog.find((card) => card.name.toLowerCase() === normalized) ??
-    localCardCatalog.find((card) => card.name.toLowerCase().includes(normalized));
+function cardFromHarness(card: ScannerTestCard, capturedThumbnail: string | undefined, analysis: FrameAnalysis, destination: ScanBatchDestination): ScannerResolvedCard {
+  const confidence = Math.min(0.99, Math.max(0, card.confidence ?? 0.92));
+  const identityStatus: ScanIdentityStatus = confidence >= 0.85 ? "verified" : confidence >= 0.4 ? "review_required" : "unresolved";
+  return {
+    rawText: card.name,
+    scryfallId: card.scryfallId ?? `test-${card.name.toLowerCase().replace(/\W+/g, "-")}`,
+    oracleId: card.oracleId ?? `test-oracle-${card.name.toLowerCase().replace(/\W+/g, "-")}`,
+    name: card.name,
+    quantity: 1,
+    status: scanStatus(identityStatus, confidence),
+    identityStatus,
+    printingStatus: card.setCode && card.collectorNumber ? "verified" : "unknown",
+    confidence,
+    printingConfidence: card.setCode && card.collectorNumber ? confidence : 0,
+    possibleMatches: [card.name],
+    typeLine: card.typeLine,
+    colorIdentity: card.colorIdentity ?? [],
+    destination,
+    setCode: card.setCode,
+    setName: card.setName,
+    collectorNumber: card.collectorNumber,
+    language: card.language,
+    foil: card.foil,
+    finish: card.finish,
+    condition: card.condition,
+    prices: card.prices,
+    priceUpdatedAt: card.priceUpdatedAt ?? card.prices?.fetchedAt,
+    rarity: card.rarity,
+    imageUri: card.imageUri,
+    capturedThumbnail,
+    frameFingerprint: analysis.fingerprint,
+    matchSource: "test_harness",
+    scannerWarnings: [],
+  };
 }
 
 function captureThumbnail(canvas: HTMLCanvasElement, enabled: boolean): string | undefined {
-  if (!enabled) {
-    return undefined;
-  }
-
-  try {
-    return canvas.toDataURL("image/jpeg", 0.45);
-  } catch {
-    return undefined;
-  }
+  if (!enabled) return undefined;
+  try { return canvas.toDataURL("image/jpeg", 0.45); } catch { return undefined; }
 }
 
-export async function recognizeScannerFrame({
-  canvas,
-  analysis,
-  destination,
-  saveThumbnail,
-  signal,
-}: ScannerRecognitionInput): Promise<ScannerResolvedCard> {
+async function findCandidates(
+  options: Parameters<typeof searchScryfallCards>[0],
+  signal?: AbortSignal,
+): Promise<DeckstateScryfallCard[]> {
+  const cached = await searchScryfallCards({ ...options, cachedOnly: true }, signal);
+  if (cached.cards.length > 0) return cached.cards;
+  return (await searchScryfallCards(options, signal)).cards;
+}
+
+export async function recognizeScannerFrame({ canvas, analysis, destination, saveThumbnail, signal }: ScannerRecognitionInput): Promise<ScannerResolvedCard> {
   const capturedThumbnail = captureThumbnail(canvas, saveThumbnail);
   const harnessCard = popScannerHarnessCard();
-  if (harnessCard) {
+  if (harnessCard) return cardFromHarness(harnessCard, capturedThumbnail, analysis, destination);
+
+  let extracted: { evidence: ObservedCardEvidence; rawText: string } = { evidence: {}, rawText: "" };
+  try { extracted = await recognizeEvidence(canvas); } catch { /* absence of reliable OCR is a safe terminal outcome */ }
+  const title = extracted.evidence.title;
+  const setValue = extracted.evidence.set?.value;
+  const collectorValue = extracted.evidence.collector?.value;
+  let candidates: DeckstateScryfallCard[] = [];
+  let matchSource: ScannerResolvedCard["matchSource"] = "ocr";
+
+  if (setValue && collectorValue && scannerFieldIsUsable(extracted.evidence.set) && scannerFieldIsUsable(extracted.evidence.collector)) {
+    candidates = await findCandidates({ query: `set:${setValue} cn:${collectorValue}`, unique: "prints", sort: "set", priority: "high" }, signal);
+    matchSource = "scryfall_exact";
+  }
+  if (candidates.length === 0 && title && scannerFieldIsUsable(title)) {
+    try {
+      candidates = await findCandidates({ query: title.value, unique: "prints", sort: "name", priority: "high" }, signal);
+      matchSource = "scryfall_fuzzy";
+    } catch {
+      try {
+        const resolved = await resolveScryfallCardName(title.value, signal);
+        candidates = [resolved.card];
+        matchSource = resolved.fuzzy ? "scryfall_fuzzy" : "scryfall_exact";
+      } catch { /* continue to safe local fallback */ }
+    }
+  }
+
+  if (candidates.length === 0 && scannerFieldIsUsable(extracted.evidence.rules) && extracted.evidence.rules.quality >= 0.62) {
+    const rulesPhrase = extracted.evidence.rules.value.split(/\s+/).slice(0, 8).join(" ");
+    candidates = await findCandidates({
+      query: "",
+      oracleText: rulesPhrase,
+      typeText: extracted.evidence.type?.value,
+      unique: "prints",
+      sort: "name",
+      priority: "medium",
+    }, signal);
+    matchSource = "scryfall_fuzzy";
+  }
+
+  if (candidates.length === 0 && title && scannerFieldIsUsable(title)) {
+    const local = localCardCatalog.find((card) => normalizeScannerText(card.name) === normalizeScannerText(title.value));
+    if (local) {
+      return fromCatalogCard(local, {
+        rawText: extracted.rawText || title.value,
+        quantity: 1,
+        status: "low_confidence",
+        identityStatus: "review_required",
+        printingStatus: "unknown",
+        confidence: 0.35,
+        printingConfidence: 0,
+        possibleMatches: [local.name],
+        destination,
+        capturedThumbnail,
+        frameFingerprint: analysis.fingerprint,
+        scannerWarnings: ["Only local card-name evidence was available; confirm before committing."],
+      });
+    }
+  }
+
+  const match = matchScannerEvidence(extracted.evidence, candidates);
+  if (!match.card) {
     return {
-      rawText: harnessCard.name,
-      scryfallId: harnessCard.scryfallId ?? `test-${harnessCard.name.toLowerCase().replace(/\W+/g, "-")}`,
-      oracleId: harnessCard.oracleId ?? `test-oracle-${harnessCard.name.toLowerCase().replace(/\W+/g, "-")}`,
-      name: harnessCard.name,
+      rawText: extracted.rawText || "Unresolved camera scan",
+      name: "Card not identified",
       quantity: 1,
-      status: confidenceStatus(harnessCard.confidence ?? 0.92),
-      confidence: harnessCard.confidence ?? 0.92,
-      possibleMatches: [harnessCard.name],
-      typeLine: harnessCard.typeLine,
-      colorIdentity: harnessCard.colorIdentity ?? [],
+      status: "unresolved",
+      identityStatus: match.identityStatus,
+      printingStatus: match.printingStatus,
+      confidence: match.cardConfidence,
+      printingConfidence: match.printingConfidence,
+      possibleMatches: match.cardCandidates.slice(0, 5).map((candidate) => candidate.card.name),
       destination,
-      setCode: harnessCard.setCode,
-      setName: harnessCard.setName,
-      collectorNumber: harnessCard.collectorNumber,
-      language: harnessCard.language,
-      foil: harnessCard.foil,
-      finish: harnessCard.finish,
-      condition: harnessCard.condition,
-      prices: harnessCard.prices,
-      priceUpdatedAt: harnessCard.priceUpdatedAt ?? harnessCard.prices?.fetchedAt,
-      rarity: harnessCard.rarity,
-      imageUri: harnessCard.imageUri,
       capturedThumbnail,
       frameFingerprint: analysis.fingerprint,
-      matchSource: "test_harness",
-      scannerWarnings: [],
+      matchSource,
+      scannerWarnings: [...match.warnings, typeof navigator !== "undefined" && navigator.onLine === false ? "Offline scan preserved for later review." : "No canonical card met the verification gate."],
     };
   }
 
-  let ocrText: string;
-  let ocrConfidence: number;
-  try {
-    const ocr = await recognizeText(canvas);
-    ocrText = ocr.text;
-    ocrConfidence = ocr.confidence;
-  } catch {
-    ocrText = "";
-    ocrConfidence = 0;
+  const selected = match.printing ?? match.card;
+  const result = fromCard({
+    card: selected,
+    result: {
+      rawText: extracted.rawText || match.card.name,
+      quantity: 1,
+      status: scanStatus(match.identityStatus, match.cardConfidence),
+      identityStatus: match.identityStatus,
+      printingStatus: match.printingStatus,
+      confidence: match.cardConfidence,
+      printingConfidence: match.printingConfidence,
+      possibleMatches: match.cardCandidates.slice(0, 5).map((candidate) => candidate.card.name),
+      destination,
+      capturedThumbnail,
+      frameFingerprint: analysis.fingerprint,
+      scannerWarnings: match.warnings,
+    },
+    matchSource,
+  });
+  if (match.printingStatus !== "verified") {
+    result.printingId = undefined;
+    result.setCode = undefined;
+    result.setName = undefined;
+    result.collectorNumber = undefined;
+    result.language = undefined;
+    result.foil = undefined;
+    result.finish = undefined;
+    result.prices = undefined;
+    result.priceUpdatedAt = undefined;
   }
-
-  const { setCode, collectorNumber } = extractSetCollector(ocrText);
-  const likelyName = extractLikelyCardName(ocrText);
-  const baseConfidence = Math.min(
-    0.96,
-    analysis.boundaryConfidence * 0.24 +
-      analysis.sharpness * 0.14 +
-      analysis.lighting * 0.12 +
-      ocrConfidence * 0.5,
-  );
-
-  if (setCode && collectorNumber) {
-    const page = await searchScryfallCards(
-      {
-        query: `set:${setCode} cn:${collectorNumber}`,
-        unique: "prints",
-        sort: "set",
-        priority: "high",
-      },
-      signal,
-    );
-    const exactPrinting = page.cards[0];
-    if (exactPrinting) {
-      return fromScryfallCard({
-        card: exactPrinting,
-        rawText: ocrText || `${setCode} ${collectorNumber}`,
-        confidence: Math.max(baseConfidence, 0.9),
-        destination,
-        capturedThumbnail,
-        frameFingerprint: analysis.fingerprint,
-        matchSource: "scryfall_exact",
-      });
-    }
-  }
-
-  if (likelyName) {
-    try {
-      const resolved = await resolveScryfallCardName(likelyName, signal);
-      return fromScryfallCard({
-        card: resolved.card,
-        rawText: ocrText || likelyName,
-        confidence: Math.max(baseConfidence, resolved.fuzzy ? 0.68 : 0.86),
-        destination,
-        capturedThumbnail,
-        frameFingerprint: analysis.fingerprint,
-        matchSource: resolved.fuzzy ? "scryfall_fuzzy" : "scryfall_exact",
-      });
-    } catch {
-      const fallback = localFallbackMatch(likelyName);
-      if (fallback) {
-        return fromCatalogCard({
-          card: fallback,
-          rawText: ocrText || likelyName,
-          confidence: Math.max(baseConfidence, 0.46),
-          destination,
-          capturedThumbnail,
-          frameFingerprint: analysis.fingerprint,
-          matchSource: "ocr",
-        });
-      }
-    }
-  }
-
-  return {
-    rawText: ocrText || "Unresolved camera scan",
-    name: likelyName || "Unresolved camera scan",
-    quantity: 1,
-    status: "unresolved",
-    confidence: Math.max(baseConfidence, 0.18),
-    possibleMatches: likelyName ? [likelyName] : [],
-    destination,
-    capturedThumbnail,
-    frameFingerprint: analysis.fingerprint,
-    matchSource: "ocr",
-    scannerWarnings: [
-      navigator.onLine === false
-        ? "Offline scan saved for later matching."
-        : "OCR could not confidently resolve this card.",
-    ],
-  };
+  return result;
 }
 
 export async function terminateScannerOcrWorker(): Promise<void> {

@@ -237,6 +237,7 @@ export function CardSearchScreen() {
   const context = (searchParams.get("context") as SearchContext | null) ?? (initialDeckId ? "deck" : "global");
   const batchId = searchParams.get("batchId") ?? "";
   const scanRecordId = searchParams.get("recordId") ?? "";
+  const scannerPrintingOnly = searchParams.get("printingOnly") === "1";
   const importResultId = searchParams.get("importResultId") ?? "";
   const importLine = searchParams.get("rawLine") ?? "";
   const [deckId, setDeckId] = useState(initialDeckId);
@@ -289,11 +290,11 @@ export function CardSearchScreen() {
       commanderLegal: scope === "commander_candidates" || context === "commander",
       commanderCandidates: scope === "commander_candidates" || context === "commander",
       cachedOnly: scope === "cached_only",
-      unique: "cards",
+      unique: scannerPrintingOnly ? "prints" : "cards",
       sort: "name",
       direction: "auto",
     }),
-    [committedQuery, context, deck?.colorIdentity, exactPhrase, keyword, oracleText, rawInput, scope, typeText],
+    [committedQuery, context, deck?.colorIdentity, exactPhrase, keyword, oracleText, rawInput, scannerPrintingOnly, scope, typeText],
   );
 
   const results = useMemo(() => {
@@ -607,6 +608,26 @@ export function CardSearchScreen() {
       return;
     }
 
+    if (scannerPrintingOnly) {
+      await updateScanRecord(scanRecordId, {
+        printingId: card.id,
+        setCode: card.setCode,
+        setName: card.setName,
+        collectorNumber: card.collectorNumber,
+        language: card.lang,
+        foil: card.foil && !card.nonfoil,
+        finish: card.foil && !card.nonfoil ? "foil" : "nonfoil",
+        prices: card.prices,
+        priceUpdatedAt: card.prices?.fetchedAt,
+        rarity: card.rarity,
+        printingStatus: "verified",
+        printingConfidence: 1,
+      });
+      setStatus(`${card.name} printing selected.`);
+      if (batchId) navigate(`/scan?batchId=${batchId}&review=1`);
+      return;
+    }
+
     await updateScanRecord(scanRecordId, {
       scryfallId: card.id,
       oracleId: card.oracleId,
@@ -624,6 +645,10 @@ export function CardSearchScreen() {
       priceUpdatedAt: card.prices?.fetchedAt,
       rarity: card.rarity,
       status: "confirmed",
+      identityStatus: "verified",
+      printingStatus: "verified",
+      printingConfidence: 1,
+      printingId: card.id,
       confidence: 1,
       possibleMatches: [card.name],
     });

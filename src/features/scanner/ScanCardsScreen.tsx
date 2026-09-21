@@ -20,6 +20,7 @@ import {
   VideoOff,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { HolographicPanel } from "../../components/HolographicPanel";
@@ -82,6 +83,9 @@ import {
 } from "./scannerEngine";
 import { recognizeScannerFrame, terminateScannerOcrWorker } from "./scannerRecognition";
 import { createScanFeedbackController } from "./scanFeedback";
+import { drawVisibleGuideToCanvas } from "./cameraGeometry";
+import { createScannerLifecycle } from "./scannerLifecycle";
+import { ownershipToTrace, recordScannerTrace } from "./scannerDiagnostics";
 
 type ScannerLoopState =
   | "idle"
@@ -137,6 +141,19 @@ function modeLabel(mode: ScannerMode): string {
 
 function destinationLabel(destination: ScanBatchDestination): string {
   return scannerDestinations.find((scannerDestination) => scannerDestination.id === destination)?.label ?? "Owned Cards";
+}
+
+function identityLabel(record: ScanRecord): string {
+  if (record.identityStatus === "verified" || record.status === "matched" || record.status === "confirmed") return "Card verified";
+  if (record.identityStatus === "ambiguous") return "Multiple possible matches";
+  if (record.identityStatus === "unresolved" || record.status === "unresolved") return "Card not identified";
+  return "Review needed";
+}
+
+function printingLabel(record: ScanRecord): string {
+  if (record.printingStatus === "verified" || record.printingId) return "Printing verified";
+  if (record.printingStatus === "review_required") return "Printing needs review";
+  return "Printing unknown";
 }
 
 export function ScanCardsScreen() {
@@ -216,6 +233,17 @@ export function ScanCardsScreen() {
   const lastFeedbackRef = useRef("");
   const feedbackControllerRef = useRef(createScanFeedbackController());
   const abortRecognitionRef = useRef<AbortController | null>(null);
+  const [lifecycle] = useState(() => createScannerLifecycle("scan-session"));
+  const lastReviewTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!reviewOpen) {
+      lastReviewTriggerRef.current?.focus();
+      return;
+    }
+    const closeButton = document.querySelector<HTMLButtonElement>('[aria-label="Close batch review"]');
+    closeButton?.focus();
+  }, [reviewOpen]);
 
   useEffect(() => {
     batchRef.current = batch;
@@ -465,6 +493,8 @@ export function ScanCardsScreen() {
     setLoopState("waiting_for_camera");
 
     try {
+      lifecycle.invalidateTarget();
+      lastAcceptedFingerprintRef.current = undefined;
       await feedbackControllerRef.current.prime();
       const activeBatch = await getOrCreateBatch();
       stopCameraStream(streamRef.current);
@@ -582,13 +612,16 @@ export function ScanCardsScreen() {
       return;
     }
 
+    const activeBatch = await getOrCreateBatch();
+    const target = lifecycle.acquireTarget(frameAnalysis.fingerprint);
+    const ownership = lifecycle.createOwnership(activeBatch.id, frameAnalysis.fingerprint);
     recognizingRef.current = true;
     setLoopState("capturing");
     const captureWidth = 520;
     const captureHeight = 728;
     captureCanvas.width = captureWidth;
     captureCanvas.height = captureHeight;
-    captureContext.drawImage(video, 0, 0, captureWidth, captureHeight);
+    drawVisibleGuideToCanvas(video, captureCanvas);
 
     const controller = new AbortController();
     abortRecognitionRef.current = controller;
@@ -601,11 +634,24 @@ export function ScanCardsScreen() {
         saveThumbnail: settings.scannerStoreCorrectionThumbnails,
         signal: controller.signal,
       });
-      const activeBatch = await getOrCreateBatch();
+      recordScannerTrace({
+        ...ownershipToTrace(ownership),
+        videoIntrinsic: { width: video.videoWidth, height: video.videoHeight },
+        videoDisplay: { width: video.clientWidth, height: video.clientHeight },
+        frame: frameAnalysis,
+        finalCardIdentity: result.scryfallId,
+        finalPrintingIdentity: result.printingId,
+        cardIdentityConfidence: result.confidence,
+        printingIdentityConfidence: result.printingConfidence,
+      });
+      if (!lifecycle.isCurrent(ownership) || target.targetId !== lifecycle.currentTarget()?.targetId) {
+        return;
+      }
       const record = createScanRecordFromResolvedCard({
         batchId: activeBatch.id,
         result,
       });
+      if (!lifecycle.isCurrent(ownership)) return;
       await addScanRecord(record);
       lastAcceptedFingerprintRef.current = frameAnalysis.fingerprint;
       stackingTransitionRef.current = false;
@@ -629,7 +675,7 @@ export function ScanCardsScreen() {
       window.dispatchEvent(new CustomEvent("deck-nexus:scan-record-queued", {
         detail: { recordId: record.id, name: record.name, status: record.status },
       }));
-      setMessage(`${record.name} queued at ${Math.round((record.confidence ?? 0) * 100)}% confidence.`);
+      setMessage(`${record.name} captured. ${record.identityStatus === "verified" ? "Card verified." : "Review needed before committing."}`);
       if (modeRef.current === "automatic_feeder") {
         setAutomaticState("wait_for_card_removal");
       }
@@ -663,8 +709,7 @@ export function ScanCardsScreen() {
         !canvas ||
         !cameraReadyRef.current ||
         scannerPausedRef.current ||
-        reviewOpenRef.current ||
-        recognizingRef.current
+        reviewOpenRef.current
       ) {
         return;
       }
@@ -682,14 +727,30 @@ export function ScanCardsScreen() {
         },
       });
       if (!nextAnalysis) {
+        if (lifecycle.observeAbsent()) {
+          lastAcceptedFingerprintRef.current = undefined;
+          stackingTransitionRef.current = false;
+          setMessage("Ready for the next card.");
+        }
         return;
       }
+
+      lifecycle.acquireTarget(nextAnalysis.fingerprint, timestamp);
 
       setAnalysis(nextAnalysis);
       const nextFeedback = nextAnalysis.feedback;
       if (nextFeedback !== lastFeedbackRef.current) {
         lastFeedbackRef.current = nextFeedback;
         setMessage(nextFeedback);
+      }
+
+      if (!nextAnalysis.candidateVisible) {
+        if (lifecycle.observeAbsent()) {
+          lastAcceptedFingerprintRef.current = undefined;
+          stackingTransitionRef.current = false;
+          setMessage("Ready for the next card.");
+        }
+        return;
       }
 
       if (modeRef.current === "stacking_feeder") {
@@ -731,7 +792,7 @@ export function ScanCardsScreen() {
           modeRef.current !== "stacking_feeder" ||
           stackingTransitionRef.current ||
           recordsRef.current.length === 0;
-        if (mayCaptureStacking) {
+        if (mayCaptureStacking && !recognizingRef.current) {
           await queueRecognizedScan(nextAnalysis);
         }
       } else if (!nextAnalysis.tooClose) {
@@ -838,7 +899,7 @@ export function ScanCardsScreen() {
   }
 
   async function confirmAllHighConfidence() {
-    for (const record of records.filter((candidate) => (candidate.confidence ?? 0) >= 0.8)) {
+    for (const record of records.filter((candidate) => candidate.identityStatus === "verified" || candidate.status === "matched")) {
       await updateScanRecord(record.id, { status: "confirmed" });
     }
     if (batch) {
@@ -866,7 +927,7 @@ export function ScanCardsScreen() {
     }
 
     let applied = 0;
-    for (const record of records.filter((candidate) => ["confirmed", "assumed", "matched"].includes(candidate.status))) {
+    for (const record of records.filter((candidate) => candidate.status === "confirmed" || candidate.identityStatus === "verified" || (candidate.status === "matched" && !candidate.identityStatus))) {
       const input = catalogCardToManualInput({
         card: {
           id: record.scryfallId ?? record.id,
@@ -1129,7 +1190,7 @@ export function ScanCardsScreen() {
               {scannerPaused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
               {scannerPaused ? "Resume" : "Pause"}
             </button>
-            <button type="button" onClick={() => setReviewOpen(true)}>
+            <button type="button" ref={lastReviewTriggerRef} onClick={() => setReviewOpen(true)}>
               Review Batch
             </button>
           </div>
@@ -1266,13 +1327,22 @@ export function ScanCardsScreen() {
       ) : null}
 
       {reviewOpen ? (
-        <div className="builder-modal-backdrop" role="presentation">
-          <div className="builder-modal scanner-review-modal" role="dialog" aria-modal="true" aria-label="Batch Review">
+        <div className="builder-modal-backdrop scanner-review-backdrop" role="presentation">
+          <div className="builder-modal scanner-review-modal" role="dialog" aria-modal="true" aria-labelledby="scanner-review-title">
             <div className="builder-modal__header">
-              <h2>Batch Review</h2>
+              <div>
+                <h2 id="scanner-review-title">Batch Review</h2>
+                <span className="scanner-review-count">{summary.total} captured</span>
+              </div>
               <button type="button" onClick={() => setReviewOpen(false)} aria-label="Close batch review">
-                x
+                <X aria-hidden="true" />
               </button>
+            </div>
+            <div className="scanner-review-summary" aria-live="polite">
+              <span>{summary.confirmed} verified</span>
+              <span>{records.filter((record) => record.printingStatus === "review_required").length} printing reviews</span>
+              <span>{records.filter((record) => record.identityStatus === "review_required" || record.identityStatus === "ambiguous").length} card reviews</span>
+              <span>{summary.unresolved} unresolved</span>
             </div>
             <div className="scanner-review-actions">
               <button type="button" onClick={confirmAllHighConfidence}>
@@ -1302,24 +1372,36 @@ export function ScanCardsScreen() {
                 <p className="foundation-summary">No scan records in this batch yet.</p>
               ) : (
                 records.map((record) => (
-                  <article className="scanner-record" key={record.id}>
+                  <article className={`scanner-record scanner-record--${record.identityStatus ?? record.status}`} key={record.id}>
                     {record.capturedThumbnail ? (
                       <img src={record.capturedThumbnail} alt="" />
                     ) : null}
-                    <div>
-                      <strong>{record.name}</strong>
-                      <span>{record.typeLine ?? "Type pending"} · {Math.round((record.confidence ?? 0) * 100)}%</span>
-                      {record.setCode || record.collectorNumber ? (
-                        <small>{[record.setCode?.toUpperCase(), record.collectorNumber].filter(Boolean).join(" ")}</small>
-                      ) : null}
-                    </div>
-                    <span className="badge">{record.status}</span>
-                    <button type="button" onClick={() => updateScanRecord(record.id, { status: "confirmed" }).then(() => refreshRecords(record.batchId))}>
-                      Confirm
-                    </button>
+                      <div className="scanner-record__main">
+                        <strong>{record.name}</strong>
+                        <span>{identityLabel(record)}</span>
+                        <span>{printingLabel(record)}</span>
+                        <small>{record.typeLine ?? "Type pending"}</small>
+                        {record.setCode || record.collectorNumber ? (
+                          <small>{[record.setCode?.toUpperCase(), record.collectorNumber].filter(Boolean).join(" ")}</small>
+                        ) : null}
+                      </div>
+                      <span className="badge">{record.identityStatus === "verified" ? "Verified" : record.identityStatus === "unresolved" ? "Unresolved" : "Review"}</span>
+                    {record.identityStatus !== "unresolved" && record.status !== "unresolved" ? (
+                      <button type="button" onClick={() => updateScanRecord(record.id, { status: "confirmed", identityStatus: "verified" }).then(() => refreshRecords(record.batchId))}>
+                        Confirm Match
+                      </button>
+                    ) : null}
                     <button type="button" onClick={() => updateScanRecord(record.id, { status: "removed" }).then(() => refreshRecords(record.batchId))}>
                       Remove
                     </button>
+                    {record.printingStatus === "review_required" ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/search?context=scanner&batchId=${record.batchId}&recordId=${record.id}&printingOnly=1&q=${encodeURIComponent(record.name)}`)}
+                      >
+                        Choose Printing
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() =>

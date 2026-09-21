@@ -516,6 +516,9 @@ export type ScanRecordStatus =
   | "removed"
   | "applied";
 
+export type ScanIdentityStatus = "verified" | "review_required" | "ambiguous" | "unresolved";
+export type ScanPrintingStatus = "verified" | "review_required" | "unknown";
+
 export interface ScanRecord {
   id: string;
   batchId: string;
@@ -526,6 +529,10 @@ export interface ScanRecord {
   quantity: number;
   status: ScanRecordStatus;
   confidence?: number;
+  identityStatus?: ScanIdentityStatus;
+  printingStatus?: ScanPrintingStatus;
+  printingConfidence?: number;
+  printingId?: string;
   possibleMatches?: string[];
   typeLine?: string;
   colorIdentity?: CommanderColor[];
@@ -913,6 +920,9 @@ export interface DeckstateCardFace {
   manaCost?: string;
   typeLine?: string;
   oracleText?: string;
+  printedName?: string;
+  printedTypeLine?: string;
+  printedText?: string;
   colors?: CommanderColor[];
   imageUris?: DeckstateCardImageUris;
 }
@@ -933,6 +943,9 @@ export interface DeckstateScryfallCard {
   manaValue: number;
   typeLine: string;
   oracleText?: string;
+  printedName?: string;
+  printedTypeLine?: string;
+  printedText?: string;
   power?: string;
   toughness?: string;
   loyalty?: string;

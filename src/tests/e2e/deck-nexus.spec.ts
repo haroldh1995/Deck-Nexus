@@ -726,6 +726,26 @@ Deck
     await expect(page.locator(".scanner-tray-prompt").getByText(/Tray may be full/i)).toBeVisible();
     await page.getByRole("button", { name: "Review Batch" }).first().click();
     await expect(page.getByRole("dialog", { name: "Batch Review" })).toBeVisible();
+    const reviewGeometry = await page.evaluate(() => {
+      const modal = document.querySelector<HTMLElement>(".scanner-review-modal");
+      const list = document.querySelector<HTMLElement>(".scanner-review-modal .scanner-record-list");
+      const body = document.body;
+      if (!modal || !list) return undefined;
+      const rect = modal.getBoundingClientRect();
+      return {
+        modalWidth: rect.width,
+        modalHeight: rect.height,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        bodyScrollWidth: body.scrollWidth,
+        listOverflowY: getComputedStyle(list).overflowY,
+      };
+    });
+    expect(reviewGeometry).toBeTruthy();
+    expect(reviewGeometry?.modalWidth).toBeLessThanOrEqual(reviewGeometry?.viewportWidth ?? 0);
+    expect(reviewGeometry?.modalHeight).toBeLessThanOrEqual(reviewGeometry?.viewportHeight ?? 0);
+    expect(reviewGeometry?.bodyScrollWidth).toBeLessThanOrEqual(reviewGeometry?.viewportWidth ?? 0);
+    expect(reviewGeometry?.listOverflowY).toBe("auto");
     await page.getByRole("button", { name: /Confirm All High Confidence/ }).click();
     await page.getByRole("button", { name: "Apply All Confirmed to Owned" }).click();
     await expect(page.getByText(/applied to Owned Cards/i)).toBeVisible();

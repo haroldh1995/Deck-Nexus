@@ -1,10 +1,10 @@
 # Deck Nexus Work State
 
 ## CURRENT TASK
-MASTER STARTUP EXPERIENCE — REAL STARTUP COORDINATOR + MAGICAL LOADING UI
+SCANNER CORRECTNESS + SCRYFALL PRINTING MATCHING + SCAN COMPLETION + MOBILE REVIEW SYSTEM REPAIR
 
 ## CURRENT OBJECTIVE
-Implement a truthful event-driven startup coordinator and magical loading experience above the completed atomic Home readiness barrier. The Master Product Completion task remains paused and must not resume automatically.
+Repair scanner recognition and completion at the architectural root, distinguish canonical card identity from exact printing identity, and rebuild mobile Batch Review as a deliberate workflow. The Master Product Completion task remains paused and must not resume automatically.
 
 ## LAST VERIFIED MILESTONE
 Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-verified. The repair removes per-frame semantic React commits, reuses the orbit transform buffer, pauses parallax/particles during active orbit motion, keeps background jobs deferred through settling, and passed the production-build 500-interaction stress gate on Chromium and mobile Chromium.
@@ -24,13 +24,13 @@ Home zero-lag release gate committed as `36ba3d2`, pushed, deployed, and live-ve
 - Typecheck, lint, production build, mobile visual QA, route smoke checks, Deck Builder change/undo interaction, and no-overflow checks passed locally.
 
 ## STATUS
-COMPLETE
+RELEASE BLOCKER
 
 ## IN PROGRESS
-None. Startup experience implementation is complete; Master Product Completion remains paused by explicit instruction.
+Forensic audit complete. The current scanner reads one stretched low-resolution canvas region, treats the first OCR line as a card name, then accepts a Scryfall exact/fuzzy name response. It has no multi-field identity gate, separate printing confidence, target-generation ownership, or robust mobile review surface. Implementation is in progress.
 
 ## REMAINING
-None for this startup task. Do not resume Master Product Completion automatically.
+Implement and verify scanner correctness/completion, safe canonical/printing matching, stale-result protection, batch review geometry, focused regressions, full available validation, and deployment/live checks. Do not resume Master Product Completion automatically.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -162,6 +162,29 @@ Final deployed build recheck at `https://haroldh1995.github.io/Deck-Nexus/?live-
 
 ## NEXT ACTION
 Await explicit instruction; keep Master Product Completion paused and do not start other Deck Nexus work automatically.
+
+## SCANNER REBUILD CHECKPOINT
+- Current task remains the release blocker: scanner correctness/completion, Scryfall printing matching, and mobile review repair. Master Product Completion remains paused.
+- First static divergence established in the old pipeline: camera frames were stretched from the full video into a fixed canvas even though the visible guide is an inset `object-fit: cover` region. OCR then read one title-like rectangle from the wrong coordinate space. The recognition pipeline discarded region provenance and all non-title evidence before candidate resolution.
+- Old false-result mechanism established from code: the first OCR line was treated as a likely card name, then sent to a single exact/fuzzy Scryfall name lookup. The result was accepted with `Math.max(baseConfidence, 0.86)` for exact names or `0.68` for fuzzy names; `confidenceStatus` converted scores at or above `0.88` to `matched`. The displayed approximately 90% was therefore an uncalibrated composite/OCR/name-match heuristic, not calibrated card-identity confidence. The supplied production video was not reproducible with physical camera hardware in this environment, so stale-result/cache/UI contribution to that exact event is not claimed as proven.
+- Added visible-guide/object-fit source mapping and guide-aligned capture. Added region OCR for title, type line, rules/printed text, stats, set/collector, and artist. Added conservative evidence quality, garbage OCR rejection, positive-vs-contradiction scoring, candidate uniqueness, temporal target ownership, separate card identity and printing identity statuses, and exact-printing verification from reliable set plus collector evidence.
+- Scryfall mapper/domain models now preserve printed name/type/text fields where available. Cached-first candidate lookup avoids unnecessary network waits; prices remain downstream. Historical printed text is accepted as distinct evidence from current Oracle text. Unknown printing does not copy a candidate's set, collector, finish, or price into the scan record.
+- Added generation-owned recognition jobs and target exit/re-entry handling. Stale results are discarded after target change or exit; one target cannot duplicate while held. Manual scanner corrections mark identity and selected printing as user-confirmed/verified. Collection application no longer auto-commits unconfirmed assumed/low-confidence scans.
+- Added development-gated structured scanner traces for ownership, frame dimensions, frame analysis, final card/printing IDs, and confidence values. No production raw OCR logging or camera dump was added.
+- Added `docs/architecture/scanner-correctness.md` documenting the permanent scanner and mobile overlay laws.
+- Batch Review is now a deliberate mobile full-screen workflow: safe-area-aware dynamic viewport, inert covered scanner, compact header/count summary, one scrolling list owner, responsive action layout, focus restoration, distinct card-vs-printing states, unresolved-card protection, and a printing-only canonical search correction path. Desktop remains a contained modal.
+- Fodder Cannon regression fixture uses canonical Scryfall data retrieved during development validation (Eighth Edition, set `8ed`, collector `302`, Scryfall ID `bde003e6-d674-42cd-9537-91928730e7dd`). Multi-field tests prove Fodder Cannon beats Caduceus, garbage OCR cannot verify a card, contradictions force review, title-only candidates remain review-required, set+collector can verify a printing, and printed text can differ from Oracle text.
+
+## SCANNER VALIDATION
+- Focused scanner matching, camera geometry, and target lifecycle tests: 10 passed.
+- Full unit suite after the final scanner/mobile changes: 37 files, 180 tests passed. Final focused scanner tests: 10 passed.
+- Typecheck, lint, and production build passed after the scanner and mobile overlay changes.
+- Scanner/Batch Review E2E flow passed on Chromium and mobile Chromium after the final printing-correction and mobile geometry changes: 2 passed. The flow validates camera harness acquisition, persisted batch records, duplicate suppression, feeder recovery, Batch Review, and mobile modal geometry with no body overflow and one list scroll owner.
+- Full production-preview E2E regression passed on Chromium and mobile Chromium: 40 tests passed. Physical-camera video and physical-device Safari were unavailable; deterministic media harness validation was used and no physical Fodder Cannon live scan is claimed.
+
+## SCANNER GIT / DEPLOYMENT
+- Working tree contains only the scanner correctness, Scryfall model, target lifecycle, mobile review, focused tests, architecture documentation, and this checkpoint. No unrelated product work was resumed.
+- Commit, push, deployment, and live verification are still required for this checkpoint.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
