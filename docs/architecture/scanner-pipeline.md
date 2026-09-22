@@ -1,0 +1,54 @@
+# Scanner Pipeline
+
+Deck Nexus treats a scan as a physical-card intake session, not as a name
+lookup. The live camera loop stays lightweight and asynchronous while a
+bounded recognition job owns one target generation.
+
+## Stages
+
+1. `scannerCamera` owns permissions, stream lifecycle, intrinsic/display
+   geometry, torch and refresh behavior.
+2. `frameAnalysis` samples the visible guide, detects card-like coverage,
+   quality dimensions, stability and a short-lived visual fingerprint.
+3. `scannerDetection` converts the analyzed candidate into a source-space
+   quadrilateral.
+4. `scannerPerspective` warps that quadrilateral into a stable card canvas.
+5. `scannerEnhancement` creates a bounded contrast/sharpened recognition
+   variant while retaining the original normalized card.
+6. `scannerRecognition` reads independent card regions, retries with the
+   enhanced variant when evidence is weak, and emits field-owned evidence.
+7. `scannerMatching` compares the reliable evidence with canonical Scryfall
+   records, rewarding agreement and rejecting contradictions.
+8. `scannerLifecycle` owns target generations and stale-result rejection.
+9. `scannerEngine` and the repositories persist every terminal physical
+   capture before feedback is emitted.
+10. Batch Review presents identity and printing certainty separately and
+    preserves unresolved evidence for correction.
+
+The preparation boundary is exposed by `scannerPipeline.ts`. Its
+`ScannerStageAdapter` and `ScannerRecognitionEngine` interfaces are the
+extension point for a future worker or local vision provider. A replacement
+engine must return the same target-owned evidence contract; camera lifecycle,
+matching safety and batch persistence do not depend on a particular OCR or
+vision implementation.
+
+## Safety and completion
+
+The scanner may use an acceptable frame when an ideal frame is unavailable.
+"Too close" is guidance unless clipping or unusable geometry prevents
+recognition. A target has a bounded recognition budget; failure to identify a
+card becomes a durable unresolved/review entry rather than an infinite
+detected state. Only a durable batch insert emits the single capture feedback
+event.
+
+Transient physical evidence is target-owned. Canonical Scryfall indexes and
+candidate caches may be shared, but OCR, fingerprints, candidates and
+confidence cannot cross target generations. A new physical presentation is
+allowed to produce another capture even when its canonical card and printing
+match the prior card.
+
+## Diagnostics
+
+Development builds retain a bounded transition trace containing the funnel
+from detection through terminal batch insertion. It is not rendered to normal
+users and does not persist raw camera frames by default.

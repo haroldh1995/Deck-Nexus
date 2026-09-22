@@ -12,6 +12,7 @@ export interface ScannerRecognitionTrace {
   videoIntrinsic?: { width: number; height: number };
   videoDisplay?: { width: number; height: number };
   frame?: FrameAnalysis;
+  pipelineStages?: string[];
   evidence?: ObservedCardEvidence;
   query?: string;
   match?: ScannerMatchResult;

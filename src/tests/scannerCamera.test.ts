@@ -12,6 +12,7 @@ import {
   type FrameAnalyzerMemory,
 } from "../features/scanner/frameAnalysis";
 import { gainForScanVolume } from "../features/scanner/scanFeedback";
+import { detectScannerCard } from "../features/scanner/scannerDetection";
 
 function makeImageData({
   width = 120,
@@ -154,6 +155,19 @@ describe("scanner camera and frame analysis", () => {
       targetAgeMs: 900,
       stableDurationMs: 150,
     })).toBe(true);
+  });
+
+  it("maps the analyzed card candidate into source-space corners without stretching it to the canvas edge", () => {
+    const analysis = analyzeImageData(makeImageData(), {}, {
+      stableDurationMs: 0,
+      timestamp: 0,
+    });
+    const detection = detectScannerCard(analysis, 520, 728);
+    expect(detection.quadrilateral?.topLeft.x).toBeGreaterThan(0);
+    expect(detection.quadrilateral?.topLeft.y).toBeGreaterThan(0);
+    expect(detection.quadrilateral?.bottomRight.x).toBeLessThan(520);
+    expect(detection.quadrilateral?.bottomRight.y).toBeLessThan(728);
+    expect(detection.quadrilateral?.topRight.x).toBeGreaterThan(detection.quadrilateral?.topLeft.x ?? 0);
   });
 
   it("creates deterministic frame fingerprints and low-volume beep gains", () => {

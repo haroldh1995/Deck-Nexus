@@ -7,7 +7,7 @@ DECK NEXUS MASTER SCANNER PRODUCTION REBUILD
 Production zero-touch handheld and feeder scanning, continuous new-physical-card detection, precision-first canonical/printing resolution, exactly-once capture feedback, durable collection/deck intake, and mobile review repair. The larger unrelated Deck Nexus completion effort remains paused.
 
 ## LAST VERIFIED MILESTONE
-The stuck handheld auto-scan repair is committed as `fa9126544c86021354106deb54aedf73f291e460`, pushed, deployed, and live-verified. Local validation is 38 Vitest files/187 tests and 40 production-preview E2E tests across Chromium and mobile Chromium.
+The complete modular scanner pipeline rebuild is locally validated. The current implementation is ready for the deployment commit; physical card hardware and iPhone Safari remain unavailable.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -260,3 +260,19 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 - Live torture ran 300 mixed touch interactions over approximately 54 seconds; zero static asset requests during motion, zero page errors, stable complete cards, and the versioned service-worker cache was present.
 - Live offline follow-up ran 60 mixed interactions after network was disabled; all 12 cards remained complete with zero page errors.
 - Physical iPhone Safari was not available; verification used production Chromium at an iPhone-sized 390x844 viewport.
+
+## COMPLETE SCANNER ARCHITECTURE REBUILD CHECKPOINT
+- Current task: DECK NEXUS MASTER SCANNER PRODUCTION REBUILD. Master Product Completion remains paused.
+- Root causes carried forward: the original false positive came from guide/full-video coordinate divergence followed by a name-only fuzzy acceptance path; the stuck handheld state came from pre-capture target-generation churn plus a hard `tooClose` stability gate. The old approximately 90% was an uncalibrated OCR/name heuristic, not card identity probability.
+- Pipeline changes: added explicit detection, source-space quadrilateral, perspective normalization, bounded enhancement, quality fallback, structured recognition, matching, confidence, duplicate, batch and review stages. The live guide is now the analysis crop, and recognition receives normalized original/enhanced card canvases rather than an unnormalized camera frame.
+- Recognition changes: added mana-region OCR, enhanced retry/field merging, source-owned diagnostics, and degraded-frame evidence budgets. A detected target that cannot identify is durably captured as unresolved/review instead of hanging indefinitely. Timeout captures retain correction thumbnails when that setting is enabled.
+- Scryfall/matching: existing canonical multi-field matcher remains authoritative; title, mana, type, rules, set, collector, artist, stats and layout-aware canonical fields are preserved with contradiction penalties and separate card/printing decisions. Prices remain downstream.
+- Target/async changes: every recognition job remains generation-owned; stale results are discarded. Uncommitted handheld motion does not churn target generations; committed replacement requires coherent change. Normal movement remains duplicate-suppressed, while legitimate identical copies remain scannable.
+- Zero-touch/audio/batch: scanner auto-queues after detection without Start Batch; terminal durable insertion remains the sole capture-feedback trigger. Exactly-once feedback and idempotent records/quantity semantics remain preserved.
+- Mobile review: prior full-screen mobile Batch Review and shared overlay repair remain intact; no unrelated UI work was resumed.
+- Added `docs/architecture/scanner-pipeline.md`, modular scanner stage files, pipeline-stage diagnostics, source-space detection regression coverage, and permanent completion/correctness laws.
+- Tests: `npx vitest run src/tests/scannerCamera.test.ts src/tests/scannerLifecycle.test.ts src/tests/scannerMatching.test.ts --reporter=dot --maxWorkers=1` passed (3 files, 19 tests); full `npm test -- --reporter=dot --maxWorkers=1` passed (38 files, 188 tests); focused scanner/feeder E2E passed (2 tests, Chromium/mobile Chromium); full E2E passed (40 tests, Chromium/mobile Chromium); `npx tsc -b --pretty false`, `npm run lint -- --quiet`, `npm run build`, and `git diff --check` passed.
+- Known issues/external blockers: no physical Fodder Cannon/video/iPhone Safari/hardware feeder test was available; no physical accuracy percentage is claimed. Live deployment verification remains pending this checkpoint commit.
+- Git state: implementation changes are uncommitted and limited to scanner modules, scanner tests, architecture documentation, and this checkpoint.
+- Deployment/live state: prior deployment was live-verified for the stuck-state repair; this new modular pipeline has not yet been pushed or live-verified.
+- Next action: commit, push, wait for GitHub Pages, then verify the deployed scanner route and mobile review surface without claiming physical-camera results.

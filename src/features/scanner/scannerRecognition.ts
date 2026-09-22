@@ -53,6 +53,7 @@ export interface ScannerResolvedCard {
 
 export interface ScannerRecognitionInput {
   canvas: HTMLCanvasElement;
+  enhancedCanvas?: HTMLCanvasElement;
   analysis: FrameAnalysis;
   destination: ScanBatchDestination;
   saveThumbnail: boolean;
@@ -199,6 +200,7 @@ async function recognizeEvidence(canvas: HTMLCanvasElement): Promise<{ evidence:
   const worker = await getOcrWorker();
   const regions = {
     title: { left: 0.07, top: 0.025, width: 0.72, height: 0.115 },
+    mana: { left: 0.76, top: 0.025, width: 0.19, height: 0.115 },
     type: { left: 0.07, top: 0.405, width: 0.72, height: 0.085 },
     rules: { left: 0.09, top: 0.49, width: 0.78, height: 0.31 },
     stats: { left: 0.67, top: 0.82, width: 0.27, height: 0.1 },
@@ -219,6 +221,7 @@ async function recognizeEvidence(canvas: HTMLCanvasElement): Promise<{ evidence:
   const evidence: ObservedCardEvidence = {
     rawText: reads.map((read) => read.text).filter(Boolean).join("\n"),
     title: field(byName.get("title")?.text ?? "", byName.get("title")?.confidence ?? 0, "title"),
+    mana: field(byName.get("mana")?.text ?? "", byName.get("mana")?.confidence ?? 0, "mana"),
     type: field(byName.get("type")?.text ?? "", byName.get("type")?.confidence ?? 0, "type"),
     rules: field(byName.get("rules")?.text ?? "", byName.get("rules")?.confidence ?? 0, "rules"),
     artist: field(byName.get("artist")?.text ?? "", byName.get("artist")?.confidence ?? 0, "artist"),
@@ -232,6 +235,29 @@ async function recognizeEvidence(canvas: HTMLCanvasElement): Promise<{ evidence:
     evidence.toughness = field(statMatch[2], stats.confidence, "stats");
   }
   return { evidence, rawText: evidence.rawText ?? "" };
+}
+
+function mergeEvidence(
+  primary: { evidence: ObservedCardEvidence; rawText: string },
+  retry: { evidence: ObservedCardEvidence; rawText: string },
+): { evidence: ObservedCardEvidence; rawText: string } {
+  const merged: ObservedCardEvidence = { ...primary.evidence };
+  for (const field of ["title", "mana", "type", "rules", "set", "collector", "artist", "language", "power", "toughness", "loyalty", "defense"] as const) {
+    const first = primary.evidence[field];
+    const second = retry.evidence[field];
+    if (!first && second) merged[field] = second;
+    else if (first && second && second.quality > first.quality) merged[field] = second;
+  }
+  return {
+    evidence: { ...merged, rawText: [primary.evidence.rawText, retry.evidence.rawText].filter(Boolean).join("\n") },
+    rawText: [primary.rawText, retry.rawText].filter(Boolean).join("\n"),
+  };
+}
+
+function shouldRetryEvidence(result: { evidence: ObservedCardEvidence; rawText: string }): boolean {
+  const usableFields = [result.evidence.title, result.evidence.type, result.evidence.rules, result.evidence.set, result.evidence.collector]
+    .filter((field) => scannerFieldIsUsable(field));
+  return usableFields.length < 2 || result.rawText.trim().length < 18;
 }
 
 function cardFromHarness(card: ScannerTestCard, capturedThumbnail: string | undefined, analysis: FrameAnalysis, destination: ScanBatchDestination): ScannerResolvedCard {
@@ -306,13 +332,22 @@ async function findCandidates(
   return live;
 }
 
-export async function recognizeScannerFrame({ canvas, analysis, destination, saveThumbnail, signal }: ScannerRecognitionInput): Promise<ScannerResolvedCard> {
+export async function recognizeScannerFrame({ canvas, enhancedCanvas, analysis, destination, saveThumbnail, signal }: ScannerRecognitionInput): Promise<ScannerResolvedCard> {
   const capturedThumbnail = captureThumbnail(canvas, saveThumbnail);
   const harnessCard = popScannerHarnessCard();
   if (harnessCard) return cardFromHarness(harnessCard, capturedThumbnail, analysis, destination);
 
   let extracted: { evidence: ObservedCardEvidence; rawText: string } = { evidence: {}, rawText: "" };
-  try { extracted = await recognizeEvidence(canvas); } catch { /* absence of reliable OCR is a safe terminal outcome */ }
+  try {
+    extracted = await recognizeEvidence(canvas);
+    if (enhancedCanvas && shouldRetryEvidence(extracted)) {
+      extracted = mergeEvidence(extracted, await recognizeEvidence(enhancedCanvas));
+    }
+  } catch {
+    if (enhancedCanvas) {
+      try { extracted = await recognizeEvidence(enhancedCanvas); } catch { /* safe terminal outcome */ }
+    }
+  }
   const title = extracted.evidence.title;
   const setValue = extracted.evidence.set?.value;
   const collectorValue = extracted.evidence.collector?.value;
@@ -426,7 +461,8 @@ export function createUnresolvedScannerResult({
   analysis,
   destination,
   warning = "Recognition did not reach a reliable identity decision; the physical capture was preserved for review.",
-}: Pick<ScannerRecognitionInput, "analysis" | "destination"> & { warning?: string }): ScannerResolvedCard {
+  capturedThumbnail,
+}: Pick<ScannerRecognitionInput, "analysis" | "destination"> & { warning?: string; capturedThumbnail?: string }): ScannerResolvedCard {
   return {
     rawText: "Unresolved camera scan",
     name: "Card not identified",
@@ -438,6 +474,7 @@ export function createUnresolvedScannerResult({
     printingConfidence: 0,
     possibleMatches: [],
     destination,
+    capturedThumbnail,
     frameFingerprint: analysis.fingerprint,
     matchSource: "ocr",
     scannerWarnings: [warning],

@@ -9,6 +9,8 @@ export interface FrameCandidate {
 
 export interface FrameAnalysis {
   timestamp: number;
+  analysisWidth: number;
+  analysisHeight: number;
   candidateVisible: boolean;
   tooClose: boolean;
   candidateCoverage: number;
@@ -223,6 +225,8 @@ export function analyzeImageData(
 
   return {
     timestamp,
+    analysisWidth: width,
+    analysisHeight: height,
     candidateVisible,
     tooClose,
     candidateCoverage,
@@ -250,10 +254,19 @@ export function shouldUseRecognitionFallback({
   targetAgeMs: number;
   stableDurationMs: number;
 }): boolean {
-  if (analysis.stable || !analysis.usableForRecognition) return false;
+  if (analysis.stable || !analysis.candidateVisible) return false;
   // This is an evidence budget, not a fake progress timer: use the best
   // defensible frame once normal handheld motion prevents ideal stability.
-  return targetAgeMs >= Math.max(720, stableDurationMs * 3);
+  if (analysis.usableForRecognition) {
+    return targetAgeMs >= Math.max(720, stableDurationMs * 3);
+  }
+  // A visibly acquired but degraded card must not remain in a nonterminal
+  // state forever. The bounded fallback preserves it for review when there
+  // is enough image structure to make a defensible cropped attempt.
+  return targetAgeMs >= Math.max(1_400, stableDurationMs * 4) &&
+    analysis.candidateCoverage >= 0.1 &&
+    analysis.sharpness > 0.05 &&
+    analysis.lighting > 0.03;
 }
 
 export function analyzeVideoFrame({

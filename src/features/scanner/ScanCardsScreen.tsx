@@ -90,6 +90,7 @@ import {
 } from "./scannerRecognition";
 import { createScanFeedbackController } from "./scanFeedback";
 import { drawVisibleGuideToCanvas } from "./cameraGeometry";
+import { prepareScannerRecognition } from "./scannerPipeline";
 import { createScannerLifecycle } from "./scannerLifecycle";
 import {
   ownershipToTrace,
@@ -679,6 +680,9 @@ export function ScanCardsScreen() {
     captureCanvas.width = captureWidth;
     captureCanvas.height = captureHeight;
     drawVisibleGuideToCanvas(video, captureCanvas);
+    const preparation = prepareScannerRecognition(captureCanvas, frameAnalysis);
+    const recognitionCanvas = preparation?.recognitionCanvas ?? captureCanvas;
+    const enhancedCanvas = preparation?.enhancedCanvas;
 
     const controller = new AbortController();
     abortRecognitionRef.current = controller;
@@ -687,7 +691,8 @@ export function ScanCardsScreen() {
       setLoopState("resolving");
       const result = await Promise.race([
         recognizeScannerFrame({
-          canvas: captureCanvas,
+          canvas: recognitionCanvas,
+          enhancedCanvas,
           analysis: frameAnalysis,
           destination: destinationRef.current,
           saveThumbnail: settings.scannerStoreCorrectionThumbnails,
@@ -721,6 +726,9 @@ export function ScanCardsScreen() {
             resolve(createUnresolvedScannerResult({
               analysis: frameAnalysis,
               destination: destinationRef.current,
+              capturedThumbnail: settings.scannerStoreCorrectionThumbnails
+                ? recognitionCanvas.toDataURL("image/jpeg", 0.45)
+                : undefined,
             }));
           }, scannerRecognitionBudgetMs);
         }),
@@ -731,6 +739,7 @@ export function ScanCardsScreen() {
         videoIntrinsic: { width: video.videoWidth, height: video.videoHeight },
         videoDisplay: { width: video.clientWidth, height: video.clientHeight },
         frame: frameAnalysis,
+        pipelineStages: preparation?.stages ? [...preparation.stages] : undefined,
         finalCardIdentity: result.scryfallId,
         finalPrintingIdentity: result.printingId,
         cardIdentityConfidence: result.confidence,
@@ -777,6 +786,7 @@ export function ScanCardsScreen() {
         videoIntrinsic: { width: video.videoWidth, height: video.videoHeight },
         videoDisplay: { width: video.clientWidth, height: video.clientHeight },
         frame: frameAnalysis,
+        pipelineStages: preparation?.stages ? [...preparation.stages] : undefined,
         finalCardIdentity: result.scryfallId,
         finalPrintingIdentity: result.printingId,
         cardIdentityConfidence: result.confidence,
@@ -857,6 +867,7 @@ export function ScanCardsScreen() {
         video,
         canvas,
         memory: frameMemoryRef.current,
+        cropToGuide: true,
         options: {
           stableDurationMs: settings.scannerStableFrameDurationMs,
           timestamp,
@@ -870,6 +881,16 @@ export function ScanCardsScreen() {
           stackingTransitionRef.current = false;
           setMessage("Ready for the next card.");
         }
+        return;
+      }
+
+      if (!nextAnalysis.candidateVisible) {
+        if (lifecycle.observeAbsent()) {
+          lastAcceptedFingerprintRef.current = undefined;
+          stackingTransitionRef.current = false;
+          setMessage("Ready for the next card.");
+        }
+        setAnalysis(nextAnalysis);
         return;
       }
 
@@ -906,7 +927,7 @@ export function ScanCardsScreen() {
         targetAgeMs,
         stableDurationMs: settings.scannerStableFrameDurationMs,
       });
-      if (!nextAnalysis.candidateVisible || !nextAnalysis.usableForRecognition) {
+      if (!nextAnalysis.usableForRecognition) {
         recordScannerTransition({
           scanSessionId: "scan-session",
           state: "TARGET_DETECTED",
@@ -960,15 +981,6 @@ export function ScanCardsScreen() {
         if (!manualScannerMessageRef.current) {
           setMessage(nextFeedback);
         }
-      }
-
-      if (!nextAnalysis.candidateVisible) {
-        if (lifecycle.observeAbsent()) {
-          lastAcceptedFingerprintRef.current = undefined;
-          stackingTransitionRef.current = false;
-          setMessage("Ready for the next card.");
-        }
-        return;
       }
 
       if (modeRef.current === "stacking_feeder") {

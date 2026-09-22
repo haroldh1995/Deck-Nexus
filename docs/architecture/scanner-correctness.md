@@ -25,6 +25,13 @@ The scanner treats a camera capture as evidence for a canonical Scryfall record.
 21. Every acquired target becomes a durable batch capture or reaches an explicit cancellation/loss/error terminal reason.
 22. False-positive protection must not make the scanner too conservative to complete physical intake.
 23. Physical capture completion, card identity success, and printing identity success are separate outcomes.
+24. A usable detected card must advance into acquisition and recognition without a capture button.
+25. Degraded evidence may terminate as a durable review capture; it may not create an infinite scan.
+26. `Too close` is a warning until clipping or unusable geometry proves it is a blocker.
+27. A bounded best-frame window and evidence budget are preferred to waiting for a mythical perfect frame.
+28. A newly acquired target must either be durably captured or receive an explicit lost, canceled, or camera-error terminal reason.
+29. Start Batch is an advanced control, never a hidden prerequisite for ordinary handheld intake.
+30. The scanner must be both precision-first and productive: false-positive safety cannot be achieved by refusing to complete physical captures.
 
 ## Scanner Input Law
 
