@@ -7,7 +7,7 @@ DECK NEXUS MASTER SCANNER PRODUCTION REBUILD
 Production zero-touch handheld and feeder scanning, continuous new-physical-card detection, precision-first canonical/printing resolution, exactly-once capture feedback, durable collection/deck intake, and mobile review repair. The larger unrelated Deck Nexus completion effort remains paused.
 
 ## LAST VERIFIED MILESTONE
-The complete modular scanner pipeline rebuild is locally validated. The current implementation is ready for the deployment commit; physical card hardware and iPhone Safari remain unavailable.
+The complete modular scanner pipeline rebuild is committed as `c2551863abb261586d392d88c7cbc142008e9660`, pushed, deployed, and live-smoke-verified. Physical card hardware and iPhone Safari remain unavailable.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -276,3 +276,10 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 - Git state: implementation changes are uncommitted and limited to scanner modules, scanner tests, architecture documentation, and this checkpoint.
 - Deployment/live state: prior deployment was live-verified for the stuck-state repair; this new modular pipeline has not yet been pushed or live-verified.
 - Next action: commit, push, wait for GitHub Pages, then verify the deployed scanner route and mobile review surface without claiming physical-camera results.
+
+## COMPLETE SCANNER DEPLOYMENT AND LIVE VERIFICATION
+- Commit `c2551863abb261586d392d88c7cbc142008e9660` was pushed to `origin/main`.
+- GitHub Actions succeeded for the implementation commit: repository deploy run `35785146986`; Pages build/deployment run `35785145021`.
+- Live production smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?scanner-rebuild=c255186` used Chromium at `393x844`. The scanner route loaded the current production bundle with no page errors, body width and document width both `393px`, the camera permission surface present, and no `Start Batch` button in primary scanner actions.
+- The deployed permission surface stated that video stays on-device and offered camera permission/manual entry. Physical Fodder Cannon, physical iPhone Safari, exact live printing, and hardware-feeder verification were not available and are not claimed.
+- Final git state is clean and Master Product Completion remains paused. Stop after this scanner task; do not resume unrelated work automatically.
