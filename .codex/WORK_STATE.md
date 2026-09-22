@@ -7,7 +7,7 @@ DECK NEXUS MASTER SCANNER PRODUCTION REBUILD
 Production zero-touch handheld and feeder scanning, continuous new-physical-card detection, precision-first canonical/printing resolution, exactly-once capture feedback, durable collection/deck intake, and mobile review repair. The larger unrelated Deck Nexus completion effort remains paused.
 
 ## LAST VERIFIED MILESTONE
-The stuck handheld auto-scan repair is locally validated: 38 Vitest files/187 tests, 40 production-preview E2E tests across Chromium and mobile Chromium, typecheck, lint, and production build all pass. The new change is not yet committed or deployed.
+The stuck handheld auto-scan repair is committed as `fa9126544c86021354106deb54aedf73f291e460`, pushed, deployed, and live-verified. Local validation is 38 Vitest files/187 tests and 40 production-preview E2E tests across Chromium and mobile Chromium.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -27,10 +27,10 @@ The stuck handheld auto-scan repair is locally validated: 38 Vitest files/187 te
 RELEASE BLOCKER
 
 ## IN PROGRESS
-The definitive scanner rebuild is extended for the newly reported non-completing handheld state. The actual gate was found and repaired; deployment and live verification for this extension remain.
+The definitive scanner rebuild and the non-completing handheld repair are complete for the available environment. Master Product Completion remains paused.
 
 ## REMAINING
-Review the final diff, commit and push the stuck-state repair, verify both deployment workflows, inspect the live production scanner route, and record final truth. Physical Fodder Cannon hardware and iPhone Safari remain unavailable. Do not resume Master Product Completion automatically.
+None for the available environment. Physical Fodder Cannon hardware and iPhone Safari remain unavailable. Do not resume Master Product Completion automatically.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -207,7 +207,7 @@ Await explicit instruction; keep Master Product Completion paused and do not sta
 - Root cause remains the old coordinate-space divergence: the full video was stretched into a fixed canvas while the visible guide used an inset `object-fit: cover` region. The old name-only path then discarded region provenance and non-title evidence, and the displayed approximately 90% was an uncalibrated OCR/name-match heuristic rather than card-identity confidence.
 - Final local validation after the zero-touch/feeder extension: 38 Vitest files, 187 tests passed; full production-preview E2E 40 tests passed on Chromium and mobile Chromium with serialized workers; `npx tsc -b --pretty false`, `npm run lint -- --quiet`, and `npm run build` passed.
 - The full E2E run covers scanner auto acquisition through the deterministic development camera harness, durable batch persistence, feeder recovery, Batch Review, correction paths, mobile geometry, and repository regression. Physical camera/card and iPhone Safari testing remain unavailable.
-- Deployment and live production-bundle verification are the next action. Master Product Completion remains paused.
+- Deployment and live production-bundle verification for the stuck-state repair passed; Master Product Completion remains paused.
 
 ## STUCK HANDHELD AUTO-SCAN REPAIR CHECKPOINT
 - First divergence for the new failure was target acquisition: before the first terminal capture, every sufficiently different handheld frame caused `acquireTarget` to create a new generation. `ScanCardsScreen` interpreted that as `possible_new_target`, cleared frame memory, and returned before recognition. Repeated handheld motion therefore prevented stability and left the batch at zero.
@@ -221,6 +221,12 @@ Await explicit instruction; keep Master Product Completion paused and do not sta
 - GitHub Actions passed for the scanner extension: custom deploy run `35656348746`; Pages build/deployment run `35656347480`.
 - Live scanner smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?scanner-live=955d89f` loaded the current production bundle at an iPhone-sized Chromium viewport (`393x659` in the CLI device profile), with body width equal to viewport width and no visible development harness/simulation controls. The camera permission surface was present. Screenshot: `output/playwright/live-scanner-955d89f.png`.
 - No physical Fodder Cannon card scan, physical iPhone Safari scan, exact live printing verification, or hardware feeder verification is claimed. Deterministic media-harness tests remain the available scanner verification.
+
+## STUCK HANDHELD DEPLOYMENT AND LIVE VALIDATION
+- Repair commit `fa9126544c86021354106deb54aedf73f291e460` was pushed to `origin/main`.
+- GitHub Actions passed: custom deploy run `35676529758`; Pages build/deployment run `35676529208`.
+- Live scanner smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?scanner-stuck=fa91265` loaded the current production bundle at iPhone-sized Chromium viewport `393x659`, with body width equal to viewport width, no development simulation text, and no visible `Start Batch` in the primary scanner actions. The camera permission surface was present. Screenshot: `output/playwright/live-scanner-fa91265.png`.
+- No physical handheld video/card scan, physical iPhone Safari scan, exact live printing verification, or hardware feeder verification is claimed.
 
 ## IMPORTANT PRESERVATION NOTES
 Do not reset IndexedDB, delete user data, discard legitimate working-tree changes, weaken ownership or pricing behavior, or move BoardState responsibilities across boundaries. Do not bundle `.codex` files into production.
