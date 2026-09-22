@@ -59,6 +59,8 @@ export interface ScannerRecognitionInput {
   signal?: AbortSignal;
 }
 
+export const scannerRecognitionBudgetMs = 8_000;
+
 interface ScannerTestCard {
   name: string;
   scryfallId?: string;
@@ -418,6 +420,28 @@ export async function recognizeScannerFrame({ canvas, analysis, destination, sav
     result.priceUpdatedAt = undefined;
   }
   return result;
+}
+
+export function createUnresolvedScannerResult({
+  analysis,
+  destination,
+  warning = "Recognition did not reach a reliable identity decision; the physical capture was preserved for review.",
+}: Pick<ScannerRecognitionInput, "analysis" | "destination"> & { warning?: string }): ScannerResolvedCard {
+  return {
+    rawText: "Unresolved camera scan",
+    name: "Card not identified",
+    quantity: 1,
+    status: "unresolved",
+    identityStatus: "unresolved",
+    printingStatus: "unknown",
+    confidence: 0,
+    printingConfidence: 0,
+    possibleMatches: [],
+    destination,
+    frameFingerprint: analysis.fingerprint,
+    matchSource: "ocr",
+    scannerWarnings: [warning],
+  };
 }
 
 export async function terminateScannerOcrWorker(): Promise<void> {

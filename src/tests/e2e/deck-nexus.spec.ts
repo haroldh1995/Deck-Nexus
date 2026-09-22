@@ -584,12 +584,16 @@ Deck
       canvas.width = 640;
       canvas.height = 896;
       const context = canvas.getContext("2d")!;
+      let motionFrame = 0;
       function draw() {
         const secondCard = Boolean(testWindow.__deckNexusAdvanceFakeCard);
+        const handheldMotion = !secondCard && motionFrame < 8
+          ? [0, 72, -64, 48][motionFrame++ % 4]
+          : 0;
         context.fillStyle = secondCard ? "#102030" : "#18243d";
         context.fillRect(0, 0, canvas.width, canvas.height);
-        const cardX = secondCard ? 48 : 76;
-        const cardY = secondCard ? 132 : 96;
+        const cardX = secondCard ? 48 : 76 + handheldMotion;
+        const cardY = secondCard ? 132 : 96 - Math.round(handheldMotion / 2);
         const cardWidth = secondCard ? 516 : 488;
         const cardHeight = secondCard ? 720 : 682;
         context.fillStyle = secondCard ? "#c8b276" : "#8da7d0";
@@ -684,6 +688,7 @@ Deck
     await expect(page.getByRole("heading", { name: "Scan Cards" })).toBeVisible();
     await page.getByRole("button", { name: /Allow Camera/ }).first().click();
     await expect(page.getByText("Camera Live", { exact: true })).toBeVisible();
+    await expect(page.locator(".scanner-actions").getByRole("button", { name: "Start Batch" })).toHaveCount(0);
     await expect(page.locator(".scanner-batch-summary").getByText(/1 records/i)).toBeVisible({
       timeout: 20_000,
     });

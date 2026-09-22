@@ -109,9 +109,9 @@ export function createScannerLifecycle(sessionId: string) {
       return target;
     }
 
-    if (fingerprintDistance(target.fingerprint, fingerprint) > 0.34) {
-      return createTarget(fingerprint, now, candidate);
-    }
+    // Before the first terminal capture, motion and autofocus are still part
+    // of acquiring this target. Do not turn every changed frame into a new
+    // generation or the scanner can remain forever at "possible new target".
     absentFrames = 0;
     target = { ...target, fingerprint, candidate };
     return target;

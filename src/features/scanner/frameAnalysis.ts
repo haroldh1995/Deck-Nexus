@@ -11,12 +11,16 @@ export interface FrameAnalysis {
   timestamp: number;
   candidateVisible: boolean;
   tooClose: boolean;
+  candidateCoverage: number;
+  clipped: boolean;
   boundaryConfidence: number;
   sharpness: number;
   lighting: number;
   glare: number;
   stable: boolean;
   stableForMs: number;
+  usableForRecognition: boolean;
+  qualityClass: "ideal" | "acceptable" | "degraded" | "unusable";
   feedback: string;
   fingerprint: string;
   candidate?: FrameCandidate;
@@ -168,9 +172,16 @@ export function analyzeImageData(
     ? hammingDistance(fingerprint, memory.lastFingerprint) / fingerprint.length
     : 1;
   const geometryDistance = candidateDistance(candidate, memory.lastCandidate);
+  const clipped = candidateVisible && (minX <= 2 || minY <= 2 || maxX >= width - 3 || maxY >= height - 3);
+  const usableForRecognition =
+    candidateVisible &&
+    candidateWidth >= width * 0.32 &&
+    candidateHeight >= height * 0.42 &&
+    sharpness > 0.13 &&
+    lighting > 0.12 &&
+    glare < 0.98;
   const frameStable =
     candidateVisible &&
-    !tooClose &&
     fingerprintDistance < 0.23 &&
     geometryDistance < Math.max(width, height) * 0.26 &&
     sharpness > 0.13 &&
@@ -202,20 +213,47 @@ export function analyzeImageData(
     feedback = "Stable card candidate.";
   }
 
+  const qualityClass = frameStable && usableForRecognition
+    ? "ideal"
+    : usableForRecognition
+      ? "acceptable"
+      : candidateVisible
+        ? "degraded"
+        : "unusable";
+
   return {
     timestamp,
     candidateVisible,
     tooClose,
+    candidateCoverage,
+    clipped,
     boundaryConfidence,
     sharpness,
     lighting,
     glare,
     stable: stableForMs >= options.stableDurationMs,
     stableForMs,
+    usableForRecognition,
+    qualityClass,
     feedback,
     fingerprint,
     candidate,
   };
+}
+
+export function shouldUseRecognitionFallback({
+  analysis,
+  targetAgeMs,
+  stableDurationMs,
+}: {
+  analysis: FrameAnalysis;
+  targetAgeMs: number;
+  stableDurationMs: number;
+}): boolean {
+  if (analysis.stable || !analysis.usableForRecognition) return false;
+  // This is an evidence budget, not a fake progress timer: use the best
+  // defensible frame once normal handheld motion prevents ideal stability.
+  return targetAgeMs >= Math.max(720, stableDurationMs * 3);
 }
 
 export function analyzeVideoFrame({

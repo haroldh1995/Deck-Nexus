@@ -52,4 +52,15 @@ describe("scanner target ownership", () => {
     const moved = lifecycle.acquireTarget("00010000", 2, { x: 0.12, y: 0.1, width: 0.69, height: 0.8 });
     expect(moved.targetId).toBe(first.targetId);
   });
+
+  it("keeps one uncommitted target while handheld motion changes fingerprints", () => {
+    const lifecycle = createScannerLifecycle("session");
+    const first = lifecycle.acquireTarget("00000000", 1);
+    const moving = lifecycle.acquireTarget("10101010", 2, { x: 0.08, y: 0.1, width: 0.8, height: 0.82 });
+    const movingAgain = lifecycle.acquireTarget("01010101", 3, { x: 0.1, y: 0.12, width: 0.78, height: 0.8 });
+
+    expect(moving.targetId).toBe(first.targetId);
+    expect(movingAgain.targetId).toBe(first.targetId);
+    expect(movingAgain.captureCommitted).toBe(false);
+  });
 });

@@ -7,7 +7,7 @@ DECK NEXUS MASTER SCANNER PRODUCTION REBUILD
 Production zero-touch handheld and feeder scanning, continuous new-physical-card detection, precision-first canonical/printing resolution, exactly-once capture feedback, durable collection/deck intake, and mobile review repair. The larger unrelated Deck Nexus completion effort remains paused.
 
 ## LAST VERIFIED MILESTONE
-Scanner production-rebuild commit `955d89f5ac865d547da3436cb6a06479bad15e05` is pushed, both GitHub Pages workflows passed, and the current production bundle was live-verified at iPhone-sized Chromium viewport. Local validation remains 38 Vitest files/185 tests and 40 production-preview E2E tests.
+The stuck handheld auto-scan repair is locally validated: 38 Vitest files/187 tests, 40 production-preview E2E tests across Chromium and mobile Chromium, typecheck, lint, and production build all pass. The new change is not yet committed or deployed.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -27,10 +27,10 @@ Scanner production-rebuild commit `955d89f5ac865d547da3436cb6a06479bad15e05` is 
 RELEASE BLOCKER
 
 ## IN PROGRESS
-The definitive scanner rebuild is implemented, validated, pushed, deployed, and live-verified to the extent available. Master Product Completion remains paused.
+The definitive scanner rebuild is extended for the newly reported non-completing handheld state. The actual gate was found and repaired; deployment and live verification for this extension remain.
 
 ## REMAINING
-None for the available environment. Physical Fodder Cannon hardware and iPhone Safari remain unavailable and are recorded as external verification limits. Do not resume Master Product Completion automatically.
+Review the final diff, commit and push the stuck-state repair, verify both deployment workflows, inspect the live production scanner route, and record final truth. Physical Fodder Cannon hardware and iPhone Safari remain unavailable. Do not resume Master Product Completion automatically.
 
 ## FILES CURRENTLY INVOLVED
 - `.codex/WORK_STATE.md`
@@ -205,9 +205,16 @@ Await explicit instruction; keep Master Product Completion paused and do not sta
 
 ## MASTER SCANNER FINAL LOCAL VALIDATION
 - Root cause remains the old coordinate-space divergence: the full video was stretched into a fixed canvas while the visible guide used an inset `object-fit: cover` region. The old name-only path then discarded region provenance and non-title evidence, and the displayed approximately 90% was an uncalibrated OCR/name-match heuristic rather than card-identity confidence.
-- Final local validation after the zero-touch/feeder extension: 38 Vitest files, 185 tests passed; full production-preview E2E 40 tests passed on Chromium and mobile Chromium with serialized workers; `npx tsc -b --pretty false`, `npm run lint -- --quiet`, and `npm run build` passed.
+- Final local validation after the zero-touch/feeder extension: 38 Vitest files, 187 tests passed; full production-preview E2E 40 tests passed on Chromium and mobile Chromium with serialized workers; `npx tsc -b --pretty false`, `npm run lint -- --quiet`, and `npm run build` passed.
 - The full E2E run covers scanner auto acquisition through the deterministic development camera harness, durable batch persistence, feeder recovery, Batch Review, correction paths, mobile geometry, and repository regression. Physical camera/card and iPhone Safari testing remain unavailable.
 - Deployment and live production-bundle verification are the next action. Master Product Completion remains paused.
+
+## STUCK HANDHELD AUTO-SCAN REPAIR CHECKPOINT
+- First divergence for the new failure was target acquisition: before the first terminal capture, every sufficiently different handheld frame caused `acquireTarget` to create a new generation. `ScanCardsScreen` interpreted that as `possible_new_target`, cleared frame memory, and returned before recognition. Repeated handheld motion therefore prevented stability and left the batch at zero.
+- A second blocking gate was frame quality: `frameStable` required `!tooClose`, so a large but still usable handheld card could never become stable. `tooClose` is now advisory for handheld scanning; only unusable quality prevents recognition.
+- Uncommitted targets now retain one generation while motion/autofocus changes fingerprints. Replacement generations remain guarded after a committed capture. A bounded evidence budget allows an acceptable frame to start recognition when ideal stability is not reached, and an 8-second recognition budget converts a non-returning recognition attempt into an unresolved durable capture.
+- Added development-only transition diagnostics for target rejection, stabilization, capture, recognition budget exhaustion, durable insertion, target age, geometry, quality, coverage, and recognition state. Moved `Start Batch` into advanced/manual controls so it is not a visible prerequisite for ordinary zero-touch scanning.
+- Added a deterministic handheld regression with large pre-capture motion and no capture-button interaction. It reaches a batch entry and exactly one capture event; the full 40-test E2E suite passes.
 
 ## MASTER SCANNER DEPLOYMENT AND LIVE VALIDATION
 - Commit `955d89f5ac865d547da3436cb6a06479bad15e05` was pushed to `origin/main`.

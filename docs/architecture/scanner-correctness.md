@@ -17,6 +17,18 @@ The scanner treats a camera capture as evidence for a canonical Scryfall record.
 13. Unresolved captures are preserved for review rather than assigned an invented identity.
 14. Static Scryfall records and indexes are reused; they are not rebuilt per scan.
 15. High-confidence false positives are release-blocking defects.
+16. Detection must have a path to completion; uncertainty reduces identity certainty, not physical capture completion.
+17. A detected target that cannot be confidently identified terminates as review, ambiguous, or unresolved rather than hanging.
+18. `Too close` is functional image-usability guidance, not an arbitrary card-area rejection. A usable close frame may proceed.
+19. An acceptable frame is preferable to waiting indefinitely for an ideal frame.
+20. Zero-touch handheld scanning does not depend on discovering `Start Batch`; batches are created when physical capture requires them.
+21. Every acquired target becomes a durable batch capture or reaches an explicit cancellation/loss/error terminal reason.
+22. False-positive protection must not make the scanner too conservative to complete physical intake.
+23. Physical capture completion, card identity success, and printing identity success are separate outcomes.
+
+## Scanner Input Law
+
+Present card -> automatically detect -> acquire a target -> use the best available evidence -> attempt canonical matching -> durably store one physical capture -> emit one confirmation event -> continue watching for the next physical target. Manual controls are for pause, review, correction, rescan, troubleshooting, and advanced feeder control, not ordinary per-card operation.
 
 ## Permanent Mobile Overlay Law
 

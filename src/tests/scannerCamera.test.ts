@@ -8,6 +8,7 @@ import {
   analyzeImageData,
   createFrameFingerprint,
   shouldSuppressDuplicateScan,
+  shouldUseRecognitionFallback,
   type FrameAnalyzerMemory,
 } from "../features/scanner/frameAnalysis";
 import { gainForScanVolume } from "../features/scanner/scanFeedback";
@@ -127,6 +128,32 @@ describe("scanner camera and frame analysis", () => {
     });
     expect(analysis.tooClose).toBe(true);
     expect(analysis.feedback).toMatch(/close/i);
+  });
+
+  it("keeps a usable close handheld frame eligible for recognition", () => {
+    const memory: FrameAnalyzerMemory = {};
+    const first = analyzeImageData(makeImageData({ margin: 2 }), memory, {
+      stableDurationMs: 150,
+      timestamp: 0,
+    });
+    const second = analyzeImageData(makeImageData({ margin: 2 }), memory, {
+      stableDurationMs: 150,
+      timestamp: 200,
+    });
+    const third = analyzeImageData(makeImageData({ margin: 2 }), memory, {
+      stableDurationMs: 150,
+      timestamp: 400,
+    });
+
+    expect(first.usableForRecognition).toBe(true);
+    expect(second.stableForMs).toBe(0);
+    expect(third.stable).toBe(true);
+    expect(third.qualityClass).toBe("ideal");
+    expect(shouldUseRecognitionFallback({
+      analysis: first,
+      targetAgeMs: 900,
+      stableDurationMs: 150,
+    })).toBe(true);
   });
 
   it("creates deterministic frame fingerprints and low-volume beep gains", () => {

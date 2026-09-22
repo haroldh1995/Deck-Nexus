@@ -50,6 +50,7 @@ import { evaluateAddCardRules } from "../decks/commanderRules";
 import {
   analyzeVideoFrame,
   shouldSuppressDuplicateScan,
+  shouldUseRecognitionFallback,
   type FrameAnalysis,
   type FrameAnalyzerMemory,
 } from "./frameAnalysis";
@@ -81,11 +82,20 @@ import {
   type AutomaticFeederState,
   type StackingFeederState,
 } from "./scannerEngine";
-import { recognizeScannerFrame, terminateScannerOcrWorker } from "./scannerRecognition";
+import {
+  createUnresolvedScannerResult,
+  recognizeScannerFrame,
+  scannerRecognitionBudgetMs,
+  terminateScannerOcrWorker,
+} from "./scannerRecognition";
 import { createScanFeedbackController } from "./scanFeedback";
 import { drawVisibleGuideToCanvas } from "./cameraGeometry";
 import { createScannerLifecycle } from "./scannerLifecycle";
-import { ownershipToTrace, recordScannerTrace } from "./scannerDiagnostics";
+import {
+  ownershipToTrace,
+  recordScannerTrace,
+  recordScannerTransition,
+} from "./scannerDiagnostics";
 
 type ScannerLoopState =
   | "idle"
@@ -641,6 +651,28 @@ export function ScanCardsScreen() {
     }
     const target = lifecycle.acquireTarget(frameAnalysis.fingerprint);
     const ownership = lifecycle.createOwnership(activeBatch.id, frameAnalysis.fingerprint);
+    recordScannerTransition({
+      scanSessionId: ownership.scanSessionId,
+      state: "TARGET_STABILIZING",
+      requestedState: "CAPTURING",
+      accepted: true,
+      reason: frameAnalysis.stable ? "STABLE_FRAME" : "ACCEPTABLE_FRAME_BUDGET_REACHED",
+      timestamp: frameAnalysis.timestamp,
+      batchId: activeBatch.id,
+      targetId: ownership.targetId,
+      captureGeneration: ownership.captureGeneration,
+      frameId: ownership.frameId,
+      targetAgeMs: Math.max(0, frameAnalysis.timestamp - target.acquiredAt),
+      detectionConfidence: frameAnalysis.boundaryConfidence,
+      geometryConfidence: frameAnalysis.boundaryConfidence,
+      stabilityMs: frameAnalysis.stableForMs,
+      qualityClass: frameAnalysis.qualityClass,
+      cardCoverage: frameAnalysis.candidateCoverage,
+      tooClose: frameAnalysis.tooClose,
+      bestFrameAvailable: frameAnalysis.usableForRecognition,
+      recognitionJobState: "queued",
+      terminalBudgetMs: scannerRecognitionBudgetMs,
+    });
     setLoopState("capturing");
     const captureWidth = 520;
     const captureHeight = 728;
@@ -650,15 +682,50 @@ export function ScanCardsScreen() {
 
     const controller = new AbortController();
     abortRecognitionRef.current = controller;
+    let budgetTimer: ReturnType<typeof setTimeout> | undefined;
     try {
       setLoopState("resolving");
-      const result = await recognizeScannerFrame({
-        canvas: captureCanvas,
-        analysis: frameAnalysis,
-        destination: destinationRef.current,
-        saveThumbnail: settings.scannerStoreCorrectionThumbnails,
-        signal: controller.signal,
-      });
+      const result = await Promise.race([
+        recognizeScannerFrame({
+          canvas: captureCanvas,
+          analysis: frameAnalysis,
+          destination: destinationRef.current,
+          saveThumbnail: settings.scannerStoreCorrectionThumbnails,
+          signal: controller.signal,
+        }),
+        new Promise<ReturnType<typeof createUnresolvedScannerResult>>((resolve) => {
+          budgetTimer = setTimeout(() => {
+            controller.abort();
+            recordScannerTransition({
+              scanSessionId: ownership.scanSessionId,
+              state: "MATCHING_CARD",
+              requestedState: "CAPTURE_COMMITTING",
+              accepted: true,
+              reason: "TERMINAL_DECISION_NOT_REACHED",
+              timestamp: performance.now(),
+              batchId: activeBatch.id,
+              targetId: ownership.targetId,
+              captureGeneration: ownership.captureGeneration,
+              frameId: ownership.frameId,
+              targetAgeMs: Math.max(0, performance.now() - target.acquiredAt),
+              detectionConfidence: frameAnalysis.boundaryConfidence,
+              geometryConfidence: frameAnalysis.boundaryConfidence,
+              stabilityMs: frameAnalysis.stableForMs,
+              qualityClass: frameAnalysis.qualityClass,
+              cardCoverage: frameAnalysis.candidateCoverage,
+              tooClose: frameAnalysis.tooClose,
+              bestFrameAvailable: frameAnalysis.usableForRecognition,
+              recognitionJobState: "budget_exhausted",
+              terminalBudgetMs: scannerRecognitionBudgetMs,
+            });
+            resolve(createUnresolvedScannerResult({
+              analysis: frameAnalysis,
+              destination: destinationRef.current,
+            }));
+          }, scannerRecognitionBudgetMs);
+        }),
+      ]);
+      if (budgetTimer) clearTimeout(budgetTimer);
       recordScannerTrace({
         ...ownershipToTrace(ownership),
         videoIntrinsic: { width: video.videoWidth, height: video.videoHeight },
@@ -683,6 +750,28 @@ export function ScanCardsScreen() {
       });
       if (!lifecycle.isCurrent(ownership)) return;
       await addScanRecord(record);
+      recordScannerTransition({
+        scanSessionId: ownership.scanSessionId,
+        state: "CAPTURE_COMMITTING",
+        requestedState: "CAPTURED",
+        accepted: true,
+        reason: "DURABLE_BATCH_INSERT",
+        timestamp: performance.now(),
+        batchId: activeBatch.id,
+        targetId: ownership.targetId,
+        captureGeneration: ownership.captureGeneration,
+        frameId: ownership.frameId,
+        targetAgeMs: Math.max(0, frameAnalysis.timestamp - target.acquiredAt),
+        detectionConfidence: frameAnalysis.boundaryConfidence,
+        geometryConfidence: frameAnalysis.boundaryConfidence,
+        stabilityMs: frameAnalysis.stableForMs,
+        qualityClass: frameAnalysis.qualityClass,
+        cardCoverage: frameAnalysis.candidateCoverage,
+        tooClose: frameAnalysis.tooClose,
+        bestFrameAvailable: frameAnalysis.usableForRecognition,
+        recognitionJobState: "terminal",
+        terminalBudgetMs: scannerRecognitionBudgetMs,
+      });
       recordScannerTrace({
         ...ownershipToTrace(ownership),
         videoIntrinsic: { width: video.videoWidth, height: video.videoHeight },
@@ -736,6 +825,7 @@ export function ScanCardsScreen() {
         setMessage(error instanceof Error ? error.message : "Scanner recognition failed. Batch remains saved.");
       }
     } finally {
+      if (budgetTimer) clearTimeout(budgetTimer);
       recognizingRef.current = false;
       abortRecognitionRef.current = null;
     }
@@ -804,8 +894,63 @@ export function ScanCardsScreen() {
         lastAcceptedFingerprintRef.current = undefined;
         stackingTransitionRef.current = false;
         setLoopState("possible_new_target");
-        setMessage("New card detected. Reading the next physical target.");
+        if (!manualScannerMessageRef.current) {
+          setMessage("New card detected. Reading the next physical target.");
+        }
         return;
+      }
+
+      const targetAgeMs = Math.max(0, timestamp - nextTarget.acquiredAt);
+      const fallbackReady = shouldUseRecognitionFallback({
+        analysis: nextAnalysis,
+        targetAgeMs,
+        stableDurationMs: settings.scannerStableFrameDurationMs,
+      });
+      if (!nextAnalysis.candidateVisible || !nextAnalysis.usableForRecognition) {
+        recordScannerTransition({
+          scanSessionId: "scan-session",
+          state: "TARGET_DETECTED",
+          requestedState: "TARGET_STABILIZING",
+          accepted: false,
+          reason: !nextAnalysis.candidateVisible
+            ? "TARGET_REJECTED_INCOMPLETE_GEOMETRY"
+            : nextAnalysis.sharpness <= 0.13
+              ? "TARGET_REJECTED_LOW_SHARPNESS"
+              : nextAnalysis.glare >= 0.98
+                ? "TARGET_REJECTED_GLARE"
+                : "TARGET_REJECTED_INSUFFICIENT_COVERAGE",
+          timestamp,
+          targetId: nextTarget.targetId,
+          captureGeneration: nextTarget.generation,
+          targetAgeMs,
+          detectionConfidence: nextAnalysis.boundaryConfidence,
+          geometryConfidence: nextAnalysis.boundaryConfidence,
+          stabilityMs: nextAnalysis.stableForMs,
+          qualityClass: nextAnalysis.qualityClass,
+          cardCoverage: nextAnalysis.candidateCoverage,
+          tooClose: nextAnalysis.tooClose,
+          bestFrameAvailable: false,
+        });
+      } else if (!nextAnalysis.stable && !fallbackReady) {
+        recordScannerTransition({
+          scanSessionId: "scan-session",
+          state: "TARGET_DETECTED",
+          requestedState: "TARGET_STABILIZING",
+          accepted: true,
+          reason: "WAITING_FOR_STABILITY_OR_EVIDENCE_BUDGET",
+          timestamp,
+          targetId: nextTarget.targetId,
+          captureGeneration: nextTarget.generation,
+          targetAgeMs,
+          detectionConfidence: nextAnalysis.boundaryConfidence,
+          geometryConfidence: nextAnalysis.boundaryConfidence,
+          stabilityMs: nextAnalysis.stableForMs,
+          qualityClass: nextAnalysis.qualityClass,
+          cardCoverage: nextAnalysis.candidateCoverage,
+          tooClose: nextAnalysis.tooClose,
+          bestFrameAvailable: true,
+          terminalBudgetMs: scannerRecognitionBudgetMs,
+        });
       }
 
       setAnalysis(nextAnalysis);
@@ -865,6 +1010,9 @@ export function ScanCardsScreen() {
         if (mayCaptureStacking && !recognizingRef.current) {
           await queueRecognizedScan(nextAnalysis, targetGeometry);
         }
+      } else if (fallbackReady && modeRef.current !== "stacking_feeder" && !recognizingRef.current) {
+        setLoopState("stabilizing");
+        await queueRecognizedScan(nextAnalysis, targetGeometry);
       } else if (!nextAnalysis.tooClose) {
         setLoopState("watching");
       }
@@ -1299,9 +1447,6 @@ export function ScanCardsScreen() {
           </div>
 
           <div className="scanner-actions">
-            <button type="button" onClick={() => void startBatch()}>
-              <Play aria-hidden="true" /> Start Batch
-            </button>
             <button
               type="button"
               onClick={() => void toggleScannerPause()}
@@ -1317,6 +1462,9 @@ export function ScanCardsScreen() {
           <details className="scanner-mode-panel">
             <summary>Manual fallback and feeder controls</summary>
             <div className="feature-controls scanner-setup-controls">
+              <button type="button" onClick={() => void startBatch()}>
+                <Play aria-hidden="true" /> Start Batch
+              </button>
               <label>
                 Scanner mode
                 <select
