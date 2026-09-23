@@ -24,7 +24,7 @@ test.describe("truthful startup experience", () => {
       { timeout: 20_000 },
     );
     await expect(loader).toHaveCount(0);
-    await expect(page.locator(".home-orbit-card")).toHaveCount(12);
+    await expect(page.locator(".home-orbit-card")).toHaveCount(11);
     await expect(page.locator(".home-orbit-card").first().locator(".home-orbit-card__copy strong")).toBeVisible();
     await page.screenshot({ path: "output/playwright/startup-home-ready.png", fullPage: true });
   });

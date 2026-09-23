@@ -409,7 +409,7 @@ function mapOwnedPrinting(
     rarity: printing.rarity,
     releasedAt: printing.releasedAt,
     purchaseMetadata: null,
-    lastScannedAt: printing.lastScannedAt,
+    lastImportedAt: printing.lastImportedAt,
     createdAt: timestamps.createdAt,
     updatedAt: timestamps.updatedAt,
     sourceApplication: DECK_NEXUS_APPLICATION_ID,
@@ -448,7 +448,7 @@ export function mapOwnedCard(card: OwnedCard): SnapshotOwnedCard {
     releasedAt: card.releasedAt,
     duplicateFlag: card.duplicateFlag,
     deckUsage: card.deckUsage,
-    lastScannedAt: card.lastScannedAt,
+    lastImportedAt: card.lastImportedAt,
     createdAt: card.createdAt,
     updatedAt: card.updatedAt,
     sourceApplication: DECK_NEXUS_APPLICATION_ID,
@@ -506,11 +506,10 @@ export function createCollectionSnapshot(
     typeSummaries: countBy(mappedCards, (card) => card.typeLine?.split(" ")[0]),
     raritySummaries: { unspecified: mappedCards.length },
     favorites: mappedCards.filter((card) => card.favorite).map((card) => card.id),
-    scannerMetadata: {
-      batchCount: context.scanBatches?.length ?? 0,
-      recordCount: context.scanRecords?.length ?? 0,
-      lastScannedAt: mappedCards
-        .map((card) => card.lastScannedAt)
+    importMetadata: {
+      importCount: context.importCount ?? 0,
+      lastImportedAt: mappedCards
+        .map((card) => card.lastImportedAt)
         .filter(Boolean)
         .sort()
         .at(-1),
@@ -550,25 +549,6 @@ export function createProfileSnapshot(
       glowIntensity: settings.glowIntensity,
       highContrast: settings.highContrast,
       textSize: settings.textSize,
-    },
-    scannerSettings: {
-      scannerBatchPersistence: settings.scannerBatchPersistence,
-      scannerConfirmationSound: settings.scannerConfirmationSound,
-      scannerConfirmationVolume: settings.scannerConfirmationVolume,
-      scannerHapticConfirmation: settings.scannerHapticConfirmation,
-      scannerDefaultCameraId: settings.scannerDefaultCameraId,
-      scannerTorchDefault: settings.scannerTorchDefault,
-      scannerDefaultMode: settings.scannerDefaultMode,
-      scannerStableFrameDurationMs: settings.scannerStableFrameDurationMs,
-      scannerAutoConfirmHighConfidence: settings.scannerAutoConfirmHighConfidence,
-      scannerRequireReviewAssumed: settings.scannerRequireReviewAssumed,
-      scannerRequireReviewLowConfidence: settings.scannerRequireReviewLowConfidence,
-      scannerSaveUnresolved: settings.scannerSaveUnresolved,
-      scannerPreferredDestination: settings.scannerPreferredDestination,
-      scannerTrayFullTimeoutMs: settings.scannerTrayFullTimeoutMs,
-      scannerPreviewQuality: settings.scannerPreviewQuality,
-      scannerPerformanceMode: settings.scannerPerformanceMode,
-      scannerStoreCorrectionThumbnails: settings.scannerStoreCorrectionThumbnails,
     },
     accessibilitySettings: {
       reducedMotion: settings.reducedMotion,

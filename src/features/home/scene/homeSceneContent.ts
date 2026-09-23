@@ -21,19 +21,14 @@ const permanentCardCopy: Record<
     actionLabel: "Open Card Search",
     visualGlyph: "SE",
   },
-  "scan-cards": {
-    subtitle: "Capture owned cards",
-    actionLabel: "Open Scanner",
-    visualGlyph: "SC",
-  },
   "owned-cards": {
     subtitle: "Review local inventory",
     actionLabel: "Open Owned Cards",
     visualGlyph: "VA",
   },
-  "import-deck": {
-    subtitle: "Resolve a decklist",
-    actionLabel: "Open Import",
+  "import-center": {
+    subtitle: "Bring in your collection",
+    actionLabel: "Open Import Center",
     visualGlyph: "IM",
   },
   analyzer: {

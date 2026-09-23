@@ -1,7 +1,7 @@
 # Profile Adapter
 
 The Hub profile adapter exposes Deck Nexus local profile data for future Hub
-compatibility. It includes appearance, accessibility, scanner, backup, and
+compatibility. It includes appearance, accessibility, import, backup, and
 deck-building preferences derived from local settings.
 
 Current status: local profile only.

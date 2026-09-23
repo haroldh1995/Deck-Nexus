@@ -147,7 +147,6 @@ const timelineFilters = [
   { id: "replacements", label: "Replacements" },
   { id: "smart_build", label: "Smart Build" },
   { id: "imports", label: "Imports" },
-  { id: "scanner", label: "Scanner" },
   { id: "ownership", label: "Ownership" },
   { id: "bracket", label: "Bracket changes" },
   { id: "goals", label: "Goal changes" },
@@ -181,7 +180,6 @@ function timelineMatchesFilter(
   if (filter === "replacements") return event.type.includes("replace") || event.type.includes("replacement");
   if (filter === "smart_build") return event.type.includes("smart_build");
   if (filter === "imports") return event.type.includes("import");
-  if (filter === "scanner") return event.type.includes("scan") || event.type.includes("batch");
   if (filter === "ownership") return event.type.includes("owned") || event.type.includes("ownership");
   if (filter === "bracket") return event.type.includes("bracket");
   if (filter === "goals") return event.type.includes("goal");
@@ -1211,7 +1209,7 @@ export function AnalyzerScreen() {
           <h2>Maybeboard</h2>
           {deck.maybeboard.length === 0 ? <p>No maybeboard cards saved.</p> : null}
           {deck.maybeboard.map((card) => (
-            <article className="scanner-record" key={card.id}>
+            <article className="archive-record" key={card.id}>
               <div>
                 <strong>{card.name}</strong>
                 <small>{card.notes || card.reason || "Maybeboard source retained locally."}</small>
@@ -1230,14 +1228,14 @@ export function AnalyzerScreen() {
                     <button type="button" onClick={() => markMaybeboardProtected(card.id)}>Mark Protected</button>
               <button type="button" onClick={() => navigate(`/deck-builder/${deck.id}`)}>Open Deck Builder</button>
               <button type="button" onClick={() => navigate("/owned")}>Open Owned Cards</button>
-              <button type="button" onClick={() => navigate(`/scan?deckId=${deck.id}`)}>Open Scanner</button>
+              <button type="button" onClick={() => navigate(`/import?deckId=${deck.id}`)}>Import Cards</button>
               <button type="button" onClick={() => removeMaybeboardEntry(card.id)}>Remove from Maybeboard</button>
             </article>
           ))}
           <h2>Cuts</h2>
           {deck.cuts.length === 0 ? <p>No cuts saved.</p> : null}
           {deck.cuts.map((card) => (
-            <article className="scanner-record" key={card.id}>
+            <article className="archive-record" key={card.id}>
               <div>
                 <strong>{card.name}</strong>
                 <span>{card.cutReason || "No cut reason"} · previous section retained in local card history</span>

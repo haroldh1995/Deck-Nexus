@@ -4,22 +4,18 @@ import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsProvider } from "../app/SettingsContext";
-import { findCatalogCardByName, localCardCatalog } from "../data/cardCatalog";
+import { findCatalogCardByName } from "../data/cardCatalog";
 import { resetDatabaseForTests } from "../db/database";
 import {
   addDeckCard,
-  addScanRecord,
   createBlankCommanderDeck,
   getDeck,
-  getRecoverableScanBatch,
   listDeckVersions,
   listDecisionEvents,
   listOwnedCards,
   listRecommendationFeedback,
-  listScanRecords,
   moveDeckCard,
   recordDecisionEvent,
-  saveScanBatch,
   saveDeckVersionFromDecks,
   saveRecommendationFeedback,
   upsertOwnedCard,
@@ -35,12 +31,6 @@ import { CardSearchScreen } from "../features/cards/CardSearchScreen";
 import { catalogCardToManualInput, searchCards } from "../features/cards/cardSearch";
 import type { ManualCardInput } from "../features/decks/builderTypes";
 import { OwnedCardsScreen } from "../features/owned/OwnedCardsScreen";
-import { ScanCardsScreen } from "../features/scanner/ScanCardsScreen";
-import {
-  createScanRecordFromCard,
-  createScannerBatch,
-  nextStackingFeederCycle,
-} from "../features/scanner/scannerEngine";
 import type { CommanderColor, Deck } from "../types/domain";
 
 function manualCard(
@@ -81,42 +71,6 @@ function renderWithAppProviders(ui: ReactElement, route = "/") {
       <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
     </SettingsProvider>,
   );
-}
-
-function installFakeCamera() {
-  const track = {
-    stop: vi.fn(),
-    getSettings: () => ({ deviceId: "fake-rear-camera" }),
-    getCapabilities: () => ({
-      torch: false,
-      focusMode: ["continuous"],
-    }),
-    applyConstraints: vi.fn(),
-  };
-  const stream = {
-    getTracks: () => [track],
-    getVideoTracks: () => [track],
-  } as unknown as MediaStream;
-  Object.defineProperty(navigator, "mediaDevices", {
-    configurable: true,
-    value: {
-      getUserMedia: vi.fn(async () => stream),
-      enumerateDevices: vi.fn(async () => [
-        {
-          kind: "videoinput",
-          deviceId: "fake-rear-camera",
-          groupId: "fake-group",
-          label: "Back Camera",
-        },
-      ]),
-    },
-  });
-  Object.defineProperty(window, "isSecureContext", {
-    configurable: true,
-    value: true,
-  });
-  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
-  return { stream, track };
 }
 
 describe("Prompt 3 card search and owned registry", () => {
@@ -219,84 +173,6 @@ describe("Prompt 3 card search and owned registry", () => {
       expect(cards[0].name).toBe("Sol Ring");
       expect(cards[0].quantityOwned).toBe(2);
       expect(cards[0].duplicateFlag).toBe("multiple_owned");
-    });
-  });
-});
-
-describe("Prompt 3 scanner persistence and feeder modes", () => {
-  beforeEach(async () => {
-    await resetDatabaseForTests();
-    vi.restoreAllMocks();
-  });
-
-  it("treats stacking feeder too-close as a normal cue and pauses on tray-full timeout", () => {
-    const cue = nextStackingFeederCycle({
-      current: "idle_watching_tray",
-      cue: "too_close",
-      tooCloseDurationMs: 900,
-    });
-    expect(cue.stackingState).toBe("new_card_arrival_cue");
-    expect(cue.shouldPause).toBe(false);
-
-    const timeout = nextStackingFeederCycle({
-      current: "wait_for_next_too_close_cue",
-      cue: "timeout",
-      tooCloseDurationMs: 6000,
-    });
-    expect(timeout.stackingState).toBe("paused_tray_full");
-    expect(timeout.warning).toMatch(/Tray may be full/);
-  });
-
-  it("persists recoverable scan batches and records through local storage", async () => {
-    const batch = await saveScanBatch(
-      createScannerBatch({
-        mode: "stacking_feeder",
-        destination: "owned_cards",
-      }),
-    );
-    const record = createScanRecordFromCard({
-      batchId: batch.id,
-      card: localCardCatalog[0],
-      status: "assumed",
-      destination: "owned_cards",
-    });
-    await addScanRecord(record);
-
-    expect((await getRecoverableScanBatch())?.id).toBe(batch.id);
-    expect(await listScanRecords(batch.id)).toHaveLength(1);
-  });
-
-  it("renders scanner mode switching and tray-full controls", async () => {
-    installFakeCamera();
-    renderWithAppProviders(<ScanCardsScreen />, "/scan");
-    await screen.findByRole("heading", { name: "Scan Cards" });
-    await userEvent.click(screen.getAllByRole("button", { name: /Allow Camera/i })[0]);
-    await screen.findByText(/Camera live/i);
-    await userEvent.selectOptions(screen.getByLabelText("Scanner mode"), "stacking_feeder");
-    await userEvent.click(screen.getByText("Manual fallback and feeder controls"));
-    await userEvent.click(screen.getByRole("button", { name: "Too-Close Cue" }));
-    expect(await screen.findByText(/Too-close cue detected/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Trigger Tray Full Prompt" }));
-    expect((await screen.findAllByText(/Tray may be full/i)).length).toBeGreaterThan(0);
-  });
-
-  it("requests camera permission, attaches live preview, and toggles scan sound", async () => {
-    installFakeCamera();
-    renderWithAppProviders(<ScanCardsScreen />, "/scan");
-    await screen.findByRole("heading", { name: "Scan Cards" });
-    expect(screen.getByRole("heading", { name: /needs camera access/i })).toBeInTheDocument();
-
-    await userEvent.click(screen.getAllByRole("button", { name: /Allow Camera/i })[0]);
-
-    await screen.findByText(/Camera live/i);
-    expect(await screen.findByLabelText("Live camera preview")).toBeInTheDocument();
-    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith(
-      expect.objectContaining({ audio: false }),
-    );
-    expect(screen.getByRole("button", { name: "Mute scan confirmation sound" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Mute scan confirmation sound" }));
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Enable scan confirmation sound" })).toBeInTheDocument();
     });
   });
 });

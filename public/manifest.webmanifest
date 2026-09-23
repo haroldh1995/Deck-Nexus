@@ -1,7 +1,7 @@
 {
   "name": "Deck Nexus",
   "short_name": "Deck Nexus",
-  "description": "Local-first Commander deck builder, collection manager, scanner, and snapshot exporter.",
+  "description": "Local-first Commander deck builder, collection manager, import center, and snapshot exporter.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

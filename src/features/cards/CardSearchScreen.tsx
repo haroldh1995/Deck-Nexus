@@ -31,7 +31,6 @@ import { ResidentImage } from "../../components/ResidentImage";
 import { StatusPill } from "../../components/StatusPill";
 import { db } from "../../db/database";
 import { useDecks, useOwnedCards } from "../../db/hooks";
-import { updateScanRecord } from "../../db/repositories";
 import type { Deck, DeckCard, DeckstateScryfallCard, OwnedCard } from "../../types/domain";
 import { isWithinCommanderColorIdentity } from "../../utils/colorIdentity";
 import type { BuilderSectionId } from "../decks/builderTypes";
@@ -235,9 +234,6 @@ export function CardSearchScreen() {
   const initialDeckId = searchParams.get("deckId") ?? "";
   const requestedSection = sectionFromParam(searchParams.get("section"));
   const context = (searchParams.get("context") as SearchContext | null) ?? (initialDeckId ? "deck" : "global");
-  const batchId = searchParams.get("batchId") ?? "";
-  const scanRecordId = searchParams.get("recordId") ?? "";
-  const scannerPrintingOnly = searchParams.get("printingOnly") === "1";
   const importResultId = searchParams.get("importResultId") ?? "";
   const importLine = searchParams.get("rawLine") ?? "";
   const [deckId, setDeckId] = useState(initialDeckId);
@@ -290,11 +286,11 @@ export function CardSearchScreen() {
       commanderLegal: scope === "commander_candidates" || context === "commander",
       commanderCandidates: scope === "commander_candidates" || context === "commander",
       cachedOnly: scope === "cached_only",
-      unique: scannerPrintingOnly ? "prints" : "cards",
+      unique: "cards",
       sort: "name",
       direction: "auto",
     }),
-    [committedQuery, context, deck?.colorIdentity, exactPhrase, keyword, oracleText, rawInput, scannerPrintingOnly, scope, typeText],
+    [committedQuery, context, deck?.colorIdentity, exactPhrase, keyword, oracleText, rawInput, scope, typeText],
   );
 
   const results = useMemo(() => {
@@ -588,10 +584,6 @@ export function CardSearchScreen() {
     result: DecoratedCardResult,
     trigger: HTMLButtonElement | null,
   ) {
-    if (primaryAction.kind === "scanner") {
-      void selectForScannerCorrection(result.card);
-      return;
-    }
     if (primaryAction.kind === "import") {
       void selectForImportCorrection(result.card);
       return;
@@ -601,61 +593,6 @@ export function CardSearchScreen() {
       return;
     }
     setSelectedCard(result.card);
-  }
-
-  async function selectForScannerCorrection(card: DeckstateScryfallCard) {
-    if (!scanRecordId) {
-      return;
-    }
-
-    if (scannerPrintingOnly) {
-      await updateScanRecord(scanRecordId, {
-        printingId: card.id,
-        setCode: card.setCode,
-        setName: card.setName,
-        collectorNumber: card.collectorNumber,
-        language: card.lang,
-        foil: card.foil && !card.nonfoil,
-        finish: card.foil && !card.nonfoil ? "foil" : "nonfoil",
-        prices: card.prices,
-        priceUpdatedAt: card.prices?.fetchedAt,
-        rarity: card.rarity,
-        printingStatus: "verified",
-        printingConfidence: 1,
-      });
-      setStatus(`${card.name} printing selected.`);
-      if (batchId) navigate(`/scan?batchId=${batchId}&review=1`);
-      return;
-    }
-
-    await updateScanRecord(scanRecordId, {
-      scryfallId: card.id,
-      oracleId: card.oracleId,
-      name: card.name,
-      rawText: card.name,
-      typeLine: card.typeLine,
-      colorIdentity: card.colorIdentity,
-      setCode: card.setCode,
-      setName: card.setName,
-      collectorNumber: card.collectorNumber,
-      language: card.lang,
-      foil: card.foil && !card.nonfoil,
-      finish: card.foil && !card.nonfoil ? "foil" : "nonfoil",
-      prices: card.prices,
-      priceUpdatedAt: card.prices?.fetchedAt,
-      rarity: card.rarity,
-      status: "confirmed",
-      identityStatus: "verified",
-      printingStatus: "verified",
-      printingConfidence: 1,
-      printingId: card.id,
-      confidence: 1,
-      possibleMatches: [card.name],
-    });
-    setStatus(`${card.name} selected for scanner correction.`);
-    if (batchId) {
-      navigate(`/scan?batchId=${batchId}&review=1`);
-    }
   }
 
   async function selectForImportCorrection(card: DeckstateScryfallCard) {

@@ -314,7 +314,7 @@ export interface OwnedPrinting {
   collectorFlags?: CollectorCopyFlags;
   rarity?: string;
   releasedAt?: string;
-  lastScannedAt?: string;
+  lastImportedAt?: string;
 }
 
 export interface OwnedCard {
@@ -346,7 +346,7 @@ export interface OwnedCard {
   releasedAt?: string;
   duplicateFlag: OwnedDuplicateFlag;
   deckUsage: Record<string, number>;
-  lastScannedAt?: string;
+  lastImportedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -434,129 +434,6 @@ export interface DeckGroup {
   deckIds: string[];
   tags: string[];
   favorite: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type ScanBatchStatus =
-  | "open"
-  | "completed"
-  | "archived"
-  | "scanning"
-  | "paused"
-  | "needs_review"
-  | "reviewing"
-  | "partially_applied"
-  | "applied"
-  | "saved_for_later"
-  | "discarded";
-
-export type ScannerMode =
-  | "owned"
-  | "deck"
-  | "section"
-  | "batch"
-  | "correction"
-  | "automatic_feeder"
-  | "stacking_feeder";
-
-export type ScanBatchDestination =
-  | "owned_cards"
-  | "current_deck"
-  | "main_deck"
-  | "maybeboard"
-  | "cuts"
-  | "extras_tokens"
-  | "new_deck"
-  | "new_list"
-  | "existing_list"
-  | "custom_collection";
-
-export type ScanExtraKind =
-  | "token"
-  | "emblem"
-  | "art_card"
-  | "ad_card"
-  | "checklist"
-  | "dungeon"
-  | "attraction"
-  | "plane"
-  | "scheme"
-  | "sticker_card"
-  | "other";
-
-export interface ScanBatch {
-  id: string;
-  name: string;
-  status: ScanBatchStatus;
-  mode?: ScannerMode;
-  destination?: ScanBatchDestination;
-  deckId?: string;
-  sectionId?: string;
-  recordsCreated: number;
-  persistenceEnabled: boolean;
-  prompt?: string;
-  lastCue?: string;
-  cameraDeviceId?: string;
-  feederState?: string;
-  lastAcceptedFingerprint?: string;
-  lastAcceptedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type ScanRecordStatus =
-  | "unresolved"
-  | "matched"
-  | "ignored"
-  | "added_to_owned"
-  | "confirmed"
-  | "assumed"
-  | "low_confidence"
-  | "removed"
-  | "applied";
-
-export type ScanIdentityStatus = "verified" | "review_required" | "ambiguous" | "unresolved";
-export type ScanPrintingStatus = "verified" | "review_required" | "unknown";
-
-export interface ScanRecord {
-  id: string;
-  batchId: string;
-  captureId?: string;
-  scanSessionId?: string;
-  targetId?: string;
-  captureGeneration?: number;
-  rawText: string;
-  scryfallId?: string;
-  oracleId?: string;
-  name: string;
-  quantity: number;
-  status: ScanRecordStatus;
-  confidence?: number;
-  identityStatus?: ScanIdentityStatus;
-  printingStatus?: ScanPrintingStatus;
-  printingConfidence?: number;
-  printingId?: string;
-  possibleMatches?: string[];
-  typeLine?: string;
-  colorIdentity?: CommanderColor[];
-  destination?: ScanBatchDestination;
-  extraKind?: ScanExtraKind;
-  setCode?: string;
-  setName?: string;
-  collectorNumber?: string;
-  language?: string;
-  foil?: boolean;
-  finish?: CollectorFinish;
-  condition?: string;
-  prices?: CardPriceReference;
-  priceUpdatedAt?: string;
-  rarity?: string;
-  imageUri?: string;
-  capturedThumbnail?: string;
-  frameFingerprint?: string;
-  matchSource?: "ocr" | "visual" | "scryfall_exact" | "scryfall_fuzzy" | "manual" | "test_harness";
-  scannerWarnings?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -742,7 +619,6 @@ export type MaybeboardSource =
   | "Smart Build"
   | "Analyzer"
   | "Import"
-  | "Scanner"
   | "Replacement Assistant"
   | "Owned Cards";
 
@@ -795,7 +671,7 @@ export interface DeckVersion {
   beforeCards?: DeckCard[];
   afterCards?: DeckCard[];
   summary?: string;
-  source: "smart_build" | "manual" | "import" | "scanner";
+  source: "smart_build" | "manual" | "import";
   createdAt: string;
 }
 
@@ -820,6 +696,24 @@ export interface ImportResult {
   resolvedCards: DeckCard[];
   unresolvedImports: string[];
   createdAt: string;
+}
+
+export type CollectionImportStrategy = "merge" | "replace" | "folder";
+
+export interface CollectionImport {
+  id: string;
+  sourceName: string;
+  detectedFormat: string;
+  strategy: CollectionImportStrategy;
+  folderName?: string;
+  status: "completed" | "needs_review" | "undone";
+  totalEntries: number;
+  importedQuantity: number;
+  unresolvedEntries: string[];
+  originalText: string;
+  undoData?: string;
+  createdAt: string;
+  completedAt?: string;
 }
 
 export type ExportFormat = "plain_text" | "json" | "csv";
@@ -862,10 +756,6 @@ export interface AppMigration {
 export type TextSize = "compact" | "normal" | "large";
 
 export type HomePerformanceMode = "full" | "balanced" | "performance";
-export type ScannerConfirmationVolume = "low" | "medium" | "high";
-export type ScannerPreviewQuality = "low" | "balanced" | "high";
-export type ScannerPreferredDestination = ScanBatchDestination | "ask";
-
 export interface AppSettings {
   id: "app";
   reducedMotion: boolean;
@@ -882,23 +772,6 @@ export interface AppSettings {
   collectorPriceFreshnessDays: number;
   defaultBracketLock: BracketLock;
   defaultOwnershipPreference: OwnershipPreference;
-  scannerBatchPersistence: boolean;
-  scannerConfirmationSound: boolean;
-  scannerConfirmationVolume: ScannerConfirmationVolume;
-  scannerHapticConfirmation: boolean;
-  scannerDefaultCameraId?: string;
-  scannerTorchDefault: boolean;
-  scannerDefaultMode: ScannerMode;
-  scannerStableFrameDurationMs: number;
-  scannerAutoConfirmHighConfidence: boolean;
-  scannerRequireReviewAssumed: boolean;
-  scannerRequireReviewLowConfidence: boolean;
-  scannerSaveUnresolved: boolean;
-  scannerPreferredDestination: ScannerPreferredDestination;
-  scannerTrayFullTimeoutMs: number;
-  scannerPreviewQuality: ScannerPreviewQuality;
-  scannerPerformanceMode: HomePerformanceMode;
-  scannerStoreCorrectionThumbnails: boolean;
   scryfallLiveSearchEnabled: boolean;
   scryfallBulkDownloadWifiOnly: boolean;
   scryfallOfflineDatabaseDownloaded: boolean;

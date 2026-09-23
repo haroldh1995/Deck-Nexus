@@ -27,7 +27,6 @@ export type HubCapabilityId =
   | "advanced_gameplay"
   | "dry_run"
   | "backup"
-  | "scanner"
   | "export"
   | "import"
   | "cloud_sync"
@@ -102,17 +101,6 @@ export interface HubProfileContract extends HubVersionMetadata {
     | "homePerformanceMode"
     | "deviceTiltParallax"
     | "glowIntensity"
-  >;
-  scannerPreferences: Pick<
-    AppSettings,
-    | "scannerBatchPersistence"
-    | "scannerConfirmationSound"
-    | "scannerConfirmationVolume"
-    | "scannerHapticConfirmation"
-    | "scannerDefaultMode"
-    | "scannerPreferredDestination"
-    | "scannerPreviewQuality"
-    | "scannerPerformanceMode"
   >;
   backupPreferences: Pick<
     AppSettings,

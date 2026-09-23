@@ -31,7 +31,7 @@ describe("local backup and restore", () => {
 
   it("round-trips decks, ownership, settings, snapshots, validation, and handoff history without nested backups", async () => {
     await ensureAppSettings();
-    await updateAppSettings({ reducedMotion: true, scannerConfirmationSound: false });
+    await updateAppSettings({ reducedMotion: true, staticHomeScreen: false });
     const deck = await createBlankCommanderDeck({
       name: "Backup Ready",
       commanderName: "Alela, Artful Provocateur",

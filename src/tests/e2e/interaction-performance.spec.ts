@@ -307,7 +307,7 @@ test.describe("interaction performance and responsive motion", () => {
 
     expect(renderedAfterTakeover).not.toBe(renderedAfterRelease);
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator(".home-orbit-card")).toHaveCount(12);
+    await expect(page.locator(".home-orbit-card")).toHaveCount(11);
   });
 
   test("keeps the Home scene inside the viewport across phone widths", async ({

@@ -5,8 +5,8 @@ Deck Nexus now has a local canonical export foundation for future BoardState and
 ## Export Objects
 
 - Deck Snapshot: full deck reconstruction data, including metadata, commander metadata, main deck, maybeboard, cuts, goals, tags, groups, favorite state, ownership summary, missing cards, analysis metadata, recommendation metadata, and compatibility sections.
-- Collection Snapshot: owned-card inventory, exact printings, set/color/type/rarity summaries, favorite card IDs, and scanner summary metadata.
-- Profile Snapshot: local-only settings and preferences Deck Nexus owns, including appearance, accessibility, scanner, backup, default deck-building, and Home customization settings.
+- Collection Snapshot: owned-card inventory, exact printings, set/color/type/rarity summaries, favorite card IDs, and import summary metadata.
+- Profile Snapshot: local-only settings and preferences Deck Nexus owns, including appearance, accessibility, import, backup, default deck-building, and Home customization settings.
 - Application Metadata: producer name, application version, schema/export/snapshot versions, compatibility version, supported consumers, checksum, capabilities, and explicitly unsigned signature metadata.
 - Export Metadata: export ID, format, timestamps, source application, migration status, and checksum.
 - Backup Metadata: backup ID/name, schema/export/snapshot versions, deck count, owned-card count, timestamps, and checksum.
@@ -28,7 +28,7 @@ Collector price references:
 
 ## Ownership
 
-Deck Nexus owns the serialization of local deck, card, owned-card, scanner, collection, profile-setting, backup, analysis, and recommendation data.
+Deck Nexus owns the serialization of local deck, card, owned-card, import, collection, profile-setting, backup, analysis, and recommendation data.
 
 BoardState will later consume these snapshots and remains responsible for authoritative gameplay validation, rules execution, Advanced Gameplay, Dry Runs, shared sessions, and multiplayer authority.
 

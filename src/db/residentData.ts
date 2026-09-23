@@ -190,9 +190,6 @@ if (typeof window !== "undefined") {
   window.addEventListener("deck-nexus:owned-updated", () => {
     void refreshResidentOwnedCards().catch(() => undefined);
   });
-  window.addEventListener("deck-nexus:scanner-updated", () => {
-    void refreshResidentOwnedCards().catch(() => undefined);
-  });
   window.addEventListener("deck-nexus:favorites-updated", () => {
     void refreshResidentFavorites().catch(() => undefined);
   });

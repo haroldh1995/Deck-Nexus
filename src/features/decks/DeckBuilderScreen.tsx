@@ -27,7 +27,6 @@ import {
   Plus,
   Redo2,
   RotateCcw,
-  ScanLine,
   Scissors,
   Search,
   Settings,
@@ -1115,7 +1114,7 @@ export function DeckBuilderScreen() {
                   onKeyDown={handleCardKeyDown}
                   onOpenDetail={openDetail}
                   onQuickMenu={(card) => setQuickMenuCardId(card.id)}
-                  onScan={() => navigate(`/scan?deckId=${deck.id}&section=${sectionId}`)}
+                  onImport={() => navigate(`/import?deckId=${deck.id}&section=${sectionId}`)}
                   sectionId={sectionId}
                   tab={activeTab}
                 />
@@ -1150,9 +1149,9 @@ export function DeckBuilderScreen() {
             <Sparkles aria-hidden="true" />
             <span>Recommend</span>
           </button>
-          <button type="button" onClick={() => navigate(`/scan?deckId=${deck.id}`)} title="Scan">
-            <ScanLine aria-hidden="true" />
-            <span>Scan</span>
+          <button type="button" onClick={() => navigate(`/import?deckId=${deck.id}`)} title="Import cards">
+            <Archive aria-hidden="true" />
+            <span>Import</span>
           </button>
           <button
             type="button"
@@ -1311,7 +1310,7 @@ export function DeckBuilderScreen() {
           onRecommendations={() =>
             navigate(`/analyzer?deckId=${deck.id}&tab=recommendations`)
           }
-          onScan={() => navigate(`/scan?deckId=${deck.id}&section=${expandedSection}`)}
+          onImport={() => navigate(`/import?deckId=${deck.id}&section=${expandedSection}`)}
           onTag={(card) => openDetail(card)}
         />
       ) : null}
@@ -1454,7 +1453,7 @@ function DeckSectionPanel({
   onKeyDown,
   onOpenDetail,
   onQuickMenu,
-  onScan,
+  onImport,
   sectionId,
   tab,
 }: {
@@ -1471,7 +1470,7 @@ function DeckSectionPanel({
   onKeyDown: (event: KeyboardEvent, card: DeckCard) => void;
   onOpenDetail: (card: DeckCard) => void;
   onQuickMenu: (card: DeckCard) => void;
-  onScan: () => void;
+  onImport: () => void;
   sectionId: BuilderSectionId;
   tab: BuilderTab;
 }) {
@@ -1652,9 +1651,9 @@ function DeckSectionPanel({
           <Plus aria-hidden="true" />
           Add
         </button>
-        <button className="secondary-action" onClick={onScan} type="button">
-          <ScanLine aria-hidden="true" />
-          Scan
+        <button className="secondary-action" onClick={onImport} type="button">
+          <Archive aria-hidden="true" />
+          Import
         </button>
         <button className="secondary-action" onClick={onExpand} type="button">
           <Archive aria-hidden="true" />
@@ -2343,7 +2342,7 @@ function ExpandedSectionPanel({
   onProtect,
   onRemove,
   onRecommendations,
-  onScan,
+  onImport,
   onTag,
   sectionId,
   tab,
@@ -2358,7 +2357,7 @@ function ExpandedSectionPanel({
   onProtect: (card: DeckCard) => void;
   onRemove: (card: DeckCard) => void;
   onRecommendations: () => void;
-  onScan: () => void;
+  onImport: () => void;
   onTag: (card: DeckCard) => void;
   sectionId: BuilderSectionId;
   tab: BuilderTab;
@@ -2440,9 +2439,9 @@ function ExpandedSectionPanel({
           </button>
         </div>
         <div className="expanded-actions">
-          <button className="secondary-action" onClick={onScan} type="button">
-            <ScanLine aria-hidden="true" />
-            Scan Into Section
+          <button className="secondary-action" onClick={onImport} type="button">
+            <Archive aria-hidden="true" />
+            Import Into Section
           </button>
           <button className="secondary-action" onClick={onRecommendations} type="button">
             <Sparkles aria-hidden="true" />

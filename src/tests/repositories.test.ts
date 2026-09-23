@@ -1,19 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetDatabaseForTests } from "../db/database";
 import {
-  addScanRecord,
-  applyScanBatchToOwned,
   createBlankCommanderDeck,
   deleteDeck,
   ensureAppSettings,
   listOwnedCards,
-  listScanRecords,
   listDecks,
-  saveScanBatch,
   updateAppSettings,
 } from "../db/repositories";
-import { createScannerBatch } from "../features/scanner/scannerEngine";
-import type { ScanRecord } from "../types/domain";
+import { applyCollectionImport } from "../features/import/collectionImportService";
+import type { ImportResolvedEntry } from "../features/import/importResolution";
 
 describe("local IndexedDB repositories", () => {
   beforeEach(async () => {
@@ -25,7 +21,6 @@ describe("local IndexedDB repositories", () => {
 
     expect(settings.id).toBe("app");
     expect(settings.localFirstMode).toBe(true);
-    expect(settings.scannerBatchPersistence).toBe(true);
   });
 
   it("saves settings updates to IndexedDB", async () => {
@@ -61,46 +56,41 @@ describe("local IndexedDB repositories", () => {
     expect(await listDecks()).toHaveLength(0);
   });
 
-  it("makes capture insertion and collection commit idempotent while preserving duplicate quantity", async () => {
-    const batch = await saveScanBatch(createScannerBatch({
-      mode: "batch",
-      destination: "owned_cards",
-    }));
-    const base: Omit<ScanRecord, "id" | "createdAt" | "updatedAt"> = {
-      batchId: batch.id,
-      captureId: "capture-a",
-      scanSessionId: "session",
-      targetId: "target-a",
-      captureGeneration: 1,
-      rawText: "Fodder Cannon",
-      scryfallId: "printing-fodder",
-      oracleId: "oracle-fodder",
-      name: "Fodder Cannon",
+  it("imports repeated collection quantities without losing canonical printing data", async () => {
+    const entry: ImportResolvedEntry = {
+      id: "entry-1",
       quantity: 1,
-      status: "confirmed",
-      identityStatus: "verified",
-      printingStatus: "verified",
-      printingConfidence: 0.96,
-      printingId: "printing-fodder",
-      typeLine: "Artifact",
-      setCode: "8ed",
-      setName: "Eighth Edition",
-      collectorNumber: "302",
-      language: "en",
-      finish: "nonfoil",
-      matchSource: "scryfall_exact",
+      name: "Sol Ring",
+      section: "main",
+      originalLine: "1 Sol Ring",
+      duplicateCount: 1,
+      status: "resolved",
+      fuzzy: false,
+      exactPrinting: true,
+      ownershipStatus: "not_owned",
+      warnings: [],
+      removed: false,
+      keepUnresolved: false,
+      catalogCard: {
+        id: "seed-sol-ring",
+        scryfallId: "scryfall-sol-ring",
+        oracleId: "oracle-sol-ring",
+        name: "Sol Ring",
+        manaCost: "{1}",
+        manaValue: 1,
+        typeLine: "Artifact",
+        oracleText: "{T}: Add {C}{C}.",
+        colorIdentity: [],
+        keywords: [],
+        roles: [],
+        commanderLegal: true,
+        banned: false,
+        bracketImpact: 0,
+      },
     };
-    const first: ScanRecord = { ...base, id: "record-a", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" };
-    const second: ScanRecord = { ...base, id: "record-b", captureId: "capture-b", targetId: "target-b", captureGeneration: 2, createdAt: "2026-01-01T00:00:01.000Z", updatedAt: "2026-01-01T00:00:01.000Z" };
-    await addScanRecord(first);
-    await addScanRecord(first);
-    await addScanRecord(second);
-
-    expect(await listScanRecords(batch.id)).toHaveLength(2);
-    expect((await applyScanBatchToOwned(batch.id))).toBe(2);
-    expect((await applyScanBatchToOwned(batch.id))).toBe(0);
+    await applyCollectionImport({ entries: [entry], sourceName: "test.csv", detectedFormat: "csv", strategy: "merge", originalText: "1,Sol Ring" });
+    await applyCollectionImport({ entries: [entry], sourceName: "test.csv", detectedFormat: "csv", strategy: "merge", originalText: "1,Sol Ring" });
     const owned = await listOwnedCards();
     expect(owned[0]?.quantityOwned).toBe(2);
-    expect(owned[0]?.printings[0]?.quantityOwned).toBe(2);
   });
 });

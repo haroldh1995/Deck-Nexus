@@ -43,16 +43,6 @@ export function loadLocalProfile(
       deviceTiltParallax: settings.deviceTiltParallax,
       glowIntensity: settings.glowIntensity,
     },
-    scannerPreferences: {
-      scannerBatchPersistence: settings.scannerBatchPersistence,
-      scannerConfirmationSound: settings.scannerConfirmationSound,
-      scannerConfirmationVolume: settings.scannerConfirmationVolume,
-      scannerHapticConfirmation: settings.scannerHapticConfirmation,
-      scannerDefaultMode: settings.scannerDefaultMode,
-      scannerPreferredDestination: settings.scannerPreferredDestination,
-      scannerPreviewQuality: settings.scannerPreviewQuality,
-      scannerPerformanceMode: settings.scannerPerformanceMode,
-    },
     backupPreferences: {
       localFirstMode: true,
       scryfallBulkDownloadWifiOnly: settings.scryfallBulkDownloadWifiOnly,
@@ -98,10 +88,6 @@ export function compareProfiles(
     JSON.stringify(localProfile.accessibilitySettings) !==
     JSON.stringify(incomingProfile.accessibilitySettings)
       ? "accessibilitySettings"
-      : "",
-    JSON.stringify(localProfile.scannerPreferences) !==
-    JSON.stringify(incomingProfile.scannerPreferences)
-      ? "scannerPreferences"
       : "",
   ].filter(Boolean);
 

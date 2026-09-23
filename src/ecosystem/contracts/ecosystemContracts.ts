@@ -14,7 +14,7 @@ export type DeckNexusCapability =
   | "local_deck_builder"
   | "local_collection_manager"
   | "local_card_search"
-  | "local_scanner"
+  | "local_collection_import"
   | "local_deck_analysis"
   | "local_backup_restore"
   | "canonical_snapshot_export"

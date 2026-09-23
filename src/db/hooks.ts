@@ -74,11 +74,9 @@ export function useOwnedCards() {
     };
 
     window.addEventListener("deck-nexus:owned-updated", refresh);
-    window.addEventListener("deck-nexus:scanner-updated", refresh);
     return () => {
       mounted = false;
       window.removeEventListener("deck-nexus:owned-updated", refresh);
-      window.removeEventListener("deck-nexus:scanner-updated", refresh);
     };
   }, []);
 

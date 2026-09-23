@@ -373,3 +373,22 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 - Live production smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?scanner-repair=3eac577` used headless Chromium at `393x844` with service workers blocked. The deployed scanner loaded with no page errors, `Scan Cards` heading, camera permission surface, no primary `Start Batch` requirement, and body/document widths both `393px`. Current bundle was `index-B_DYEo4z.js`.
 - Live verification covered route/layout/permission UI only. Physical Fodder Cannon, physical iPhone Safari, live OCR, exact physical printing, and hardware-feeder verification were unavailable and are not claimed.
 - Final git state is clean. Home Screen visual/animation files were not changed. Master Product Completion remains paused; do not resume unrelated work automatically.
+
+## COLLECTION-FIRST RESTRUCTURE
+- CURRENT TASK: DECK NEXUS MASTER RESTRUCTURE. Camera scanning is removed; the larger unrelated completion effort remains paused.
+- ARCHITECTURE: `/import` is now the Import Center. It detects CSV, plain text, Arena-style text, JSON, and ZIP inputs; resolves canonical Scryfall records; previews entries; supports merge, confirmed replace, and custom-folder strategies; and keeps local import history with undo data.
+- SUPPORTED SOURCES: Moxfield, Archidekt, ManaBox, Dragon Shield, TCGplayer, Card Kingdom, Deckbox, Deckstats, Scryfall, MTG Arena, MTGGoldfish, generic CSV, plain text, JSON, and Deck Nexus exports when their public format is compatible.
+- STORAGE: `collectionImports` is durable IndexedDB state. Owned records receive canonical Scryfall image and printing metadata where resolved; unresolved rows remain in import history and are never silently discarded. Legacy scanner tables are retired by the database migration without runtime scanner code.
+- REMOVAL: scanner feature modules, camera/OCR dependencies, scanner routes, settings, CSS, tests, E2E harnesses, user-facing copy, ecosystem capabilities, and scanner documentation were removed. Home visual/animation behavior was retained while its former scan destination became Import Center.
+- VALIDATION: typecheck, lint, production build, focused import/repository tests, full unit suite (after final parser/service changes pending), and full E2E (after final parser/service changes pending). Physical-device scanning is no longer applicable to the product.
+- GIT STATE: collection-first restructure is uncommitted.
+- DEPLOYMENT STATE: previous deployed scanner commit remains the last live deployment; this restructure is not pushed or live-verified.
+- NEXT ACTION: run final regression, review diff, commit, push, wait for GitHub Pages, and verify the live Import Center route.
+
+## COLLECTION-FIRST RESTRUCTURE VALIDATION CHECKPOINT
+- Validation completed: full unit suite `33 files / 163 tests`; full E2E `40 passed` across Chromium and mobile Chromium; `npx tsc -b --pretty false`; `npm run lint -- --quiet`; `npm run build`; and `git diff --check`.
+- E2E specifically covers Import Center file/paste preview and import flow on desktop and mobile, Home route coverage, collection/deck workflows, startup, responsiveness, and interaction performance.
+- Scanner removal is complete in the application runtime. The only remaining scanner-related migration strings are dynamically constructed legacy IndexedDB table names used solely to retire old data during database upgrade.
+- GIT STATE: implementation is ready for commit and push.
+- DEPLOYMENT STATE: not yet deployed; live Import Center verification remains pending.
+- NEXT ACTION: commit, push, verify GitHub Actions and GitHub Pages, then smoke-test the deployed Import Center route.

@@ -13,12 +13,12 @@ The current build establishes the Commander-focused app foundation:
 - Deck Builder editing with Commander color identity warnings, maybeboard/cuts, bracket tracker foundation, and local persistence.
 - Live Scryfall Card Search with universal Add To workflows, multi-select, deck-aware warnings, owned registration, Wishlist, Upgrade Lists, Custom Collections, and undo.
 - Owned Cards registry with quantities, exact printing fields, tags, notes, favorites, storage location, and duplicate/share status.
-- Real camera scanner with permission flow, live preview, continuous batch recognition, OCR/Scryfall resolution, toggleable scan confirmation sound, Automatic Feeder Mode, Stacking Feeder Mode, tray-full prompts, and local recovery.
+- Import Center with source detection, Scryfall matching, preview, merge/replace/folder strategies, history, undo, and local recovery.
 - Analyzer, Recommendation Panel, Smart Build setup/review/apply flows, Maybeboard/Cuts history controls, decision timeline, recommendation feedback, replacement records, and restorable local deck versions.
 - Settings saved locally, including reduced motion, static home controls, glow intensity, text size, high contrast, device tilt parallax opt-in, and Home performance modes.
-- Strong TypeScript domain models for decks, owned cards, tags, scanner data, imports, analysis, exports, backups, and future smart-build results.
+- Strong TypeScript domain models for decks, owned cards, tags, collection imports, analysis, exports, backups, and future smart-build results.
 - Route shell for the full initial surface area.
-- A small top-right Home button on every non-Home route returns directly to the Home Screen while protecting unfinished scanner batches.
+- A small top-right Home button on every non-Home route returns directly to the Home Screen.
 
 ## Interactive Nexus Chamber Home
 
@@ -73,8 +73,7 @@ The active workflow `.github/workflows/deploy-pages.yml` runs `npm ci`, lint, un
 
 ## Global Navigation
 
-Every non-Home screen includes a small unlabeled top-right Home button with the accessible label `Return to Home`. It uses the app router rather than a browser reload, is hidden on the Home route, and keeps the previous route in normal browser history. Scanner routes are protected: if a recoverable batch exists, Home shows an unfinished-batch prompt with Save Batch and Go Home, Review Batch, and Continue Scanning options so scan data is not lost.
-
+Every non-Home screen includes a small unlabeled top-right Home button with the accessible label `Return to Home`. It uses the app router rather than a browser reload, is hidden on the Home route, and keeps the previous route in normal browser history.
 ## Local-First Rules
 
 Deck Nexus stores app data in the browser's IndexedDB and does not require login or cloud sync. The app may display current or cached pricing references, deck value, collection value, and trade-value information. Pricing is informational and remains separate from legality, BoardState validation, ownership quantity, and gameplay checksums. Deck Nexus does not provide checkout, vendor inventory, marketplace listings, or purchasing flows.
@@ -103,8 +102,8 @@ Card organization:
 Controls and accessibility:
 
 - Every section is an independent horizontal scroll archive with previous/next controls, touch or trackpad scrolling, keyboard Left/Right/Home/End support, and screen-reader range text.
-- Section Add opens the local manual add flow with Commander rule warnings. Scan Into Section routes to the scanner surface with the deck and target section in the URL.
-- Expanded section panels include section search, sort, filter, scan, recommendations entry, multi-select foundations, move, tag, protect, cut, and remove actions.
+- Section Add opens the local manual add flow with Commander rule warnings. Import Into Section opens the collection import flow with the deck and target section in the URL.
+- Expanded section panels include section search, sort, filter, import, recommendations entry, multi-select foundations, move, tag, protect, cut, and remove actions.
 - Reduced Motion stops nonessential workspace animation while preserving glow, section scrolling, and all deck-editing functions. High Contrast increases border clarity through the app setting.
 
 ## Card Search
@@ -113,7 +112,7 @@ The Card Search route is now a live Scryfall-backed, local-first search surface.
 
 - Uses Scryfall `/cards/autocomplete` for predictive card-name suggestions after a short debounce.
 - Uses `/cards/search` for full search, advanced Scryfall syntax, filters, commander legality, pagination, and structured result pages.
-- Uses `/cards/named` with `exact` and `fuzzy` for selected suggestions, misspellings, import correction, scanner correction, and exact typed names.
+- Uses `/cards/named` with `exact` and `fuzzy` for selected suggestions, misspellings, import correction, collection import correction, and exact typed names.
 - Uses `/cards/:id` for known-card hydration and `/cards/collection` for batched identifier resolution.
 - Uses `/bulk-data` metadata for optional offline card database setup. Large offline downloads remain explicit user actions.
 - Supports partial names, single-word and multi-word queries, exact phrase matching, type/subtype search, oracle text search, keyword ability search, and Scryfall advanced syntax such as `t:creature`, `o:"draw a card"`, `id:wu`, `legal:commander`, `mv<=2`, and `set:mh3`.
@@ -121,9 +120,9 @@ The Card Search route is now a live Scryfall-backed, local-first search surface.
 - Result views include Compact, Image/Card Tile, and Grid.
 - Badges distinguish Owned, Missing, In Deck, Legal, Outside Identity, Commander Legal, Not Commander Legal, Duplicate, and Manual Search Result.
 - Manual search can show cards outside the active commander's identity, but adding one to Main Deck uses the soft Commander warning flow with Add Anyway, Send to Maybeboard, and Cancel.
-- The Deck Builder Search glyph opens this route with the active `deckId`; scanner correction preserves the active batch and returns to review, and import correction preserves unresolved import context.
-- Selecting an autocomplete suggestion fills the field and resolves the card inside Search. It does not open Card Detail, add a card, change routes, open Scanner, or alter decks automatically.
-- Result actions are explicit and context-aware. Global Search defaults to View Card, deck Search defaults to Add to Current Deck, owned Search defaults to Register Owned, commander Search defaults to Start New Deck, scanner correction defaults to Use This Match, and import correction defaults to Resolve Entry.
+- The Deck Builder Search glyph opens this route with the active `deckId`; collection import correction preserves the active batch and returns to review, and import correction preserves unresolved import context.
+- Selecting an autocomplete suggestion fills the field and resolves the card inside Search. It does not open Card Detail, add a card, change routes, open Import Center, or alter decks automatically.
+- Result actions are explicit and context-aware. Global Search defaults to View Card, deck Search defaults to Add to Current Deck, owned Search defaults to Register Owned, commander Search defaults to Start New Deck, collection import correction defaults to Use This Match, and import correction defaults to Resolve Entry.
 - Every Scryfall result exposes `Add To...` as a secondary action. One card or multiple selected cards can be deliberately added to Current Deck, Another Existing Deck, New Deck, Owned Cards, Wishlist, a deck Maybeboard, a deck Cuts directory, an Upgrade List, Favorites, a Custom Collection, or a New Custom Collection.
 - `Add To...` opens an in-route overlay. It does not navigate automatically, reset the query, clear filters, clear selected cards, reset result position, open Card Detail, or add anything before confirmation.
 - Multi-select mode supports selecting visible results, clearing selection, and batch Add To with a selected-card count.
@@ -133,7 +132,7 @@ The Card Search route is now a live Scryfall-backed, local-first search surface.
 - Wishlist is a first-class planning list, not a marketplace. It stores desired quantity, priority, intended deck data, notes, tags, source query, ownership state, and optional collector price references without vendor checkout links.
 - Upgrade Lists and Custom Collections are local directories that can be created from Search, favorited, and revisited from the Library organization links.
 - Successful destination actions show a confirmation with Undo and View Destination. Undo restores persisted data such as deck additions, owned-card changes, wishlist quantity merges, favorites, list entries, collections, and new decks where safe.
-- Search-state preservation includes raw input, committed query, filters, scope, result page, loaded results, result scroll position, selected cards, active deck context, scanner correction context, and import correction context.
+- Search-state preservation includes raw input, committed query, filters, scope, result page, loaded results, result scroll position, selected cards, active deck context, collection import correction context, and import correction context.
 
 Search stability:
 
@@ -177,68 +176,11 @@ Owned Cards is a planning-only local registry. Users can build with cards they d
 - Add owned cards manually with quantity, mana cost, type line, color identity, tags, notes, favorite state, storage location, duplicate/share flag, and exact-printing fields.
 - Quantity can be increased, decreased, or removed locally.
 - Duplicate/share flags are `none`, `needs_review`, `multiple_owned`, and `sharing_between_decks`; duplicates are flagged, never blocked.
-- Views are prepared for All Owned Cards, Recently Scanned, Favorites, By Color Identity, By Card Type, By Tag, By Deck Usage, Unused Owned Cards, Missing From Decks, Exact Printings, and Extras/Tokens.
+- Views are prepared for All Owned Cards, Recently Imported, Favorites, By Color Identity, By Card Type, By Tag, By Deck Usage, Unused Owned Cards, Missing From Decks, Exact Printings, and Extras/Tokens.
 
-## Scanner And Batch Persistence
+## Import Center
 
-The Scan Cards route is a real browser-camera scanner with a simulation/manual fallback for automated tests and unsupported devices. It requests video-only camera access after the user taps Allow Camera, prefers the rear/environment camera, displays a live `<video>` preview, samples stable card candidates, resolves cards through local OCR plus Scryfall lookups, and writes accepted scans into the persistent batch immediately.
-
-Modes:
-
-- Scan to Owned Cards
-- Scan Directly Into Deck
-- Scan Into Section
-- Batch Scan
-- Correction Mode
-- Automatic Feeder Mode
-- Stacking Feeder Mode
-
-Camera and recognition architecture:
-
-- `src/features/scanner/scannerCamera.ts` centralizes secure-context checks, `getUserMedia` constraints, rear-camera fallback, device enumeration, stream cleanup, torch support, zoom support, and browser error mapping.
-- `src/features/scanner/frameAnalysis.ts` samples downscaled frames at a controlled rate, estimates card-like boundaries, lighting, glare, sharpness, stability, too-close coverage, and duplicate fingerprints without requiring a black or white background.
-- `src/features/scanner/scannerRecognition.ts` lazily loads Tesseract.js, OCRs the captured stable frame, extracts likely name/set/collector candidates, resolves exact/fuzzy matches through the centralized Scryfall services, and queues unresolved offline scans when lookup is unavailable.
-- Continuous scanning writes each accepted result to IndexedDB before playing feedback. The scanner does not ask for confirmation after every card.
-- The test harness can supply fake camera media and deterministic scan cards; real camera mode remains the default when browser camera APIs are available.
-
-Camera permissions and privacy:
-
-- Deck Nexus checks `window.isSecureContext`, `navigator.mediaDevices`, and `getUserMedia` before requesting access. GitHub Pages is HTTPS and supports the scanner route where the browser/device allows camera capture.
-- The app requests video only and never requests microphone permission.
-- Live video remains on the device. Continuous video is not uploaded or stored.
-- Card lookup requests may send OCR text, Scryfall IDs, or search terms to Scryfall. Correction thumbnails are stored locally only when the scanner setting allows them.
-- Camera-denied, insecure-context, no-device, device-busy, overconstrained, and stream-error states keep the current batch saved and offer retry/manual-entry paths.
-
-Sound, haptics, and settings:
-
-- Accepted scans play one short Web Audio confirmation beep only after duplicate suppression passes and the scan record is successfully written to the batch.
-- The scanner page has a small speaker toggle, and Settings includes Confirmation Sound, Confirmation Volume, Haptic Confirmation, Default Scanner Mode, Preferred Destination, Stable Frame Duration, Tray-Full Timeout, Preview Quality, Performance Mode, Store Correction Thumbnails, and Save Unresolved Camera Scans.
-- Haptic confirmation uses `navigator.vibrate` only where supported and enabled.
-- If browser audio is suspended, Deck Nexus primes/resumes the audio context from the Allow Camera gesture and continues scanning even if sound is unavailable.
-
-Batch behavior:
-
-- Scanner batches persist in IndexedDB through pause, route changes, refresh, tray-full prompts, and review interruptions.
-- Scan records store confidence, match source, Scryfall/oracle IDs, set/collector details, thumbnails where allowed, frame fingerprints, timestamps, destination, and unresolved/correction data.
-- Batch lifecycle states include scanning, paused, needs review, reviewing, partially applied, applied, saved for later, and discarded.
-- Batch Review supports confirming high-confidence records, reviewing assumed records, correcting/removing selected records, applying confirmed records, saving unresolved records for later, and undoing/discarding a batch.
-- Destinations include Owned Cards, Current Deck, Main Deck, Maybeboard, Cuts, Extras/Tokens, New Deck, New List, Existing List, and Custom Collection.
-
-Feeder behavior:
-
-- Automatic Feeder Mode follows idle, card entering, stable, capture, resolve, queue, wait for removal, and ready states.
-- Stacking Feeder Mode never relies on card removal detection. Too-close distortion is treated as the normal new-card-arrival cue.
-- If too-close/unreadable state exceeds the timeout, the scanner pauses with: "Tray may be full. Empty the catch tray, then resume scanning." The batch queue remains preserved.
-- After Empty Tray Done, temporary fingerprints and frame baselines reset, the same batch resumes, and the last accepted card is not duplicated.
-- Tokens/extras can be marked separately and do not count toward Commander totals.
-
-Browser limitations:
-
-- Camera capture requires HTTPS or localhost and a browser that implements `navigator.mediaDevices.getUserMedia`.
-- Torch, optical zoom, focus modes, vibration, and camera labels depend on browser and device support; unsupported controls are hidden instead of simulated.
-- iOS Safari/PWA may require site-level permission changes in Safari or device settings, does not expose every camera capability, and may suspend streams when backgrounded.
-- Android Chrome generally exposes richer camera and vibration capabilities, but users may still need both site and system camera permissions.
-- Desktop webcams work when present, with camera selection shown only after permission reveals available devices.
+The Import Center accepts exports from Moxfield, Archidekt, ManaBox, Dragon Shield, TCGplayer, Card Kingdom, Deckbox, Deckstats, Scryfall, MTG Arena, MTGGoldfish, generic CSV, plain text, JSON, and Deck Nexus packages. It detects common formats, previews Scryfall matches, supports merge/replace/folder strategies, preserves unmatched entries, and keeps undoable import history locally.
 
 ## Search Directories
 
@@ -282,11 +224,11 @@ Smart Build:
 Maybeboard, Cuts, Timeline, and Versions:
 
 - Maybeboard entries track source, notes/reason, role tags, goal matches, ownership state, and remain excluded from Commander count.
-- Maybeboard actions include Move to Main Deck, Move to Cuts, View Details, Find Similar, Compare, Mark Protected, Edit Tags/Notes, Confirm Ownership, Scan Copy, and Remove from Maybeboard.
+- Maybeboard actions include Move to Main Deck, Move to Cuts, View Details, Find Similar, Compare, Mark Protected, Edit Tags/Notes, Confirm Ownership, Import Copy, and Remove from Maybeboard.
 - Cuts store rejected or removed cards with cut reason, notes, possible replacement links, previous section/version metadata, and local history.
 - Cut reasons include Too high mana value, Low synergy, Off-theme, Role overlap, Above Bracket Lock, Not owned, Better replacement found, Too many of this role, Mana curve issue, Commander color issue, Testing cut, Manual cut, and Other.
 - Cuts actions include Restore to Main Deck, Move to Maybeboard, View Details, Edit Cut Reason, Find Similar, Compare with Replacement, and Delete From Cuts.
-- Decision Timeline records adds, maybeboard moves, cuts, restores, replacements, Smart Build applies, imports, scanner batches, ownership confirmations, bracket changes, and goal changes, with filters for each event family.
+- Decision Timeline records adds, maybeboard moves, cuts, restores, replacements, Smart Build applies, imports, collection imports, ownership confirmations, bracket changes, and goal changes, with filters for each event family.
 
 ## Scripts
 
@@ -316,4 +258,4 @@ public/assets  App assets
 
 ## Current Deferred Work
 
-EDHREC-compatible external datasets, groups/tags management depth, backup/restore depth, and goldfish/test-play simulation remain future work. Scanner recognition now uses live camera capture, local frame analysis, OCR, Scryfall resolution, asynchronous collector price enrichment, and persistent batch recovery; future scanner depth can add stronger perspective correction and richer local visual fingerprint databases without changing the user-facing batch model. The current implementations remain local-first collector foundations with informational prices and no marketplace checkout or commerce links.
+EDHREC-compatible external datasets, groups/tags management depth, backup/restore depth, and goldfish/test-play simulation remain future work. The current implementation remains a local-first collection and deck foundation with informational prices and no marketplace checkout or commerce links.

@@ -16,7 +16,7 @@ The gameplay checksum is derived from normalized gameplay identity only:
 - unresolved gameplay entries
 - gameplay identity version
 
-It excludes timestamps, snapshot IDs, private notes, ownership inventory, scanner
+It excludes timestamps, snapshot IDs, private notes, ownership inventory, import
 metadata, UI ordering, and route/runtime state.
 
 ## Full Snapshot Checksum

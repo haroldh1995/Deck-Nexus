@@ -270,6 +270,14 @@ function splitCsvLine(line: string): string[] {
   return cells;
 }
 
+function normalizeColumnName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 export function parseCsvDecklist(
   sourceText: string,
   options: { deckName?: string } = {},
@@ -281,18 +289,18 @@ export function parseCsvDecklist(
     .split("\n")
     .map(splitCsvLine)
     .filter((row) => row.some(Boolean));
-  const header = rows[0]?.map((cell) => cell.toLowerCase()) ?? [];
-  const hasHeader = header.some((cell) => ["name", "card", "card name"].includes(cell));
+  const header = rows[0]?.map(normalizeColumnName) ?? [];
+  const hasHeader = header.some((cell) => ["name", "card", "card name", "product name", "cardname"].includes(cell));
   const dataRows = hasHeader ? rows.slice(1) : rows;
   const indexOf = (names: string[], fallback: number) => {
     const found = names.map((name) => header.indexOf(name)).find((index) => index >= 0);
     return found ?? fallback;
   };
-  const quantityIndex = hasHeader ? indexOf(["quantity", "qty", "count"], 0) : 0;
-  const nameIndex = hasHeader ? indexOf(["name", "card", "card name"], 1) : 1;
-  const setIndex = hasHeader ? indexOf(["set", "set code", "setcode"], -1) : 2;
-  const collectorIndex = hasHeader ? indexOf(["collector number", "collector", "number", "cn"], -1) : 3;
-  const sectionIndex = hasHeader ? indexOf(["section", "zone", "board"], -1) : 4;
+  const quantityIndex = hasHeader ? indexOf(["quantity", "qty", "count", "quantity owned", "owned", "number owned"], 0) : 0;
+  const nameIndex = hasHeader ? indexOf(["name", "card", "card name", "product name", "cardname"], 1) : 1;
+  const setIndex = hasHeader ? indexOf(["set", "set code", "setcode", "edition", "expansion", "set name"], -1) : 2;
+  const collectorIndex = hasHeader ? indexOf(["collector number", "collector", "number", "cn", "collector number"], -1) : 3;
+  const sectionIndex = hasHeader ? indexOf(["section", "zone", "board", "binder", "list", "folder"], -1) : 4;
   const entries: ParsedImportEntry[] = [];
 
   for (const row of dataRows) {
@@ -324,6 +332,28 @@ export function parseCsvDecklist(
     warnings,
     errors: finalized.length === 0 ? ["No recognizable card rows were found."] : [],
   };
+}
+
+export type CollectionImportFormat = "csv" | "plain_text" | "mtg_arena" | "json" | "zip_package";
+
+export function detectCollectionImportFormat(sourceText: string, fileName = ""): CollectionImportFormat {
+  const extension = fileName.toLowerCase().split(".").pop();
+  if (extension === "zip") return "zip_package";
+  if (extension === "json" || /^\s*(?:\[|\{)/.test(sourceText)) return "json";
+  if (extension === "csv" || sourceText.split(/\r?\n/, 1)[0]?.includes(",")) return "csv";
+  const parsed = parseDecklistText(sourceText);
+  return parsed.format === "mtg_arena" ? "mtg_arena" : "plain_text";
+}
+
+export function parseCollectionSource(
+  sourceText: string,
+  options: { deckName?: string; fileName?: string; bytes?: Uint8Array } = {},
+): ParsedDeckImport {
+  const format = detectCollectionImportFormat(sourceText, options.fileName);
+  if (format === "zip_package" && options.bytes) return parseZipDeckImport(options.bytes);
+  if (format === "json") return parseStructuredDeckImport(sourceText, { deckName: options.deckName ?? "Imported Collection" });
+  if (format === "csv") return parseCsvDecklist(sourceText, { deckName: options.deckName ?? "Imported Collection" });
+  return parseDecklistText(sourceText, { deckName: options.deckName ?? "Imported Collection" });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

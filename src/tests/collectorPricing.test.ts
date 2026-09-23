@@ -81,7 +81,7 @@ function printing(overrides: Partial<OwnedPrinting> = {}): OwnedPrinting {
     priceUpdatedAt: now,
     tradeStatus: "not_for_trade",
     storageLocation: "Binder 1",
-    lastScannedAt: now,
+    lastImportedAt: now,
     ...overrides,
   };
 }
@@ -111,7 +111,7 @@ function ownedCard(overrides: Partial<OwnedCard> = {}): OwnedCard {
     storageLocation: "Binder 1",
     duplicateFlag: "none",
     deckUsage: {},
-    lastScannedAt: now,
+    lastImportedAt: now,
     createdAt: now,
     updatedAt: now,
     ...overrides,

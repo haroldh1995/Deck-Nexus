@@ -43,17 +43,17 @@ No battlefield, zone transition, stack, turn, or gameplay state is exported.
 
 ## Owned Card and Printing
 
-Owned Card fields include owned-card ID, oracle ID, Scryfall ID, name, quantity owned, printings, card text metadata, tags, notes, favorite state, duplicate flag, deck usage, scan timestamps, schema versions, and producer metadata.
+Owned Card fields include owned-card ID, oracle ID, Scryfall ID, name, quantity owned, printings, card text metadata, tags, notes, favorite state, duplicate flag, deck usage, import timestamps, schema versions, and producer metadata.
 
-Printing fields include printing ID, Scryfall ID, oracle ID, set code/name, collector number, language, foil flag, finish, condition, quantity, image URI, cached price reference, source/freshness timestamps, manual reference value, trade status, storage, collector flags, rarity/release metadata, last scanned timestamp, and a null purchase metadata field. Marketplace checkout links are not exported.
+Printing fields include printing ID, Scryfall ID, oracle ID, set code/name, collector number, language, foil flag, finish, condition, quantity, image URI, cached price reference, source/freshness timestamps, manual reference value, trade status, storage, collector flags, rarity/release metadata, last imported timestamp, and a null purchase metadata field. Marketplace checkout links are not exported.
 
 ## Collection Snapshot
 
-Fields include collection metadata, owned cards, value statistics, cards missing prices, set summaries, color summaries, type summaries, rarity summaries, favorites, scanner metadata, schema versions, application metadata, export metadata, and checksum. Unknown prices remain unavailable rather than zero.
+Fields include collection metadata, owned cards, value statistics, cards missing prices, set summaries, color summaries, type summaries, rarity summaries, favorites, import metadata, schema versions, application metadata, export metadata, and checksum. Unknown prices remain unavailable rather than zero.
 
 ## Profile Snapshot
 
-Fields include local profile ID, optional display/avatar fields, appearance settings, scanner settings, accessibility settings, backup preferences, application preferences, favorite commander/color/archetype fields, and explicit null/empty Hub identity, friends, and multiplayer presence fields.
+Fields include local profile ID, optional display/avatar fields, appearance settings, import settings, accessibility settings, backup preferences, application preferences, favorite commander/color/archetype fields, and explicit null/empty Hub identity, friends, and multiplayer presence fields.
 
 Deck Nexus does not export Hub identity, friend graph, notifications, presence, or fake cloud IDs.
 

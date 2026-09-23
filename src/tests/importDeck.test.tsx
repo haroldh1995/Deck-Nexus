@@ -7,9 +7,12 @@ import { createZipArchive } from "../ecosystem/export/zip";
 import { getDeck, listDecks, listOwnedCards, upsertOwnedCard } from "../db/repositories";
 import { resetDatabaseForTests } from "../db/database";
 import { ImportDeckScreen } from "../features/import/ImportDeckScreen";
+import { ImportCenterScreen } from "../features/import/ImportCenterScreen";
 import {
   extractUncompressedZipEntries,
   parseCsvDecklist,
+  detectCollectionImportFormat,
+  parseCollectionSource,
   parseDecklistText,
   parseStructuredDeckImport,
   parseZipDeckImport,
@@ -162,6 +165,29 @@ describe("deck import parsing and review", () => {
     ]);
     expect(Object.keys(extractUncompressedZipEntries(zipBytes))).toContain("deck-snapshot.json");
     expect(parseZipDeckImport(zipBytes).deckName).toBe("ZIP Deck");
+  });
+
+  it("detects collection exports and accepts common marketplace CSV headers", () => {
+    const csv = parseCollectionSource("Product Name,Quantity,Set Code,Collector Number\nSol Ring,3,CMM,396", { fileName: "manabox.csv" });
+    expect(detectCollectionImportFormat("Product Name,Quantity\nSol Ring,3", "collection.csv")).toBe("csv");
+    expect(csv.entries[0]).toMatchObject({ name: "Sol Ring", quantity: 3, setCode: "cmm", collectorNumber: "396" });
+    expect(parseCollectionSource("4 Sol Ring", { fileName: "arena.txt" }).entries[0].quantity).toBe(4);
+  });
+
+  it("previews and commits a canonical collection import without camera state", async () => {
+    render(
+      <SettingsProvider>
+        <MemoryRouter initialEntries={["/import"]}>
+          <Routes><Route path="/import" element={<ImportCenterScreen />} /></Routes>
+        </MemoryRouter>
+      </SettingsProvider>,
+    );
+    await userEvent.type(screen.getByLabelText("Paste a collection or decklist"), "2 Sol Ring");
+    await userEvent.click(screen.getByRole("button", { name: /Preview import/i }));
+    await screen.findByRole("heading", { name: "Review before importing" });
+    await userEvent.click(screen.getByRole("button", { name: /Import recognized cards/i }));
+    await screen.findByText(/cards imported/i);
+    expect((await listOwnedCards())[0]).toMatchObject({ name: "Sol Ring", quantityOwned: 2 });
   });
 
   it("rejects malformed structured imports and never treats unresolved cards as zero-value success", async () => {

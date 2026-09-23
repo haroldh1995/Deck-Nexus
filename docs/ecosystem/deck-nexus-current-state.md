@@ -12,17 +12,17 @@ This audit describes the current Deck Nexus web app as found in this repository.
 
 ## Feature Inventory
 
-- Home Screen: orbit cards for Create Deck, Deck Library, Card Search, Scan Cards, Owned Cards, Import Deck, Analyzer, Deck Groups, Tags, Test Deck, Export, and Settings. Dynamic favorites can appear in the orbit.
+- Home Screen: orbit cards for Create Deck, Deck Library, Card Search, Import Center, Owned Cards, Import Deck, Analyzer, Deck Groups, Tags, Test Deck, Export, and Settings. Dynamic favorites can appear in the orbit.
 - Deck creation: creates local Commander decks from blank input.
 - Deck library: lists local decks and opens Deck Builder.
 - Deck Builder: manages commander/main/maybeboard/cuts cards, metadata, notes, tags, protection, moves, cuts, replacements, duplication, deletion, and version restore.
 - Commander/color identity: local guidance in `commanderRules`, `colorIdentity`, and deck analysis. This is planning guidance, not BoardState rules authority.
 - Card Search: Scryfall-backed search, autocomplete, cached results, Add To flows, wishlist, upgrade lists, custom collections, favorites, and undo transactions.
-- Scanner: real camera permission/opening flow where supported, live preview, local recognition pipeline, scanner modes, batch persistence, sound/haptic settings, correction/review flows, and manual simulation/test harness support.
+- import: real source permission/opening flow where supported, live preview, local recognition pipeline, import modes, batch persistence, sound/haptic settings, correction/review flows, and manual simulation/test harness support.
 - Owned Cards: local owned-card registry and printings.
 - Analyzer/Smart Build/Recommend: local analysis snapshots, recommendations, Smart Build proposals, maybeboard/cuts, version history, replacement records, and feedback.
 - Directories: wishlist, upgrade lists, and custom collections.
-- Settings: interface/accessibility, local data, scanner, Scryfall cache, bracket defaults, and ecosystem readiness status.
+- Settings: interface/accessibility, local data, import, Scryfall cache, bracket defaults, and ecosystem readiness status.
 - Export: canonical Deck Snapshot, Collection Snapshot, Profile Snapshot, JSON, compressed JSON, ZIP package, Arena text exports, local full-backup export/restore, immutable snapshot exports, and BoardState handoff packages generated from local data.
 - Foundation routes: Groups, Tags, and Test Deck show truthful local/unavailable status. Import is an active local workflow that parses common decklist formats into a review screen before saving a normal Deck Nexus deck.
 
@@ -35,7 +35,6 @@ This audit describes the current Deck Nexus web app as found in this repository.
 | `/library` | Deck library | decks | deck deletion/duplication via linked actions | Yes | Deck selection source later | No |
 | `/deck-builder/:deckId?` | Deck editing | decks, deck cards, owned cards | deck cards, versions, events | Yes | Snapshot source later | No |
 | `/search` | Card search | Scryfall cache/live, decks, owned cards | decks, owned cards, directories, undo | Yes plus Scryfall lookup | Card identity source later | No |
-| `/scan` | Scanner | settings, scanner batches, records | scanner batches, records, owned/deck cards | Yes plus camera/Scryfall | Collection/deck source later | No |
 | `/owned` | Owned cards | owned cards, printings | owned cards, printings | Yes | Collection export later | No |
 | `/import` | Import deck | text, JSON, CSV, ZIP/package input; Scryfall cache/live; owned cards | decks, deck cards, import results, decision events | Yes plus optional Scryfall lookup | Import source later | No |
 | `/analyzer` | Analysis, Smart Build, Recommend | decks, analysis, owned cards | analysis, smart builds, versions | Yes | Planning signals later | No |
@@ -66,19 +65,17 @@ Sections are `main`, `commander`, `maybeboard`, and `cuts`.
 
 ### Owned Card and Printing
 
-`OwnedCard` tracks `id`, `oracleId`, `scryfallId`, `name`, card details, cached price references, manual reference values, trade/want status, `quantityOwned`, `printings`, `tags`, `notes`, `favorite`, optional storage, collector flags, duplicate flag, `deckUsage`, `lastScannedAt`, and timestamps.
+`OwnedCard` tracks `id`, `oracleId`, `scryfallId`, `name`, card details, cached price references, manual reference values, trade/want status, `quantityOwned`, `printings`, `tags`, `notes`, `favorite`, optional storage, collector flags, duplicate flag, `deckUsage`, `lastImportedAt`, and timestamps.
 
-`OwnedPrinting` tracks `id`, `scryfallId`, `oracleId`, `name`, set code/name, collector number, language, foil, finish, condition, quantity, image URI, cached price reference, manual reference value, trade status, storage, collector flags, rarity/release metadata, and last scanned timestamp.
+`OwnedPrinting` tracks `id`, `scryfallId`, `oracleId`, `name`, set code/name, collector number, language, foil, finish, condition, quantity, image URI, cached price reference, manual reference value, trade status, storage, collector flags, rarity/release metadata, and last imported timestamp.
 
 ### Profile
 
 There is no Hub identity profile, friend graph, notification routing, or profile sync. Current profile-like data is local settings only.
 
-### Scanner
+### Collection imports
 
-`ScanBatch` tracks batch ID/name/status/mode/destination/deck/section, records created, persistence, camera device, feeder metadata, last accepted fingerprint, and timestamps.
-
-`ScanRecord` tracks batch ID, raw text, Scryfall/oracle identifiers, name, quantity, status, confidence, possible matches, printing details, captured thumbnail, frame fingerprint, match source, warnings, and timestamps.
+`CollectionImport` tracks source, detected format, merge strategy, imported quantity, unresolved names, original source text, undo data, and timestamps.
 
 ### Import, Export, Backup
 
@@ -90,13 +87,13 @@ There is no Hub identity profile, friend graph, notification routing, or profile
 
 ### Settings
 
-`AppSettings` stores motion, Home performance/static/high-contrast/text settings, export and bracket defaults, collector currency/high-value/freshness defaults, scanner behavior, Scryfall cache/offline settings, and Home orbit customization.
+`AppSettings` stores motion, Home performance/static/high-contrast/text settings, export and bracket defaults, collector currency/high-value/freshness defaults, import behavior, Scryfall cache/offline settings, and Home orbit customization.
 
 ## Persistence Map
 
 Dexie versions:
 
-- Version 1: decks, deck cards, owned cards, scanner, searches, favorites, tags, categories, groups, Smart Build, analysis, bracket analysis, import/export, decisions, settings, backups, migrations.
+- Version 1: decks, deck cards, owned cards, import, searches, favorites, tags, categories, groups, Smart Build, analysis, bracket analysis, import/export, decisions, settings, backups, migrations.
 - Version 2: Scryfall card, oracle, autocomplete, search, bulk data, and cache metadata.
 - Version 3: wishlist, upgrade lists, custom collections, search sessions, destination history, undo transactions.
 - Version 4: recommendation feedback, replacement records, deck versions.

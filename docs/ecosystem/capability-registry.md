@@ -8,7 +8,7 @@ Current verified local capabilities:
 
 - Deck building
 - Collection and owned-card tracking
-- Scanner
+- import
 - Import
 - Export
 - Local backup

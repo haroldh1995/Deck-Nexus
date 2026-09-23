@@ -98,11 +98,11 @@ describe("home hologram scene math", () => {
       scale,
     });
 
-    expect(transforms).toHaveLength(12);
+    expect(transforms).toHaveLength(11);
     expect(transforms[0].frontness).toBeCloseTo(1);
-    expect(transforms[6].rear).toBe(true);
+    expect(transforms[5].rear).toBe(true);
     expect(transforms[3].rotationY).toBeLessThan(0);
-    expect(transforms[9].rotationY).toBeGreaterThan(0);
+    expect(transforms[8].rotationY).toBeGreaterThan(0);
   });
 
   it("sorts depth from rear to foreground for dynamic z ordering", () => {
@@ -212,9 +212,8 @@ describe("home hologram scene math", () => {
       "create-deck",
       "deck-library",
       "card-search",
-      "scan-cards",
       "owned-cards",
-      "import-deck",
+      "import-center",
       "analyzer",
       "deck-groups",
       "tags",

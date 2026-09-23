@@ -14,14 +14,13 @@ import {
 import type { ResponsiveSceneScale } from "../features/home/scene/homeSceneTypes";
 
 describe("home orbit architecture", () => {
-  it("keeps the twelve permanent orbit cards available", () => {
+  it("keeps the permanent orbit cards available", () => {
     expect(permanentHomeOrbitItems.map((item) => item.label)).toEqual([
       "Create Deck",
       "Deck Library",
       "Card Search",
-      "Scan Cards",
       "Owned Cards",
-      "Import Deck",
+      "Import Center",
       "Analyzer",
       "Deck Groups",
       "Tags",
@@ -50,7 +49,7 @@ describe("home orbit architecture", () => {
       label: "Favorite Commander",
       kind: "commander",
     });
-    expect(items).toHaveLength(13);
+    expect(items).toHaveLength(12);
   });
 
   it("hides dynamic favorite cards without removing permanent destinations", () => {
@@ -73,7 +72,7 @@ describe("home orbit architecture", () => {
 
     expect(items.map((item) => item.id)).not.toContain("favorite:fav-one");
     expect(items.map((item) => item.id)).toContain("create-deck");
-    expect(items).toHaveLength(12);
+    expect(items).toHaveLength(11);
   });
 
   it("moves and reorders orbit items without removing locked cards", () => {
@@ -81,7 +80,7 @@ describe("home orbit architecture", () => {
     const moved = moveHomeOrbitItem(items, "deck-library", -1);
 
     expect(moved[0].id).toBe("deck-library");
-    expect(moved).toHaveLength(12);
+    expect(moved).toHaveLength(11);
 
     const reordered = reorderHomeOrbitItems(
       moved,

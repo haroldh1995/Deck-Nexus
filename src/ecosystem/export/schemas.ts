@@ -18,8 +18,6 @@ import type {
   OwnedCard,
   OwnedDuplicateFlag,
   ManualPriceOverride,
-  ScanBatch,
-  ScanRecord,
   StorageLocationDetail,
   SmartBuildResult,
 } from "../../types/domain";
@@ -237,7 +235,7 @@ export interface SnapshotOwnedPrinting extends SchemaVersionMetadata {
   rarity?: string;
   releasedAt?: string;
   purchaseMetadata: null;
-  lastScannedAt?: string;
+  lastImportedAt?: string;
   createdAt: string;
   updatedAt: string;
   sourceApplication: typeof DECK_NEXUS_APPLICATION_ID;
@@ -273,7 +271,7 @@ export interface SnapshotOwnedCard extends SchemaVersionMetadata {
   releasedAt?: string;
   duplicateFlag: OwnedDuplicateFlag;
   deckUsage: Record<string, number>;
-  lastScannedAt?: string;
+  lastImportedAt?: string;
   createdAt: string;
   updatedAt: string;
   sourceApplication: typeof DECK_NEXUS_APPLICATION_ID;
@@ -367,10 +365,9 @@ export interface CollectionSnapshot extends SchemaVersionMetadata {
   typeSummaries: Record<string, number>;
   raritySummaries: Record<string, number>;
   favorites: string[];
-  scannerMetadata: {
-    batchCount: number;
-    recordCount: number;
-    lastScannedAt?: string;
+  importMetadata: {
+    importCount: number;
+    lastImportedAt?: string;
   };
   sourceApplication: typeof DECK_NEXUS_APPLICATION_ID;
   applicationVersion: string;
@@ -398,26 +395,6 @@ export interface ProfileSnapshot extends SchemaVersionMetadata {
     | "glowIntensity"
     | "highContrast"
     | "textSize"
-  >;
-  scannerSettings: Pick<
-    AppSettings,
-    | "scannerBatchPersistence"
-    | "scannerConfirmationSound"
-    | "scannerConfirmationVolume"
-    | "scannerHapticConfirmation"
-    | "scannerDefaultCameraId"
-    | "scannerTorchDefault"
-    | "scannerDefaultMode"
-    | "scannerStableFrameDurationMs"
-    | "scannerAutoConfirmHighConfidence"
-    | "scannerRequireReviewAssumed"
-    | "scannerRequireReviewLowConfidence"
-    | "scannerSaveUnresolved"
-    | "scannerPreferredDestination"
-    | "scannerTrayFullTimeoutMs"
-    | "scannerPreviewQuality"
-    | "scannerPerformanceMode"
-    | "scannerStoreCorrectionThumbnails"
   >;
   accessibilitySettings: Pick<AppSettings, "reducedMotion" | "highContrast" | "textSize">;
   backupPreferences: {
@@ -499,8 +476,7 @@ export interface SnapshotExportContext {
 }
 
 export interface CollectionExportContext {
-  scanBatches?: readonly ScanBatch[];
-  scanRecords?: readonly ScanRecord[];
+  importCount?: number;
   createdAt?: string;
   exportFormat?: EcosystemExportFormat;
 }

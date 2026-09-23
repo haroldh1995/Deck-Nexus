@@ -40,7 +40,7 @@ type OwnedView =
 
 const ownedViews: { id: OwnedView; label: string }[] = [
   { id: "all", label: "All Owned Cards" },
-  { id: "recent", label: "Recently Scanned" },
+  { id: "recent", label: "Recently Imported" },
   { id: "favorites", label: "Favorites" },
   { id: "color", label: "By Color Identity" },
   { id: "type", label: "By Card Type" },
@@ -133,7 +133,7 @@ export function OwnedCardsScreen() {
     }
 
     if (view === "recent") {
-      return ownedCards.filter((card) => Boolean(card.lastScannedAt));
+      return ownedCards.filter((card) => Boolean(card.lastImportedAt));
     }
 
     if (view === "unused") {
@@ -633,7 +633,7 @@ export function OwnedCardsScreen() {
               <div className="feature-empty">
                 <ShoppingCart aria-hidden="true" />
                 <strong>No owned cards in this view</strong>
-                <span>Use the local form or scanner batch review to add cards.</span>
+                <span>Use the import center or local form to add cards.</span>
               </div>
             ) : (
               visibleCards.map((card) => (

@@ -24,7 +24,7 @@
 | Bracket estimates are not rules validation | Bracket analysis stores warnings and allowed flag | Rules bridge | Label bracket results as planning signals. |
 | Color identity edge cases | Local helpers cover common cases | Rules bridge | Delegate edge cases to BoardState validation. |
 | Partners/backgrounds/companions | Not fully modeled as authoritative zones | Rules bridge | Extend export contract with explicit supplemental commander roles. |
-| Attractions/stickers/dungeons/extras | Scanner has extra kinds; deck gameplay zones are not authoritative | Rules bridge | BoardState decides supported game objects. |
+| Attractions/stickers/dungeons/extras | Imported extras may not be deck gameplay zones | Rules bridge | BoardState decides supported game objects. |
 | Banned/restricted freshness | Scryfall/legalities cache may become stale | Rules bridge | Include data timestamps; BoardState validates current rules. |
 | Commander-specific exceptions | Local classification is not exhaustive | Rules bridge | BoardState owns exception handling. |
 | No gameplay snapshot store | Prompt 4 adds `immutableDeckSnapshots` non-destructively at Dexie version 6 | Cross-app launch, Hub | Keep snapshot restore/launch contracts versioned and non-destructive. |

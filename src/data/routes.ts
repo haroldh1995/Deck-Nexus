@@ -34,14 +34,6 @@ export const appRoutes: AppRouteDefinition[] = [
     homeOrbit: true,
   },
   {
-    id: "scan-cards",
-    path: "/scan",
-    label: "Scan Cards",
-    shortLabel: "Scan",
-    icon: "scan",
-    homeOrbit: true,
-  },
-  {
     id: "owned-cards",
     path: "/owned",
     label: "Owned Cards",
@@ -50,9 +42,9 @@ export const appRoutes: AppRouteDefinition[] = [
     homeOrbit: true,
   },
   {
-    id: "import-deck",
+    id: "import-center",
     path: "/import",
-    label: "Import Deck",
+    label: "Import Center",
     shortLabel: "Import",
     icon: "import",
     homeOrbit: true,

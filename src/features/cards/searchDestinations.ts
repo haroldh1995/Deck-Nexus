@@ -35,7 +35,6 @@ export type SearchActionContext =
   | "deck"
   | "section"
   | "owned"
-  | "scanner"
   | "import"
   | "commander";
 
@@ -296,10 +295,7 @@ export function getPrimarySearchAction({
 }: {
   context: SearchActionContext;
   hasCurrentDeck: boolean;
-}): { label: string; destination?: SearchDestinationType; kind: "view" | "destination" | "scanner" | "import" } {
-  if (context === "scanner") {
-    return { label: "Use This Match", kind: "scanner" };
-  }
+}): { label: string; destination?: SearchDestinationType; kind: "view" | "destination" | "import" } {
   if (context === "import") {
     return { label: "Resolve Entry", kind: "import" };
   }
@@ -434,7 +430,7 @@ async function recordAction({
 }: {
   actionType: string;
   selectedCards: readonly DeckstateScryfallCard[];
-  destinationType: SearchDestinationType | "scanner" | "import";
+  destinationType: SearchDestinationType | "import";
   destinationId?: string;
   status?: DestinationAction["status"];
   conflicts?: string[];

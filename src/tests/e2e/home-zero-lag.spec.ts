@@ -23,7 +23,7 @@ test.describe("Home zero-lag residency release gate", () => {
     const scene = page.getByTestId("home-hologram-scene");
     await expect(scene).toBeVisible();
     await expect(scene).toHaveAttribute("data-home-readiness", "ready");
-    await expect(page.locator(".home-orbit-card")).toHaveCount(12);
+    await expect(page.locator(".home-orbit-card")).toHaveCount(11);
     await page.waitForTimeout(1200);
 
     const before = await page.evaluate(() => {
@@ -148,7 +148,7 @@ test.describe("Home zero-lag residency release gate", () => {
       ];
       const assertComplete = () => {
         const cards = [...document.querySelectorAll<HTMLElement>(".home-orbit-card")];
-        const complete = cards.length === 12 && cards.every((card) =>
+        const complete = cards.length === 11 && cards.every((card) =>
           card.dataset.staticReady === "true" &&
           requiredSelectors.every((selector) => card.querySelector(selector)),
         );

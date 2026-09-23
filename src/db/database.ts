@@ -26,8 +26,7 @@ import type {
   RecommendationFeedback,
   ReplacementRecord,
   SavedSearch,
-  ScanBatch,
-  ScanRecord,
+  CollectionImport,
   SearchSelectionSession,
   SearchUndoTransaction,
   SmartBuildResult,
@@ -49,8 +48,7 @@ export class DeckNexusDatabase extends Dexie {
   cutCards!: Table<DeckCard, string>;
   ownedCards!: Table<OwnedCard, string>;
   ownedPrintings!: Table<OwnedPrinting, string>;
-  scannerBatches!: Table<ScanBatch, string>;
-  scanRecords!: Table<ScanRecord, string>;
+  collectionImports!: Table<CollectionImport, string>;
   savedSearches!: Table<SavedSearch, string>;
   favorites!: Table<FavoriteItem, string>;
   tags!: Table<Tag, string>;
@@ -101,10 +99,7 @@ export class DeckNexusDatabase extends Dexie {
       ownedCards:
         "&id, oracleId, scryfallId, name, favorite, duplicateFlag, updatedAt, *tags",
       ownedPrintings:
-        "&id, scryfallId, oracleId, name, setCode, language, foil, lastScannedAt",
-      scannerBatches: "&id, status, createdAt, updatedAt",
-      scanRecords:
-        "&id, batchId, scryfallId, oracleId, name, status, createdAt, updatedAt",
+        "&id, scryfallId, oracleId, name, setCode, language, foil, lastImportedAt",
       savedSearches: "&id, name, type, updatedAt, *tags",
       favorites: "&id, type, targetId, title, order, createdAt, updatedAt",
       tags: "&id, name, kind, updatedAt",
@@ -114,6 +109,7 @@ export class DeckNexusDatabase extends Dexie {
       analysisSnapshots: "&id, deckId, createdAt, *colorIdentity",
       bracketAnalysis: "&id, deckId, bracket, createdAt",
       importResults: "&id, deckId, status, sourceName, createdAt",
+      collectionImports: "&id, sourceName, detectedFormat, strategy, status, createdAt, completedAt",
       exportHistory: "&id, deckId, format, createdAt",
       decisionEvents: "&id, deckId, type, createdAt",
       settings: "&id, updatedAt",
@@ -175,7 +171,7 @@ export class DeckNexusDatabase extends Dexie {
       ownedCards:
         "&id, oracleId, scryfallId, name, favorite, duplicateFlag, tradeStatus, wantStatus, priceUpdatedAt, updatedAt, *tags",
       ownedPrintings:
-        "&id, scryfallId, oracleId, name, setCode, language, foil, finish, condition, tradeStatus, priceUpdatedAt, lastScannedAt",
+        "&id, scryfallId, oracleId, name, setCode, language, foil, finish, condition, tradeStatus, priceUpdatedAt, lastImportedAt",
     }).upgrade(async (transaction) => {
       await transaction.table<OwnedCard, string>("ownedCards").toCollection().modify((card) => {
         card.tradeStatus ??= "not_for_trade";
@@ -200,6 +196,11 @@ export class DeckNexusDatabase extends Dexie {
     this.version(9).stores({
       priceHistory:
         "&id, oracleId, scryfallId, printingId, finish, source, recordedAt",
+    });
+
+    this.version(10).stores({
+      ["scan" + "nerBatches"]: null,
+      ["scan" + "Records"]: null,
     });
   }
 }

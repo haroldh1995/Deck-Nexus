@@ -1,4 +1,17 @@
-import type { CommanderColor, ScanExtraKind } from "../types/domain";
+import type { CommanderColor } from "../types/domain";
+
+export type CardExtraKind =
+  | "token"
+  | "emblem"
+  | "art_card"
+  | "ad_card"
+  | "checklist"
+  | "dungeon"
+  | "attraction"
+  | "plane"
+  | "scheme"
+  | "sticker_card"
+  | "other";
 
 export interface CatalogCard {
   id: string;
@@ -17,7 +30,7 @@ export interface CatalogCard {
   bracketImpact: number;
   isCommanderCandidate?: boolean;
   isExtra?: boolean;
-  extraKind?: ScanExtraKind;
+  extraKind?: CardExtraKind;
 }
 
 export const localCardCatalog: CatalogCard[] = [

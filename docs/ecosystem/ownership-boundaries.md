@@ -6,7 +6,7 @@
 - Commander deck preparation and local legality guidance.
 - Local collection and owned-card tracking.
 - Collector pricing, printing selection, condition, language, finish, storage location, trade status, want-list metadata, and reference value summaries.
-- Scanner flows, scanner batches, correction, and recovery.
+- import flows, import batches, correction, and recovery.
 - Card search and Scryfall caching.
 - Import/export preparation.
 - Canonical local deck, collection, and profile snapshot exports.

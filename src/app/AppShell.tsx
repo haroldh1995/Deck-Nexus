@@ -2,15 +2,11 @@ import {
   lazy,
   Suspense,
   useEffect,
-  useState,
   type CSSProperties,
 } from "react";
 import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AppIcon } from "../components/AppIcon";
-import { HolographicPanel } from "../components/HolographicPanel";
-import { getRecoverableScanBatch, updateScanBatch } from "../db/repositories";
 import { FoundationScreen } from "../features/foundation/FoundationScreen";
-import type { ScanBatch } from "../types/domain";
 import { useSettings } from "./useSettings";
 import { MagicalStartupScreen } from "./startup/MagicalStartupScreen";
 import {
@@ -46,9 +42,6 @@ const CardSearchScreen = lazy(async () => ({
 const CardDirectoriesScreen = lazy(async () => ({
   default: (await import("../features/directories/CardDirectoriesScreen")).CardDirectoriesScreen,
 }));
-const ScanCardsScreen = lazy(async () => ({
-  default: (await import("../features/scanner/ScanCardsScreen")).ScanCardsScreen,
-}));
 const OwnedCardsScreen = lazy(async () => ({
   default: (await import("../features/owned/OwnedCardsScreen")).OwnedCardsScreen,
 }));
@@ -66,6 +59,9 @@ const DeckBuilderScreen = lazy(async () => ({
 }));
 const ImportDeckScreen = lazy(async () => ({
   default: (await import("../features/import/ImportDeckScreen")).ImportDeckScreen,
+}));
+const ImportCenterScreen = lazy(async () => ({
+  default: (await import("../features/import/ImportCenterScreen")).ImportCenterScreen,
 }));
 
 function RouteLoading() {
@@ -134,7 +130,6 @@ export function AppShell() {
   const navigate = useNavigate();
   const startupSnapshot = useStartupSnapshot();
   const isHomeRoute = location.pathname === "/";
-  const [protectedBatch, setProtectedBatch] = useState<ScanBatch | null>(null);
 
   useEffect(() => {
     const generation = startupCoordinator.ensureStarted();
@@ -190,18 +185,7 @@ export function AppShell() {
             className="app-home-button"
             aria-label="Return to Home"
             title="Home"
-            onClick={() => {
-              void (async () => {
-                if (location.pathname.startsWith("/scan")) {
-                  const batch = await getRecoverableScanBatch();
-                  if (batch) {
-                    setProtectedBatch(batch);
-                    return;
-                  }
-                }
-                navigate("/");
-              })();
-            }}
+            onClick={() => navigate("/")}
           >
             <AppIcon name="home" />
           </button>
@@ -218,9 +202,9 @@ export function AppShell() {
             <Route path="/wishlist" element={<CardDirectoriesScreen kind="wishlist" />} />
             <Route path="/upgrade-lists" element={<CardDirectoriesScreen kind="upgradeLists" />} />
             <Route path="/collections" element={<CardDirectoriesScreen kind="collections" />} />
-            <Route path="/scan" element={<ScanCardsScreen />} />
             <Route path="/owned" element={<OwnedCardsScreen />} />
-            <Route path="/import" element={<ImportDeckScreen />} />
+            <Route path="/import" element={<ImportCenterScreen />} />
+            <Route path="/import/deck" element={<ImportDeckScreen />} />
             <Route path="/analyzer" element={<AnalyzerScreen />} />
             <Route
               path="/groups"
@@ -273,47 +257,6 @@ export function AppShell() {
         />
       ) : null}
 
-      {protectedBatch ? (
-        <div className="builder-modal-backdrop" role="presentation">
-          <HolographicPanel className="builder-modal builder-modal--compact" role="alertdialog" aria-modal="true">
-            <div className="builder-modal__header">
-              <h2>You have an unfinished scan batch.</h2>
-              <button type="button" onClick={() => setProtectedBatch(null)} aria-label="Stay here">
-                x
-              </button>
-            </div>
-            <p className="foundation-summary">
-              Scanner batches are preserved until applied, saved, or explicitly discarded.
-            </p>
-            <div className="form-actions">
-              <button
-                type="button"
-                onClick={() => {
-                  void updateScanBatch(protectedBatch.id, { status: "saved_for_later" }).then(() => {
-                    setProtectedBatch(null);
-                    navigate("/");
-                  });
-                }}
-              >
-                Save Batch and Go Home
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const batchId = protectedBatch.id;
-                  setProtectedBatch(null);
-                  navigate(`/scan?batchId=${batchId}&review=1`);
-                }}
-              >
-                Review Batch
-              </button>
-              <button type="button" onClick={() => setProtectedBatch(null)}>
-                Continue Scanning
-              </button>
-            </div>
-          </HolographicPanel>
-        </div>
-      ) : null}
     </div>
   );
 }
