@@ -316,3 +316,18 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 - Live production smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?scanner-followup=1df7980` used headless Chromium at `393x844`. The scanner route loaded the current production bundle `index-BEaiRfOQ.js`, no page errors occurred, body/document widths were both `393px`, the camera-permission surface was present, and `Start Batch` was absent from primary scanner actions.
 - No physical Fodder Cannon scan, physical iPhone Safari scan, hardware feeder verification, or live OCR/printing verification is claimed. Deterministic media-harness E2E remains the available camera verification.
 - Final git state is clean. Master Product Completion remains paused; stop after this scanner follow-up and do not resume unrelated work automatically.
+
+## VERIFIED-ONLY AUTOMATIC SCANNER POLICY
+- Current task: VERIFIED-ONLY AUTOMATIC SCANNER RESULTS. Home Screen remains unchanged.
+- Automatic camera intake now publishes only results whose canonical card identity is `verified`. Review-required, ambiguous, unresolved, timeout, and recognition-error outcomes are silently suppressed from the visible batch and do not emit confirmation audio, capture notifications, or success feedback.
+- Suppressed physical targets are marked internally as complete for duplicate protection and re-arm behavior, so uncertain evidence cannot retry forever or create an empty automatic batch. Existing manually started batches remain intact.
+- Duplicate-frame suppression is silent. The scanner no longer announces that a duplicate was ignored.
+- Added `isVerifiedScannerResult` coverage and updated scanner correctness/pipeline documentation to make publication precision explicit.
+- Validation: full unit suite passed (39 files, 193 tests); focused scanner suite passed (3 files, 17 tests); scanner/feeder E2E passed on Chromium and mobile Chromium (2 tests); typecheck, lint, build, and diff check passed. Lint retains only existing React hook warnings.
+- Physical-device/card verification remains unavailable. No claim of physical Fodder Cannon verification is made.
+- Git state: verified-only changes are uncommitted and limited to scanner logic, scanner tests, scanner documentation, and this checkpoint.
+- Next action: review, commit, push, wait for deployment, and live-smoke the scanner route without claiming physical hardware verification.
+
+## VERIFIED-ONLY POLICY FINAL VALIDATION
+- Added bounded silent retry (up to three evidence attempts per physical target) before suppression, with target-keyed cleanup on exit, replacement, pause, refresh, and visibility changes.
+- Final pre-commit validation passed after the bounded retry change: 39 files/193 unit tests, 3 focused scanner files/17 tests, 2 scanner E2E projects, typecheck, lint, build, and diff check.

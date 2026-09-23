@@ -51,6 +51,12 @@ export interface ScannerResolvedCard {
   scannerWarnings: string[];
 }
 
+export function isVerifiedScannerResult(
+  result: Pick<ScannerResolvedCard, "identityStatus">,
+): boolean {
+  return result.identityStatus === "verified";
+}
+
 export interface ScannerRecognitionInput {
   canvas: HTMLCanvasElement;
   enhancedCanvas?: HTMLCanvasElement;

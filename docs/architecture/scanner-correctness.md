@@ -14,19 +14,24 @@ The scanner treats a camera capture as evidence for a canonical Scryfall record.
 10. One physical target creates at most one batch entry until it exits. Re-entry creates a new target.
 11. Prices are downstream enrichment and never identity evidence.
 12. Manual corrections outrank late automatic results.
-13. Unresolved captures are preserved for review rather than assigned an invented identity.
+13. Automatic camera intake publishes only verified card identities. Review,
+    ambiguous, and unresolved recognition outcomes are silently suppressed from
+    the user-facing batch and produce no success feedback or sound.
 14. Static Scryfall records and indexes are reused; they are not rebuilt per scan.
 15. High-confidence false positives are release-blocking defects.
 16. Detection must have a path to completion; uncertainty reduces identity certainty, not physical capture completion.
-17. A detected target that cannot be confidently identified terminates as review, ambiguous, or unresolved rather than hanging.
+17. A detected target that cannot be confidently identified terminates
+    internally and is suppressed rather than hanging or presenting a guessed
+    result.
 18. `Too close` is functional image-usability guidance, not an arbitrary card-area rejection. A usable close frame may proceed.
 19. An acceptable frame is preferable to waiting indefinitely for an ideal frame.
 20. Zero-touch handheld scanning does not depend on discovering `Start Batch`; batches are created when physical capture requires them.
-21. Every acquired target becomes a durable batch capture or reaches an explicit cancellation/loss/error terminal reason.
+21. Every acquired target becomes a durable verified batch capture or reaches
+    an explicit silent suppression/cancellation/loss/error terminal reason.
 22. False-positive protection must not make the scanner too conservative to complete physical intake.
 23. Physical capture completion, card identity success, and printing identity success are separate outcomes.
-24. A usable detected card must advance into acquisition and recognition without a capture button.
-25. Degraded evidence may terminate as a durable review capture; it may not create an infinite scan.
+24. A usable detected card must advance into acquisition and recognition without a capture button; only a verified result may become visible.
+25. Degraded evidence may terminate as a silent suppression; it may not create an infinite scan.
 26. `Too close` is a warning until clipping or unusable geometry proves it is a blocker.
 27. A bounded best-frame window and evidence budget are preferred to waiting for a mythical perfect frame.
 28. A newly acquired target must either be durably captured or receive an explicit lost, canceled, or camera-error terminal reason.

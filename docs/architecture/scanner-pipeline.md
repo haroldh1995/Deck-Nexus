@@ -46,9 +46,15 @@ a filter, the recognition path remains unchanged.
 The scanner may use an acceptable frame when an ideal frame is unavailable.
 "Too close" is guidance unless clipping or unusable geometry prevents
 recognition. A target has a bounded recognition budget; failure to identify a
-card becomes a durable unresolved/review entry rather than an infinite
-detected state. Only a durable batch insert emits the single capture feedback
-event.
+card becomes a terminal internal unresolved/review decision rather than an
+infinite detected state. Only a durable verified batch insert emits the single
+capture feedback event.
+
+Automatic camera intake is precision-only at the publication boundary:
+`verified` card identity is the only outcome that creates a visible batch
+record, success feedback, or confirmation sound. Review, ambiguous, and
+unresolved outcomes complete their target generation silently so weak evidence
+cannot create a user-visible guess or an infinite retry loop.
 
 Transient physical evidence is target-owned. Canonical Scryfall indexes and
 candidate caches may be shared, but OCR, fingerprints, candidates and

@@ -84,6 +84,7 @@ import {
 } from "./scannerEngine";
 import {
   createUnresolvedScannerResult,
+  isVerifiedScannerResult,
   recognizeScannerFrame,
   scannerRecognitionBudgetMs,
   terminateScannerOcrWorker,
@@ -252,6 +253,7 @@ export function ScanCardsScreen() {
   const manualScannerMessageRef = useRef(false);
   const feedbackControllerRef = useRef(createScanFeedbackController());
   const abortRecognitionRef = useRef<AbortController | null>(null);
+  const silentRecognitionAttemptsRef = useRef(new Map<string, number>());
   const [lifecycle] = useState(() => createScannerLifecycle("scan-session"));
   const lastReviewTriggerRef = useRef<HTMLButtonElement | null>(null);
   const autoCameraAttemptedRef = useRef(false);
@@ -411,6 +413,7 @@ export function ScanCardsScreen() {
       if (document.hidden) {
         abortRecognitionRef.current?.abort();
         lifecycle.invalidateTarget();
+        silentRecognitionAttemptsRef.current.clear();
         frameMemoryRef.current = {};
         setScannerPaused(true);
         setLoopState("paused");
@@ -530,6 +533,7 @@ export function ScanCardsScreen() {
     try {
       abortRecognitionRef.current?.abort();
       lifecycle.invalidateTarget();
+      silentRecognitionAttemptsRef.current.clear();
       await feedbackControllerRef.current.prime();
       stopCameraStream(streamRef.current);
       const requestedDeviceId =
@@ -644,10 +648,8 @@ export function ScanCardsScreen() {
         transitionStarted: stackingTransitionRef.current,
       })
     ) {
-      if (lastFeedbackRef.current !== "Duplicate frame ignored.") {
-        lastFeedbackRef.current = "Duplicate frame ignored.";
-        setMessage("Duplicate frame ignored. Move to the next card or trigger the next stacking cue.");
-      }
+      // Duplicate suppression is intentionally silent. It is an internal
+      // guard, not a user-facing scan result.
       return;
     }
 
@@ -655,15 +657,13 @@ export function ScanCardsScreen() {
       return;
     }
     recognizingRef.current = true;
-    const activeBatch = await getOrCreateBatch().catch(() => undefined);
-    if (!activeBatch) {
-      recognizingRef.current = false;
-      setLoopState("error");
-      setMessage("The scan batch could not be prepared. Existing work remains safe.");
-      return;
-    }
     const target = lifecycle.acquireTarget(frameAnalysis.fingerprint);
-    const ownership = lifecycle.createOwnership(activeBatch.id, frameAnalysis.fingerprint);
+    // Do not create an empty durable batch for a card that will be silently
+    // rejected. The batch is opened only after verification succeeds.
+    const ownership = lifecycle.createOwnership(
+      batchRef.current?.id ?? "pending-verification",
+      frameAnalysis.fingerprint,
+    );
     recordScannerTransition({
       scanSessionId: ownership.scanSessionId,
       state: "TARGET_STABILIZING",
@@ -671,7 +671,7 @@ export function ScanCardsScreen() {
       accepted: true,
       reason: frameAnalysis.stable ? "STABLE_FRAME" : "ACCEPTABLE_FRAME_BUDGET_REACHED",
       timestamp: frameAnalysis.timestamp,
-      batchId: activeBatch.id,
+      batchId: ownership.batchId,
       targetId: ownership.targetId,
       captureGeneration: ownership.captureGeneration,
       frameId: ownership.frameId,
@@ -722,7 +722,7 @@ export function ScanCardsScreen() {
               accepted: true,
               reason: "TERMINAL_DECISION_NOT_REACHED",
               timestamp: performance.now(),
-              batchId: activeBatch.id,
+              batchId: ownership.batchId,
               targetId: ownership.targetId,
               captureGeneration: ownership.captureGeneration,
               frameId: ownership.frameId,
@@ -762,6 +762,29 @@ export function ScanCardsScreen() {
       if (!lifecycle.isCurrent(ownership) || target.targetId !== lifecycle.currentTarget()?.targetId) {
         return;
       }
+      if (!isVerifiedScannerResult(result)) {
+        // Precision-first intake: give the same target a small bounded set of
+        // silent evidence attempts, then suppress it without persisting,
+        // notifying, or sounding. This permits autofocus/frame variation
+        // without allowing uncertain recognition to loop forever.
+        const attempts = (silentRecognitionAttemptsRef.current.get(target.targetId) ?? 0) + 1;
+        silentRecognitionAttemptsRef.current.set(target.targetId, attempts);
+        if (attempts < 3) {
+          setLoopState("monitoring");
+          return;
+        }
+        silentRecognitionAttemptsRef.current.delete(target.targetId);
+        lifecycle.commitCapture(ownership, {
+          fingerprint: frameAnalysis.fingerprint,
+          candidate: targetGeometry,
+        });
+        lastAcceptedFingerprintRef.current = frameAnalysis.fingerprint;
+        stackingTransitionRef.current = false;
+        setLoopState("monitoring");
+        return;
+      }
+      silentRecognitionAttemptsRef.current.delete(target.targetId);
+      const activeBatch = await getOrCreateBatch();
       const record = createScanRecordFromResolvedCard({
         batchId: activeBatch.id,
         result,
@@ -843,10 +866,11 @@ export function ScanCardsScreen() {
       }
       manualScannerMessageRef.current = false;
       setLoopState("monitoring");
-    } catch (error) {
+    } catch {
       if (!controller.signal.aborted) {
-        setLoopState("error");
-        setMessage(error instanceof Error ? error.message : "Scanner recognition failed. Batch remains saved.");
+        // Recognition failure is not a result. Keep the camera armed without
+        // presenting an error card, notification, or false progress state.
+        setLoopState("monitoring");
       }
     } finally {
       if (budgetTimer) clearTimeout(budgetTimer);
@@ -891,6 +915,7 @@ export function ScanCardsScreen() {
       });
       if (!nextAnalysis) {
         if (lifecycle.observeAbsent()) {
+          silentRecognitionAttemptsRef.current.clear();
           lastAcceptedFingerprintRef.current = undefined;
           stackingTransitionRef.current = false;
           setMessage("Ready for the next card.");
@@ -900,6 +925,7 @@ export function ScanCardsScreen() {
 
       if (!nextAnalysis.candidateVisible) {
         if (lifecycle.observeAbsent()) {
+          silentRecognitionAttemptsRef.current.clear();
           lastAcceptedFingerprintRef.current = undefined;
           stackingTransitionRef.current = false;
           setMessage("Ready for the next card.");
@@ -946,6 +972,7 @@ export function ScanCardsScreen() {
           terminalBudgetMs: scannerRecognitionBudgetMs,
         });
         frameMemoryRef.current = {};
+        if (previousTargetId) silentRecognitionAttemptsRef.current.delete(previousTargetId);
         lastAcceptedFingerprintRef.current = undefined;
         stackingTransitionRef.current = false;
         setLoopState("possible_new_target");
@@ -1275,6 +1302,7 @@ export function ScanCardsScreen() {
   async function openReview() {
     abortRecognitionRef.current?.abort();
     lifecycle.invalidateTarget();
+    silentRecognitionAttemptsRef.current.clear();
     frameMemoryRef.current = {};
     setLoopState("paused");
     setReviewOpen(true);
@@ -1300,6 +1328,7 @@ export function ScanCardsScreen() {
     if (nextPaused) {
       abortRecognitionRef.current?.abort();
       lifecycle.invalidateTarget();
+      silentRecognitionAttemptsRef.current.clear();
       frameMemoryRef.current = {};
       setScannerPaused(true);
       setLoopState("paused");

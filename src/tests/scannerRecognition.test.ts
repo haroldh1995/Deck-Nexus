@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addSessionFilters, parseSetCollector } from "../features/scanner/scannerRecognition";
+import { addSessionFilters, isVerifiedScannerResult, parseSetCollector } from "../features/scanner/scannerRecognition";
 
 describe("scanner printing evidence extraction", () => {
   it("preserves a collector number printed as number-of-set-size on older cards", () => {
@@ -20,5 +20,12 @@ describe("scanner printing evidence extraction", () => {
       .toBe('"Fodder Cannon" set:uds lang:en');
     expect(addSessionFilters("Fodder Cannon", "not a set", "any"))
       .toBe("Fodder Cannon");
+  });
+
+  it("publishes automatic results only after the identity verification gate", () => {
+    expect(isVerifiedScannerResult({ identityStatus: "verified" })).toBe(true);
+    expect(isVerifiedScannerResult({ identityStatus: "review_required" })).toBe(false);
+    expect(isVerifiedScannerResult({ identityStatus: "ambiguous" })).toBe(false);
+    expect(isVerifiedScannerResult({ identityStatus: "unresolved" })).toBe(false);
   });
 });
