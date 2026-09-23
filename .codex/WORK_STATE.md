@@ -365,3 +365,11 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 - Tests completed for this checkpoint: scanner camera, matching, and recognition focused tests passed (3 files, 21 tests). Full regression, build, deployment, and live smoke verification are pending.
 - Git state: uncommitted changes are limited to scanner localization/readiness, matching, scanner tests, and this checkpoint/documentation.
 - Next action: run the complete available regression suite, review the final diff, commit/push, wait for deployment, and live-smoke the scanner route without claiming physical-card verification.
+
+## SCANNER SIGHTING / SCRYFALL COLLECTION REPAIR VALIDATION
+- Commit `3eac5773f050a48c4030afab9fde360f8b143573` was pushed to `origin/main`.
+- Validation passed: full unit suite `39 files / 195 tests`; full E2E `40 passed` across Chromium and mobile Chromium; focused scanner suite `3 files / 21 tests`; `npx tsc -b --pretty false`; `npm run lint -- --quiet`; `npm run build`; and `git diff --check`.
+- GitHub Actions succeeded for the implementation commit: Deploy Deck Nexus run `35909830446`; Pages build/deployment run `35909829568`.
+- Live production smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?scanner-repair=3eac577` used headless Chromium at `393x844` with service workers blocked. The deployed scanner loaded with no page errors, `Scan Cards` heading, camera permission surface, no primary `Start Batch` requirement, and body/document widths both `393px`. Current bundle was `index-B_DYEo4z.js`.
+- Live verification covered route/layout/permission UI only. Physical Fodder Cannon, physical iPhone Safari, live OCR, exact physical printing, and hardware-feeder verification were unavailable and are not claimed.
+- Final git state is clean. Home Screen visual/animation files were not changed. Master Product Completion remains paused; do not resume unrelated work automatically.
