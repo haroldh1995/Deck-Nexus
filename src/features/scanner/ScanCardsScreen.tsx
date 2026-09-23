@@ -206,6 +206,7 @@ export function ScanCardsScreen() {
   const [tooCloseDuration, setTooCloseDuration] = useState(0);
   const [showRecovery, setShowRecovery] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState<"all" | "assumed">("all");
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>({
     state: "idle",
     title: "Camera not started",
@@ -229,6 +230,23 @@ export function ScanCardsScreen() {
 
   const deck = decks.find((candidate) => candidate.id === deckId);
   const summary = useMemo(() => summarizeBatchRecords(records), [records]);
+  const reviewRecords = useMemo(() => {
+    const activeRecords = records.filter((record) => record.status !== "removed");
+    if (reviewFilter === "all") {
+      return activeRecords;
+    }
+
+    return activeRecords.filter(
+      (record) =>
+        record.status === "assumed" ||
+        record.status === "low_confidence" ||
+        record.status === "unresolved" ||
+        record.identityStatus === "review_required" ||
+        record.identityStatus === "ambiguous" ||
+        record.identityStatus === "unresolved" ||
+        record.printingStatus === "review_required",
+    );
+  }, [records, reviewFilter]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const analysisCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -304,7 +322,9 @@ export function ScanCardsScreen() {
   }, [reviewOpen]);
 
   const refreshRecords = useCallback(async (batchId: string) => {
-    const nextRecords = await listScanRecords(batchId);
+    const nextRecords = (await listScanRecords(batchId)).filter(
+      (record) => record.status !== "removed",
+    );
     setRecords(nextRecords);
     recordsRef.current = nextRecords;
   }, []);
@@ -1304,6 +1324,7 @@ export function ScanCardsScreen() {
     lifecycle.invalidateTarget();
     silentRecognitionAttemptsRef.current.clear();
     frameMemoryRef.current = {};
+    setReviewFilter("all");
     setLoopState("paused");
     setReviewOpen(true);
     if (batchRef.current?.status === "scanning") {
@@ -1729,8 +1750,12 @@ export function ScanCardsScreen() {
               <button type="button" onClick={confirmAllHighConfidence}>
                 <CheckCircle2 aria-hidden="true" /> Confirm All High Confidence
               </button>
-              <button type="button" onClick={() => setMessage("Assumed-only review filter active in batch review.")}>
-                Review Assumed Only
+              <button
+                type="button"
+                aria-pressed={reviewFilter === "assumed"}
+                onClick={() => setReviewFilter((current) => (current === "assumed" ? "all" : "assumed"))}
+              >
+                {reviewFilter === "assumed" ? "Show All Records" : "Review Assumed Only"}
               </button>
               <button type="button" onClick={applyToOwned}>
                 Apply All Confirmed to Owned
@@ -1749,10 +1774,12 @@ export function ScanCardsScreen() {
               </button>
             </div>
             <div className="scanner-record-list">
-              {records.length === 0 ? (
-                <p className="foundation-summary">No scan records in this batch yet.</p>
+              {reviewRecords.length === 0 ? (
+                <p className="foundation-summary">
+                  {reviewFilter === "assumed" ? "No records need review." : "No scan records in this batch yet."}
+                </p>
               ) : (
-                records.map((record) => (
+                reviewRecords.map((record) => (
                   <article className={`scanner-record scanner-record--${record.identityStatus ?? record.status}`} key={record.id}>
                     {(record.imageUri ?? record.capturedThumbnail) ? (
                       <img src={record.imageUri ?? record.capturedThumbnail} alt={record.name} />

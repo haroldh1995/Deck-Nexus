@@ -738,6 +738,23 @@ Deck
       "src",
       /cards\.scryfall\.io\/normal\/test-counterspell\.jpg/,
     );
+    const allReviewRecords = page.locator(".scanner-review-modal .scanner-record");
+    const allReviewRecordCount = await allReviewRecords.count();
+    await page.getByRole("button", { name: "Review Assumed Only" }).click();
+    await expect(page.getByRole("button", { name: "Show All Records" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    const assumedReviewRecordCount = await allReviewRecords.count();
+    expect(assumedReviewRecordCount).toBeGreaterThan(0);
+    expect(assumedReviewRecordCount).toBeLessThan(allReviewRecordCount);
+    await page.getByRole("button", { name: "Show All Records" }).click();
+    await expect(page.getByRole("button", { name: "Review Assumed Only" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    await allReviewRecords.first().getByRole("button", { name: "Remove" }).click();
+    await expect(allReviewRecords).toHaveCount(allReviewRecordCount - 1);
     const reviewGeometry = await page.evaluate(() => {
       const modal = document.querySelector<HTMLElement>(".scanner-review-modal");
       const list = document.querySelector<HTMLElement>(".scanner-review-modal .scanner-record-list");
