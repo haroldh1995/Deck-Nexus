@@ -8,8 +8,10 @@ bounded recognition job owns one target generation.
 
 1. `scannerCamera` owns permissions, stream lifecycle, intrinsic/display
    geometry, torch and refresh behavior.
-2. `frameAnalysis` samples the visible guide, detects card-like coverage,
-   quality dimensions, stability and a short-lived visual fingerprint.
+2. `frameAnalysis` samples the visible guide, searches bounded card-shaped
+   rectangles using border evidence so surrounding scenery does not become
+   the card, and reports quality dimensions, stability and a short-lived
+   visual fingerprint.
 3. `scannerDetection` converts the analyzed candidate into a source-space
    quadrilateral.
 4. `scannerPerspective` warps that quadrilateral into a stable card canvas.
@@ -43,7 +45,9 @@ a filter, the recognition path remains unchanged.
 
 ## Safety and completion
 
-The scanner may use an acceptable frame when an ideal frame is unavailable.
+The scanner warms its OCR worker when the camera becomes ready so worker
+startup does not consume the first handheld recognition budget. It may use
+an acceptable frame when an ideal frame is unavailable.
 "Too close" is guidance unless clipping or unusable geometry prevents
 recognition. A target has a bounded recognition budget; failure to identify a
 card becomes a terminal internal unresolved/review decision rather than an
@@ -67,6 +71,12 @@ continues through the normal quality/evidence budget. It is not discarded as
 an unproductive `possible new target` holding state. A large card in frame is
 guidance only while the normalized crop remains readable; tray blocking is
 reserved for close frames that are clipped or otherwise unusable.
+
+Recovery is only surfaced when a recoverable batch contains active records.
+An empty abandoned batch remains available for the next verified capture but
+does not cover the camera with an unfinished-batch prompt. Resolved records
+carry the matched Scryfall image URL; a physical thumbnail is correction
+evidence only.
 
 ## Diagnostics
 

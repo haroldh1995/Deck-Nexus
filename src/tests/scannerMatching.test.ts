@@ -119,6 +119,34 @@ describe("scanner multi-field matching", () => {
     expect(result.printingStatus).toBe("verified");
   });
 
+  it("verifies Found Footage from the handheld card's independent fields", () => {
+    const foundFootage = card({
+      id: "b12eb087-762e-4e7d-a6e0-f48df603b7c7",
+      oracleId: "ad37551c-9d20-4902-8190-6a0aa32a7947",
+      name: "Found Footage",
+      manaCost: "{1}",
+      manaValue: 1,
+      typeLine: "Artifact — Clue",
+      oracleText: "You may look at face-down creatures your opponents control any time. {2}, Sacrifice this artifact: Surveil 2, then draw a card.",
+      setCode: "dsk",
+      setName: "Duskmourn: House of Horror",
+      collectorNumber: "246",
+      artist: "Jarel Threat",
+    });
+    const result = matchScannerEvidence({
+      title: { value: "Found Footage", quality: 0.9, sourceRegion: "title" },
+      mana: { value: "{1}", quality: 0.82, sourceRegion: "mana" },
+      type: { value: "Artifact Clue", quality: 0.82, sourceRegion: "type" },
+      rules: { value: "Sacrifice this artifact Surveil 2 then draw a card", quality: 0.78, sourceRegion: "rules" },
+      set: { value: "dsk", quality: 0.84, sourceRegion: "footer" },
+      collector: { value: "246", quality: 0.84, sourceRegion: "footer" },
+    }, [foundFootage]);
+    expect(result.card?.name).toBe("Found Footage");
+    expect(result.identityStatus).toBe("verified");
+    expect(result.printing?.id).toBe(foundFootage.id);
+    expect(result.printingStatus).toBe("verified");
+  });
+
   it("allows historical printed text to support a card without requiring Oracle wording", () => {
     const historical = card({
       printedText: "Sacrifice a creature: Fodder Cannon deals 4 damage to any target.",

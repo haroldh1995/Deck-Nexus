@@ -73,6 +73,109 @@ function candidateDistance(left?: FrameCandidate, right?: FrameCandidate): numbe
   );
 }
 
+function integralImage(values: Float32Array, width: number, height: number): Float32Array {
+  const integral = new Float32Array((width + 1) * (height + 1));
+  for (let y = 0; y < height; y += 1) {
+    let rowTotal = 0;
+    for (let x = 0; x < width; x += 1) {
+      rowTotal += values[y * width + x];
+      const index = (y + 1) * (width + 1) + x + 1;
+      integral[index] = integral[index - (width + 1)] + rowTotal;
+    }
+  }
+  return integral;
+}
+
+function integralSum(
+  integral: Float32Array,
+  width: number,
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
+): number {
+  const stride = width + 1;
+  return integral[bottom * stride + right] -
+    integral[top * stride + right] -
+    integral[bottom * stride + left] +
+    integral[top * stride + left];
+}
+
+/** Find a card-shaped boundary instead of treating all frame edges as a card. */
+function findCardCandidate(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): { candidate: FrameCandidate; boundaryScore: number } | undefined {
+  const luminance = new Float32Array(width * height);
+  const horizontalEdges = new Float32Array(width * height);
+  const verticalEdges = new Float32Array(width * height);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = (y * width + x) * 4;
+      luminance[y * width + x] = luminanceAt(data, index);
+    }
+  }
+
+  for (let y = 2; y < height; y += 1) {
+    for (let x = 2; x < width; x += 1) {
+      const index = y * width + x;
+      horizontalEdges[index] = Math.abs(luminance[index] - luminance[(y - 2) * width + x]);
+      verticalEdges[index] = Math.abs(luminance[index] - luminance[y * width + x - 2]);
+    }
+  }
+
+  const horizontalIntegral = integralImage(horizontalEdges, width, height);
+  const verticalIntegral = integralImage(verticalEdges, width, height);
+  const expectedAspect = 0.716;
+  const positionStep = Math.max(6, Math.round(width / 32));
+  const widthStep = Math.max(8, Math.round(width / 24));
+  const minWidth = Math.max(28, Math.round(width * 0.18));
+  const maxWidth = Math.min(Math.round(width * 0.94), Math.round(height * expectedAspect * 0.98));
+  let best: { candidate: FrameCandidate; boundaryScore: number; score: number } | undefined;
+
+  for (let candidateWidth = minWidth; candidateWidth <= maxWidth; candidateWidth += widthStep) {
+    const candidateHeight = Math.round(candidateWidth / expectedAspect);
+    if (candidateHeight < height * 0.3 || candidateHeight > height * 0.98) continue;
+    const band = Math.max(2, Math.round(Math.min(candidateWidth, candidateHeight) * 0.025));
+    for (let top = 0; top + candidateHeight <= height; top += positionStep) {
+      for (let left = 0; left + candidateWidth <= width; left += positionStep) {
+        const right = left + candidateWidth;
+        const bottom = top + candidateHeight;
+        const topEdge = integralSum(horizontalIntegral, width, left, top, right, Math.min(height, top + band));
+        const bottomEdge = integralSum(horizontalIntegral, width, left, Math.max(0, bottom - band), right, bottom);
+        const leftEdge = integralSum(verticalIntegral, width, left, top, Math.min(width, left + band), bottom);
+        const rightEdge = integralSum(verticalIntegral, width, Math.max(0, right - band), top, right, bottom);
+        const perimeterPixels = Math.max(1, (right - left) * band * 2 + (bottom - top) * band * 2);
+        const boundaryScore = (topEdge + bottomEdge + leftEdge + rightEdge) / perimeterPixels / 255;
+        const coverage = (candidateWidth * candidateHeight) / (width * height);
+        const aspectQuality = clamp(1 - Math.abs(candidateWidth / candidateHeight - expectedAspect) / 0.24);
+        const clippingPenalty = left <= 1 || top <= 1 || right >= width - 1 || bottom >= height - 1 ? 0.08 : 0;
+        const score = boundaryScore * 0.78 + aspectQuality * 0.22 - clippingPenalty;
+
+        if (!best || score > best.score) {
+          best = {
+            candidate: {
+              x: left,
+              y: top,
+              width: candidateWidth,
+              height: candidateHeight,
+              coverage,
+              aspectRatio: candidateWidth / candidateHeight,
+            },
+            boundaryScore,
+            score,
+          };
+        }
+      }
+    }
+  }
+
+  if (!best || best.boundaryScore < 0.12) return undefined;
+  return { candidate: best.candidate, boundaryScore: best.boundaryScore };
+}
+
 export function createFrameFingerprint(
   imageData: ImageData,
   cells = 8,
@@ -148,21 +251,30 @@ export function analyzeImageData(
   const normalizedEdge = clamp(edgeScore / sampledPixels / 72);
   const glare = clamp(brightPixels / sampledPixels / 0.08);
   const lighting = clamp(1 - Math.abs(averageLuminance - 132) / 132);
-  const candidateWidth = Math.max(0, maxX - minX);
-  const candidateHeight = Math.max(0, maxY - minY);
-  const candidateCoverage = (candidateWidth * candidateHeight) / (width * height);
-  const aspectRatio = candidateHeight > 0 ? candidateWidth / candidateHeight : 0;
+  const detected = findCardCandidate(data, width, height);
+  const detectedCandidate = detected?.candidate;
+  const candidateWidth = detectedCandidate?.width ?? Math.max(0, maxX - minX);
+  const candidateHeight = detectedCandidate?.height ?? Math.max(0, maxY - minY);
+  const candidateX = detectedCandidate?.x ?? minX;
+  const candidateY = detectedCandidate?.y ?? minY;
+  const candidateCoverage = detectedCandidate?.coverage ?? (candidateWidth * candidateHeight) / (width * height);
+  const aspectRatio = detectedCandidate?.aspectRatio ?? (candidateHeight > 0 ? candidateWidth / candidateHeight : 0);
   const aspectMatch = clamp(1 - Math.abs(aspectRatio - 0.716) / 0.5);
-  const candidateVisible = candidateCoverage > 0.16 && normalizedEdge > 0.1;
-  const tooClose = candidateCoverage > 0.78 || (candidateVisible && candidateWidth > width * 0.92 && candidateHeight > height * 0.86);
+  const candidateVisible = candidateCoverage > 0.08 && (detected?.boundaryScore ?? normalizedEdge) > 0.1;
+  const legacyCoverage = (Math.max(0, maxX - minX) * Math.max(0, maxY - minY)) / (width * height);
+  const legacyFrameFillsAnalysis = minX <= 2 && minY <= 2 && maxX >= width - 3 && maxY >= height - 3;
+  const tooClose = Math.max(candidateCoverage, legacyCoverage) > 0.68 || (candidateVisible && (
+    (candidateWidth > width * 0.92 && candidateHeight > height * 0.86) ||
+    legacyFrameFillsAnalysis
+  ));
   const boundaryConfidence = candidateVisible
-    ? clamp(normalizedEdge * 0.56 + aspectMatch * 0.28 + Math.min(candidateCoverage, 0.72) * 0.24)
+    ? clamp((detected?.boundaryScore ?? normalizedEdge) * 0.62 + aspectMatch * 0.26 + Math.min(candidateCoverage, 0.72) * 0.18)
     : 0;
   const sharpness = clamp(normalizedEdge * 1.18);
   const candidate = candidateVisible
     ? {
-        x: minX,
-        y: minY,
+        x: candidateX,
+        y: candidateY,
         width: candidateWidth,
         height: candidateHeight,
         coverage: candidateCoverage,
@@ -174,19 +286,19 @@ export function analyzeImageData(
     ? hammingDistance(fingerprint, memory.lastFingerprint) / fingerprint.length
     : 1;
   const geometryDistance = candidateDistance(candidate, memory.lastCandidate);
-  const clipped = candidateVisible && (minX <= 2 || minY <= 2 || maxX >= width - 3 || maxY >= height - 3);
+  const clipped = candidateVisible && (candidateX <= 2 || candidateY <= 2 || candidateX + candidateWidth >= width - 3 || candidateY + candidateHeight >= height - 3);
   const usableForRecognition =
     candidateVisible &&
-    candidateWidth >= width * 0.32 &&
-    candidateHeight >= height * 0.42 &&
-    sharpness > 0.13 &&
+    candidateWidth >= width * 0.2 &&
+    candidateHeight >= height * 0.34 &&
+    sharpness > 0.1 &&
     lighting > 0.12 &&
     glare < 0.98;
   const frameStable =
     candidateVisible &&
     fingerprintDistance < 0.23 &&
     geometryDistance < Math.max(width, height) * 0.26 &&
-    sharpness > 0.13 &&
+    sharpness > 0.1 &&
     lighting > 0.18 &&
     glare < 0.92;
   const stableSince = frameStable

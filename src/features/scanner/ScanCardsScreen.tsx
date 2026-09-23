@@ -88,6 +88,7 @@ import {
   recognizeScannerFrame,
   scannerRecognitionBudgetMs,
   terminateScannerOcrWorker,
+  warmScannerRecognition,
 } from "./scannerRecognition";
 import { createScanFeedbackController } from "./scanFeedback";
 import { drawVisibleGuideToCanvas } from "./cameraGeometry";
@@ -321,12 +322,13 @@ export function ScanCardsScreen() {
     reviewOpenRef.current = reviewOpen;
   }, [reviewOpen]);
 
-  const refreshRecords = useCallback(async (batchId: string) => {
+  const refreshRecords = useCallback(async (batchId: string): Promise<ScanRecord[]> => {
     const nextRecords = (await listScanRecords(batchId)).filter(
       (record) => record.status !== "removed",
     );
     setRecords(nextRecords);
     recordsRef.current = nextRecords;
+    return nextRecords;
   }, []);
 
   const getOrCreateBatch = useCallback(async () => {
@@ -380,9 +382,12 @@ export function ScanCardsScreen() {
           setDestination(recoverable.destination ?? "owned_cards");
           setDeckId(recoverable.deckId ?? searchParams.get("deckId") ?? "");
           lastAcceptedFingerprintRef.current = recoverable.lastAcceptedFingerprint;
-          await refreshRecords(recoverable.id);
+          const recoveredRecords = await refreshRecords(recoverable.id);
           if (mounted) {
-            setShowRecovery(true);
+            // Empty abandoned batches are not recoverable work. Keep the
+            // active batch for the next verified capture without blocking the
+            // camera with a recovery prompt.
+            setShowRecovery(recoveredRecords.length > 0);
           }
         }
       } catch {
@@ -568,6 +573,7 @@ export function ScanCardsScreen() {
       setCameraReady(true);
       setScannerPaused(false);
       setLoopState("watching");
+      warmScannerRecognition();
       setCameraStatus({
         state: result.permissionState,
         title: "Camera live",

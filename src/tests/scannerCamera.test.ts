@@ -49,6 +49,35 @@ function makeImageData({
   return { data, width, height } as ImageData;
 }
 
+function makeClutteredCardImageData() {
+  const width = 160;
+  const height = 224;
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = (y * width + x) * 4;
+      const cardX = 47;
+      const cardY = 43;
+      const cardWidth = 66;
+      const cardHeight = 106;
+      const insideCard = x >= cardX && x <= cardX + cardWidth && y >= cardY && y <= cardY + cardHeight;
+      const cardEdge = insideCard && (
+        x <= cardX + 3 ||
+        x >= cardX + cardWidth - 3 ||
+        y <= cardY + 3 ||
+        y >= cardY + cardHeight - 3
+      );
+      const clutter = 34 + ((x * 17 + y * 11) % 42);
+      const value = cardEdge ? 238 : insideCard ? 116 + ((x + y) % 48) : clutter;
+      data[index] = value;
+      data[index + 1] = value;
+      data[index + 2] = value;
+      data[index + 3] = 255;
+    }
+  }
+  return { data, width, height } as ImageData;
+}
+
 describe("scanner camera and frame analysis", () => {
   it("maps browser camera errors to useful scanner states", () => {
     expect(mapCameraError(new DOMException("blocked", "NotAllowedError")).state).toBe("denied");
@@ -168,6 +197,20 @@ describe("scanner camera and frame analysis", () => {
     expect(detection.quadrilateral?.bottomRight.x).toBeLessThan(520);
     expect(detection.quadrilateral?.bottomRight.y).toBeLessThan(728);
     expect(detection.quadrilateral?.topRight.x).toBeGreaterThan(detection.quadrilateral?.topLeft.x ?? 0);
+  });
+
+  it("localizes a smaller card inside a cluttered frame", () => {
+    const analysis = analyzeImageData(makeClutteredCardImageData(), {}, {
+      stableDurationMs: 0,
+      timestamp: 0,
+    });
+
+    expect(analysis.candidateVisible).toBe(true);
+    expect(analysis.candidate?.x).toBeGreaterThan(20);
+    expect(analysis.candidate?.x).toBeLessThan(70);
+    expect(analysis.candidate?.width).toBeLessThan(100);
+    expect(analysis.candidate?.height).toBeGreaterThan(80);
+    expect(analysis.usableForRecognition).toBe(true);
   });
 
   it("creates deterministic frame fingerprints and low-volume beep gains", () => {

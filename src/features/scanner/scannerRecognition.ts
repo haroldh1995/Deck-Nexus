@@ -212,6 +212,15 @@ async function getOcrWorker(): Promise<OcrWorker> {
   return ocrWorkerPromise;
 }
 
+/** Warm the OCR worker while the camera is starting so the first physical
+ * card is not consumed by WASM/worker startup latency. */
+export function warmScannerRecognition(): void {
+  if (typeof window === "undefined" || (import.meta.env.DEV && window.__deckNexusScannerTestHarness)) {
+    return;
+  }
+  void getOcrWorker().catch(() => undefined);
+}
+
 async function recognizeEvidence(canvas: HTMLCanvasElement): Promise<{ evidence: ObservedCardEvidence; rawText: string }> {
   const worker = await getOcrWorker();
   const regions = {

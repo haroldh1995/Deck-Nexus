@@ -125,8 +125,8 @@ function textSimilarity(observed: string, expected: string): number {
 }
 
 function tokenSimilarity(observed: string, expected: string): number {
-  const left = new Set(tokens(observed));
-  const right = new Set(tokens(expected));
+  const left = new Set(tokens(observed).filter((token) => /[a-z0-9]/i.test(token)));
+  const right = new Set(tokens(expected).filter((token) => /[a-z0-9]/i.test(token)));
   if (left.size === 0 || right.size === 0) return 0;
   const shared = [...left].filter((token) => right.has(token)).length;
   return shared / Math.max(left.size, right.size);
