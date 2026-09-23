@@ -346,3 +346,11 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 - Redundancy audit: distinct destinations for owned inventory, custom collections, wishlist, upgrade lists, deck workflow, analyzer, import/export, and scanner review were retained because they have different data semantics. No safe consolidation was made that would remove an existing workflow.
 - Regression coverage: added mobile/Chromium E2E assertions for the review filter toggle and removal behavior. Focused scanner E2E passed on both browser projects; full E2E passed all 40 tests across Chromium and mobile Chromium. Typecheck, lint, production build, and diff check passed; the full unit suite had already passed 39 files/193 tests before this focused UI change.
 - Git/deployment state: action-audit changes are currently uncommitted and not deployed. Next action: run the post-change unit suite, review the final diff, commit/push, wait for GitHub Actions/Pages, then live-smoke route/action behavior. Physical-device verification remains unavailable.
+
+## APPLICATION ACTION AUDIT DEPLOYMENT AND VERIFICATION
+- Commit `89948ba3fdb1d781aa18740832084ab0fd312922` was pushed to `origin/main`.
+- Post-change validation passed: full unit suite `39 files / 193 tests`; focused scanner E2E `2 passed`; full repository E2E `40 passed` across Chromium and mobile Chromium; `npx tsc -b --pretty false`; `npm run lint -- --quiet`; `npm run build`; and `git diff --check`.
+- GitHub Actions succeeded for the audit commit: Deploy Deck Nexus run `35813528438`; Pages build/deployment run `35813527456`.
+- Live production smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?audit=89948ba` used headless Chromium at `393x844`. The current production bundle loaded without page errors, the Scanner heading and camera-permission surface were present, body width equaled viewport width, and `Start Batch` was absent from primary scanner actions.
+- Home Screen visual/animation regression coverage remained green; no Home scene or animation files were changed.
+- Physical iPhone/card, physical Fodder Cannon, hardware feeder, and physical camera accuracy verification remain unavailable and are not claimed. Final git state is clean; Master Product Completion remains paused.
