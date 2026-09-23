@@ -309,3 +309,10 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 - Git state: follow-up implementation is currently uncommitted and limited to scanner screen, scanner recognition, scanner tests, scanner pipeline documentation, and this checkpoint.
 - Deployment state: previous `9a62f05` scanner deployment remains live-verified; this follow-up has not yet been pushed or live-verified.
 - Next action: review diff, run final regression checks, commit, push, wait for deployment, then live-smoke the scanner route and mobile review without claiming physical-camera verification.
+
+## COLLECTION SCANNER FOLLOW-UP DEPLOYMENT AND LIVE VERIFICATION
+- Commit `1df79801d08ff0eb4cffa094c5858a5f1c39bfa0` was pushed to `origin/main`.
+- GitHub Actions succeeded for the follow-up: Deploy Deck Nexus run `35808751021`; Pages build/deployment run `35808750211`.
+- Live production smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?scanner-followup=1df7980` used headless Chromium at `393x844`. The scanner route loaded the current production bundle `index-BEaiRfOQ.js`, no page errors occurred, body/document widths were both `393px`, the camera-permission surface was present, and `Start Batch` was absent from primary scanner actions.
+- No physical Fodder Cannon scan, physical iPhone Safari scan, hardware feeder verification, or live OCR/printing verification is claimed. Deterministic media-harness E2E remains the available camera verification.
+- Final git state is clean. Master Product Completion remains paused; stop after this scanner follow-up and do not resume unrelated work automatically.
