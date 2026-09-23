@@ -57,6 +57,10 @@ export interface ScannerRecognitionInput {
   analysis: FrameAnalysis;
   destination: ScanBatchDestination;
   saveThumbnail: boolean;
+  /** Optional session filters. These narrow canonical candidates; they are
+   * never treated as physical evidence and never prove an exact printing. */
+  setLock?: string;
+  language?: string;
   signal?: AbortSignal;
 }
 
@@ -347,7 +351,17 @@ async function findCandidates(
   return live;
 }
 
-export async function recognizeScannerFrame({ canvas, enhancedCanvas, analysis, destination, saveThumbnail, signal }: ScannerRecognitionInput): Promise<ScannerResolvedCard> {
+export function addSessionFilters(query: string, setLock?: string, language?: string): string {
+  const filters = [
+    setLock && /^[a-z0-9]{2,8}$/i.test(setLock) ? `set:${setLock.toLowerCase()}` : undefined,
+    language && language.toLowerCase() !== "any" && /^[a-z]{2,3}$/i.test(language)
+      ? `lang:${language.toLowerCase()}`
+      : undefined,
+  ].filter(Boolean);
+  return [query.trim(), ...filters].filter(Boolean).join(" ");
+}
+
+export async function recognizeScannerFrame({ canvas, enhancedCanvas, analysis, destination, saveThumbnail, setLock, language, signal }: ScannerRecognitionInput): Promise<ScannerResolvedCard> {
   const capturedThumbnail = captureThumbnail(canvas, saveThumbnail);
   const harnessCard = popScannerHarnessCard();
   if (harnessCard) return cardFromHarness(harnessCard, capturedThumbnail, analysis, destination);
@@ -370,26 +384,31 @@ export async function recognizeScannerFrame({ canvas, enhancedCanvas, analysis, 
   let matchSource: ScannerResolvedCard["matchSource"] = "ocr";
 
   if (setValue && collectorValue && scannerFieldIsUsable(extracted.evidence.set) && scannerFieldIsUsable(extracted.evidence.collector)) {
-    candidates = await findCandidates({ query: `set:${setValue} cn:${collectorValue}`, unique: "prints", sort: "set", priority: "high" }, signal);
+    candidates = await findCandidates({ query: addSessionFilters(`set:${setValue} cn:${collectorValue}`, setLock, language), unique: "prints", sort: "set", priority: "high" }, signal);
     matchSource = "scryfall_exact";
   }
   if (candidates.length === 0 && title && scannerFieldIsUsable(title)) {
     try {
-      candidates = await findCandidates({ query: title.value, unique: "prints", sort: "name", priority: "high" }, signal);
+      candidates = await findCandidates({ query: addSessionFilters(title.value, setLock, language), unique: "prints", sort: "name", priority: "high" }, signal);
       matchSource = "scryfall_fuzzy";
     } catch {
-      try {
-        const resolved = await resolveScryfallCardName(title.value, signal);
-        candidates = [resolved.card];
-        matchSource = resolved.fuzzy ? "scryfall_fuzzy" : "scryfall_exact";
-      } catch { /* continue to safe local fallback */ }
+      // A name-only fallback is unsafe when the user explicitly locked a
+      // set/language. Preserve that constraint instead of returning a card
+      // from a different printing family.
+      if (!setLock && !language) {
+        try {
+          const resolved = await resolveScryfallCardName(title.value, signal);
+          candidates = [resolved.card];
+          matchSource = resolved.fuzzy ? "scryfall_fuzzy" : "scryfall_exact";
+        } catch { /* continue to safe local fallback */ }
+      }
     }
   }
 
   if (candidates.length === 0 && scannerFieldIsUsable(extracted.evidence.rules) && extracted.evidence.rules.quality >= 0.62) {
     const rulesPhrase = extracted.evidence.rules.value.split(/\s+/).slice(0, 8).join(" ");
     candidates = await findCandidates({
-      query: "",
+      query: addSessionFilters("", setLock, language),
       oracleText: rulesPhrase,
       typeText: extracted.evidence.type?.value,
       unique: "prints",

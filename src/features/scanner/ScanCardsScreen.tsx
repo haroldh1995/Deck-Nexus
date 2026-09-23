@@ -189,6 +189,8 @@ export function ScanCardsScreen() {
   const [destination, setDestination] = useState<ScanBatchDestination>(
     defaultDestination,
   );
+  const [setLock, setSetLock] = useState("");
+  const [language, setLanguage] = useState("any");
   const [deckId, setDeckId] = useState(searchParams.get("deckId") ?? "");
   const [sectionId] = useState(searchParams.get("section") ?? "");
   const [batch, setBatch] = useState<ScanBatch | null>(null);
@@ -237,6 +239,8 @@ export function ScanCardsScreen() {
   const batchRef = useRef<ScanBatch | null>(null);
   const modeRef = useRef(mode);
   const destinationRef = useRef(destination);
+  const setLockRef = useRef(setLock);
+  const languageRef = useRef(language);
   const recordsRef = useRef<ScanRecord[]>([]);
   const cameraReadyRef = useRef(false);
   const scannerPausedRef = useRef(false);
@@ -272,6 +276,14 @@ export function ScanCardsScreen() {
   useEffect(() => {
     destinationRef.current = destination;
   }, [destination]);
+
+  useEffect(() => {
+    setLockRef.current = setLock.trim().toLowerCase();
+  }, [setLock]);
+
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   useEffect(() => {
     recordsRef.current = records;
@@ -690,14 +702,16 @@ export function ScanCardsScreen() {
     try {
       setLoopState("resolving");
       const result = await Promise.race([
-        recognizeScannerFrame({
-          canvas: recognitionCanvas,
-          enhancedCanvas,
-          analysis: frameAnalysis,
-          destination: destinationRef.current,
-          saveThumbnail: settings.scannerStoreCorrectionThumbnails,
-          signal: controller.signal,
-        }),
+          recognizeScannerFrame({
+            canvas: recognitionCanvas,
+            enhancedCanvas,
+            analysis: frameAnalysis,
+            destination: destinationRef.current,
+            saveThumbnail: settings.scannerStoreCorrectionThumbnails,
+            setLock: setLockRef.current || undefined,
+            language: languageRef.current === "any" ? undefined : languageRef.current,
+            signal: controller.signal,
+          }),
         new Promise<ReturnType<typeof createUnresolvedScannerResult>>((resolve) => {
           budgetTimer = setTimeout(() => {
             controller.abort();
@@ -911,6 +925,26 @@ export function ScanCardsScreen() {
       );
       const newTargetDetected = Boolean(previousTargetId && nextTarget.targetId !== previousTargetId);
       if (newTargetDetected) {
+        recordScannerTransition({
+          scanSessionId: "scan-session",
+          state: "POSSIBLE_NEW_TARGET",
+          requestedState: "TARGET_DETECTED",
+          accepted: true,
+          reason: "NEW_PHYSICAL_TARGET_GENERATION",
+          timestamp,
+          targetId: nextTarget.targetId,
+          captureGeneration: nextTarget.generation,
+          targetAgeMs: 0,
+          detectionConfidence: nextAnalysis.boundaryConfidence,
+          geometryConfidence: nextAnalysis.boundaryConfidence,
+          stabilityMs: nextAnalysis.stableForMs,
+          qualityClass: nextAnalysis.qualityClass,
+          cardCoverage: nextAnalysis.candidateCoverage,
+          tooClose: nextAnalysis.tooClose,
+          bestFrameAvailable: nextAnalysis.usableForRecognition,
+          recognitionJobState: "not_started",
+          terminalBudgetMs: scannerRecognitionBudgetMs,
+        });
         frameMemoryRef.current = {};
         lastAcceptedFingerprintRef.current = undefined;
         stackingTransitionRef.current = false;
@@ -918,7 +952,11 @@ export function ScanCardsScreen() {
         if (!manualScannerMessageRef.current) {
           setMessage("New card detected. Reading the next physical target.");
         }
-        return;
+        // The first changed frame establishes ownership; it must not be
+        // discarded as a dead-end transition. Handheld and feeder cards can
+        // enter without an empty frame, so continue through the normal
+        // acquisition/quality budget immediately. The next frame uses the
+        // reset memory for stability measurements.
       }
 
       const targetAgeMs = Math.max(0, timestamp - nextTarget.acquiredAt);
@@ -984,7 +1022,12 @@ export function ScanCardsScreen() {
       }
 
       if (modeRef.current === "stacking_feeder") {
-        if (nextAnalysis.tooClose) {
+        // Large card coverage is guidance, not a hard rejection. Only pause
+        // for a tray obstruction when the close frame is actually unusable
+        // (clipped or lacking enough readable structure).
+        const closeFrameBlocksRecognition = nextAnalysis.tooClose &&
+          (!nextAnalysis.usableForRecognition || nextAnalysis.clipped);
+        if (closeFrameBlocksRecognition) {
           tooCloseStartedAtRef.current ??= timestamp;
           const elapsed = timestamp - tooCloseStartedAtRef.current;
           setTooCloseDuration(elapsed);
@@ -1474,6 +1517,7 @@ export function ScanCardsScreen() {
           <details className="scanner-mode-panel">
             <summary>Manual fallback and feeder controls</summary>
             <div className="feature-controls scanner-setup-controls">
+              <p className="scanner-session-note">Automatic handheld scanning is ready when the camera is live. Start Batch is optional and only prepares an explicit feeder/session batch.</p>
               <button type="button" onClick={() => void startBatch()}>
                 <Play aria-hidden="true" /> Start Batch
               </button>
@@ -1505,6 +1549,33 @@ export function ScanCardsScreen() {
                       {scannerDestination.label}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label>
+                Set lock (optional)
+                <input
+                  inputMode="text"
+                  maxLength={8}
+                  placeholder="Any set, e.g. UDS"
+                  value={setLock}
+                  onChange={(event) => setSetLock(event.target.value.replace(/[^a-z0-9]/gi, "").slice(0, 8))}
+                />
+              </label>
+              <label>
+                Card language
+                <select value={language} onChange={(event) => setLanguage(event.target.value)}>
+                  <option value="any">Any language</option>
+                  <option value="en">English</option>
+                  <option value="ja">Japanese</option>
+                  <option value="de">German</option>
+                  <option value="fr">French</option>
+                  <option value="es">Spanish</option>
+                  <option value="it">Italian</option>
+                  <option value="ko">Korean</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="ru">Russian</option>
+                  <option value="zhs">Simplified Chinese</option>
+                  <option value="zht">Traditional Chinese</option>
                 </select>
               </label>
               <label>

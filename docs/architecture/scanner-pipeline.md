@@ -32,6 +32,15 @@ engine must return the same target-owned evidence contract; camera lifecycle,
 matching safety and batch persistence do not depend on a particular OCR or
 vision implementation.
 
+## Session matching controls
+
+The live scanner supports optional session-level `set` and `lang` filters.
+They narrow Scryfall candidate generation for a focused collection intake,
+but are treated as user constraints rather than physical evidence. A session
+filter can improve speed and reduce same-name printing ambiguity, but it never
+by itself verifies an exact printing or bypasses contradiction checks. Without
+a filter, the recognition path remains unchanged.
+
 ## Safety and completion
 
 The scanner may use an acceptable frame when an ideal frame is unavailable.
@@ -46,6 +55,12 @@ candidate caches may be shared, but OCR, fingerprints, candidates and
 confidence cannot cross target generations. A new physical presentation is
 allowed to produce another capture even when its canonical card and printing
 match the prior card.
+
+The first changed frame in a replacement establishes the new target and then
+continues through the normal quality/evidence budget. It is not discarded as
+an unproductive `possible new target` holding state. A large card in frame is
+guidance only while the normalized crop remains readable; tray blocking is
+reserved for close frames that are clipped or otherwise unusable.
 
 ## Diagnostics
 

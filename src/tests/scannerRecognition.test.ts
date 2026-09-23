@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSetCollector } from "../features/scanner/scannerRecognition";
+import { addSessionFilters, parseSetCollector } from "../features/scanner/scannerRecognition";
 
 describe("scanner printing evidence extraction", () => {
   it("preserves a collector number printed as number-of-set-size on older cards", () => {
@@ -13,5 +13,12 @@ describe("scanner printing evidence extraction", () => {
     const result = parseSetCollector("UDS 131");
     expect(result.set?.value).toBe("uds");
     expect(result.collector?.value).toBe("131");
+  });
+
+  it("keeps optional session filters inside canonical Scryfall queries", () => {
+    expect(addSessionFilters('"Fodder Cannon"', "UDS", "en"))
+      .toBe('"Fodder Cannon" set:uds lang:en');
+    expect(addSessionFilters("Fodder Cannon", "not a set", "any"))
+      .toBe("Fodder Cannon");
   });
 });
