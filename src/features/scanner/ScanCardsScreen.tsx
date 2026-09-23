@@ -1654,8 +1654,8 @@ export function ScanCardsScreen() {
               ) : (
                 records.map((record) => (
                   <article className={`scanner-record scanner-record--${record.identityStatus ?? record.status}`} key={record.id}>
-                    {record.capturedThumbnail ? (
-                      <img src={record.capturedThumbnail} alt="" />
+                    {(record.imageUri ?? record.capturedThumbnail) ? (
+                      <img src={record.imageUri ?? record.capturedThumbnail} alt={record.name} />
                     ) : null}
                       <div className="scanner-record__main">
                         <strong>{record.name}</strong>

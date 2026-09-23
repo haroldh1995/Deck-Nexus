@@ -550,6 +550,7 @@ Deck
           typeLine: string;
           colorIdentity: string[];
           confidence: number;
+          imageUri: string;
         }>;
         __deckNexusScannerBeepCount?: number;
         __deckNexusAdvanceFakeCard?: boolean;
@@ -564,6 +565,7 @@ Deck
           typeLine: "Instant",
           colorIdentity: ["U"],
           confidence: 0.94,
+          imageUri: "https://cards.scryfall.io/normal/test-counterspell.jpg",
         },
         {
           name: "Sol Ring",
@@ -572,6 +574,7 @@ Deck
           typeLine: "Artifact",
           colorIdentity: [],
           confidence: 0.92,
+          imageUri: "https://cards.scryfall.io/normal/test-sol-ring.jpg",
         },
       ];
       testWindow.__deckNexusScannerBeepCount = 0;
@@ -731,6 +734,10 @@ Deck
     await expect(page.locator(".scanner-tray-prompt").getByText(/Tray may be full/i)).toBeVisible();
     await page.getByRole("button", { name: "Review Batch" }).first().click();
     await expect(page.getByRole("dialog", { name: "Batch Review" })).toBeVisible();
+    await expect(page.locator(".scanner-record img").first()).toHaveAttribute(
+      "src",
+      /cards\.scryfall\.io\/normal\/test-counterspell\.jpg/,
+    );
     const reviewGeometry = await page.evaluate(() => {
       const modal = document.querySelector<HTMLElement>(".scanner-review-modal");
       const list = document.querySelector<HTMLElement>(".scanner-review-modal .scanner-record-list");

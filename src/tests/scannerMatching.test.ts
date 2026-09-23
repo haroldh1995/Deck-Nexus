@@ -91,6 +91,34 @@ describe("scanner multi-field matching", () => {
     expect(result.printingStatus).toBe("verified");
   });
 
+  it("resolves the photographed Urza's Destiny printing from title, collector number, and artist", () => {
+    const uds = card({
+      id: "229ba320-69c9-4400-a0d7-f0f79e8d9856",
+      oracleId: "aaf171bd-a4bb-4ce4-836a-da193c94f42e",
+      setCode: "uds",
+      setName: "Urza's Destiny",
+      collectorNumber: "131",
+      artist: "DiTerlizzi",
+    });
+    const otherPrinting = card({
+      id: "other-fodder-printing",
+      oracleId: "aaf171bd-a4bb-4ce4-836a-da193c94f42e",
+      setCode: "8ed",
+      setName: "Eighth Edition",
+      collectorNumber: "302",
+      artist: "Christopher Moeller",
+    });
+    const result = matchScannerEvidence({
+      ...evidence,
+      collector: { value: "131", quality: 0.86, sourceRegion: "collector-number" },
+      artist: { value: "DiTerlizzi", quality: 0.9, sourceRegion: "footer" },
+    }, [uds, otherPrinting]);
+
+    expect(result.card?.name).toBe("Fodder Cannon");
+    expect(result.printing?.id).toBe(uds.id);
+    expect(result.printingStatus).toBe("verified");
+  });
+
   it("allows historical printed text to support a card without requiring Oracle wording", () => {
     const historical = card({
       printedText: "Sacrifice a creature: Fodder Cannon deals 4 damage to any target.",

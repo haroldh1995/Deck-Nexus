@@ -260,12 +260,26 @@ export function matchScannerEvidence(
         : "review_required";
   const printingCandidates = scored.filter((candidate) => candidate.card.oracleId === top?.card.oracleId || candidate.card.id === top?.card.id);
   const printingTop = printingCandidates[0];
+  const reliableCollectorMatches = printingCandidates.filter((candidate) =>
+    candidate.positives.includes("collector") && !candidate.contradictions.includes("collector"),
+  );
+  const collectorAndArtistMatch = reliableCollectorMatches.filter((candidate) =>
+    candidate.positives.includes("artist") && !candidate.contradictions.includes("artist"),
+  );
   const deterministicPrinting = Boolean(
     printingTop &&
-    scannerFieldIsUsable(evidence.set) && evidence.set.quality >= 0.74 &&
     scannerFieldIsUsable(evidence.collector) && evidence.collector.quality >= 0.74 &&
-    printingTop.positives.includes("set") && printingTop.positives.includes("collector") &&
-    !printingTop.contradictions.includes("set") && !printingTop.contradictions.includes("collector"),
+    !printingTop.contradictions.includes("collector") &&
+    (
+      (
+        scannerFieldIsUsable(evidence.set) && evidence.set.quality >= 0.74 &&
+        printingTop.positives.includes("set") &&
+        printingTop.positives.includes("collector") &&
+        !printingTop.contradictions.includes("set")
+      ) ||
+      (collectorAndArtistMatch.length === 1) ||
+      (reliableCollectorMatches.length === 1 && !scannerFieldIsUsable(evidence.artist))
+    ),
   );
   const printingStatus: ScanPrintingStatus = deterministicPrinting
     ? "verified"

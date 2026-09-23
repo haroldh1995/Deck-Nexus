@@ -112,11 +112,17 @@ function field(value: string, confidence: number, sourceRegion: string): Observe
   return { value: cleaned, quality: Math.min(1, Math.max(0, confidence / 100)), sourceRegion };
 }
 
-function parseSetCollector(value: string): { set?: ObservedCardField; collector?: ObservedCardField } {
+export function parseSetCollector(value: string): { set?: ObservedCardField; collector?: ObservedCardField } {
   const compact = value.replace(/\s+/g, " ");
+  const collectorOnly = compact.match(/\b(\d{1,4}[A-Z]?)\s*\/\s*\d{1,4}\b/i);
+  if (collectorOnly) {
+    return { collector: field(collectorOnly[1], 82, "collector-number") };
+  }
   const match = compact.match(/\b([A-Z0-9]{2,5})\s*[•#-]?\s*(\d{1,4}[A-Z]?)\b/i) ??
     compact.match(/\b(\d{1,4}[A-Z]?)\s*[•#-]?\s*([A-Z0-9]{2,5})\b/i);
-  if (!match) return {};
+  if (!match) {
+    return {};
+  }
   const first = match[1];
   const second = match[2];
   return /^\d/.test(first)
@@ -206,6 +212,7 @@ async function recognizeEvidence(canvas: HTMLCanvasElement): Promise<{ evidence:
     stats: { left: 0.67, top: 0.82, width: 0.27, height: 0.1 },
     setCollector: { left: 0.05, top: 0.91, width: 0.47, height: 0.065 },
     artist: { left: 0.48, top: 0.91, width: 0.47, height: 0.065 },
+    footer: { left: 0.05, top: 0.875, width: 0.9, height: 0.105 },
   } as const;
   const reads = await Promise.all(Object.entries(regions).map(async ([name, rectangle]) => {
     const result = await worker.recognize(canvas, { rectangle: {
@@ -217,14 +224,22 @@ async function recognizeEvidence(canvas: HTMLCanvasElement): Promise<{ evidence:
     return { name, text: cleanOcrText(result.data.text), confidence: result.data.confidence ?? 0 };
   }));
   const byName = new Map(reads.map((read) => [read.name, read]));
-  const parsed = parseSetCollector(byName.get("setCollector")?.text ?? "");
+  const footerText = byName.get("footer")?.text ?? "";
+  const parsed = parseSetCollector(`${byName.get("setCollector")?.text ?? ""} ${footerText}`);
+  const footerArtist = footerText.match(/(?:illus?\.?\s+)([A-Za-z][A-Za-z.' -]{2,}?)(?=\s+\d{1,4}\s*\/\s*\d{1,4}\b|$)/i)?.[1]?.trim();
+  const artistRead = byName.get("artist");
+  const artistEvidence = artistRead?.text
+    ? field(artistRead.text, artistRead.confidence, "artist")
+    : footerArtist
+      ? field(footerArtist, byName.get("footer")?.confidence ?? 0, "footer")
+      : undefined;
   const evidence: ObservedCardEvidence = {
     rawText: reads.map((read) => read.text).filter(Boolean).join("\n"),
     title: field(byName.get("title")?.text ?? "", byName.get("title")?.confidence ?? 0, "title"),
     mana: field(byName.get("mana")?.text ?? "", byName.get("mana")?.confidence ?? 0, "mana"),
     type: field(byName.get("type")?.text ?? "", byName.get("type")?.confidence ?? 0, "type"),
     rules: field(byName.get("rules")?.text ?? "", byName.get("rules")?.confidence ?? 0, "rules"),
-    artist: field(byName.get("artist")?.text ?? "", byName.get("artist")?.confidence ?? 0, "artist"),
+    artist: artistEvidence,
     set: parsed.set,
     collector: parsed.collector,
   };
