@@ -331,3 +331,9 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 ## VERIFIED-ONLY POLICY FINAL VALIDATION
 - Added bounded silent retry (up to three evidence attempts per physical target) before suppression, with target-keyed cleanup on exit, replacement, pause, refresh, and visibility changes.
 - Final pre-commit validation passed after the bounded retry change: 39 files/193 unit tests, 3 focused scanner files/17 tests, 2 scanner E2E projects, typecheck, lint, build, and diff check.
+
+## VERIFIED-ONLY DEPLOYMENT AND LIVE VERIFICATION
+- Commit `217cca9505a1bbfa1189a8aaaa2cbaed4da6ea42` was pushed to `origin/main`.
+- GitHub Actions succeeded: Deploy Deck Nexus run `35810188741`; Pages build/deployment run `35810188234`.
+- Live production smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?verified-only=217cca9` used headless Chromium at `393x844`. The scanner route loaded bundle `index-DCx7d_p7.js`, produced no page errors, body/document widths were both `393px`, the camera-permission surface was present, and Start Batch was absent from primary actions.
+- No physical card, iPhone Safari, or hardware feeder verification is claimed. Final git state is pending this checkpoint-only update; Master Product Completion remains paused.
