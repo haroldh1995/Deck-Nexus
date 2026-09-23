@@ -394,9 +394,9 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 - NEXT ACTION: commit, push, verify GitHub Actions and GitHub Pages, then smoke-test the deployed Import Center route.
 
 ## COLLECTION-FIRST RESTRUCTURE DEPLOYMENT CHECKPOINT
-- Commit `a8fa2af6a764def207bbcd442c76cac27ef11a91` was pushed to `origin/main` and verified with `git ls-remote`.
-- GitHub Actions succeeded for the commit: `Deploy Deck Nexus` run `35921670842`; Pages build/deployment run `35921670125`.
+- Implementation commit `a8fa2af6a764def207bbcd442c76cac27ef11a91` was pushed to `origin/main`; checkpoint commit `658d8ad64f8d89377472e157d56e0d18abe44e33` is the current verified remote head.
+- GitHub Actions succeeded for the implementation: `Deploy Deck Nexus` run `35921670842`; Pages build/deployment run `35921670125`. The checkpoint deployment also succeeded: `Deploy Deck Nexus` run `35922126252`; Pages build/deployment run `35922126514`.
 - Live smoke at `https://haroldh1995.github.io/Deck-Nexus/` used headless Chromium at `393x844`: HTTP 200, current Home loaded without page errors, body width matched the viewport, and Import Center navigation links were present.
 - Live Import Center route content loaded from the deployed bundle at `/Deck-Nexus/import?live=a8fa2af`: Import Center heading and collection import controls rendered, no page errors occurred, and body width matched the viewport. Direct deep-link status is the repository's GitHub Pages SPA fallback status; the app content itself loaded.
 - No camera/scanner verification is applicable because camera scanning was intentionally removed from the product.
-- Final implementation commit is deployed. A checkpoint-only WORK_STATE update remains to be committed and pushed after this verification.
+- Final checkpoint commit `658d8ad64f8d89377472e157d56e0d18abe44e33` is deployed and remote-verified.
