@@ -7,7 +7,7 @@ DECK NEXUS MASTER SCANNER PRODUCTION REBUILD
 Production zero-touch handheld and feeder scanning, continuous new-physical-card detection, precision-first canonical/printing resolution, exactly-once capture feedback, durable collection/deck intake, and mobile review repair. The larger unrelated Deck Nexus completion effort remains paused.
 
 ## LAST VERIFIED MILESTONE
-The complete modular scanner pipeline rebuild is committed as `c2551863abb261586d392d88c7cbc142008e9660`, pushed, deployed, and live-smoke-verified. Physical card hardware and iPhone Safari remain unavailable.
+The Fodder Cannon canonical-image and older-printing matching fix is committed as `058c5cb7ff5f4aed125dc4636d4db44895a38a2b`, pushed, deployed, and live-smoke-verified. Physical card hardware and iPhone Safari remain unavailable.
 
 ## COMPLETED
 - Master Product Completion remains preserved and deployed; its checkpoint is paused only for this targeted repair.
@@ -291,3 +291,9 @@ Do not reset IndexedDB, delete user data, discard legitimate working-tree change
 - Review UI now prefers the matched Scryfall `imageUri` and canonical metadata for resolved cards. The physical capture thumbnail remains available only as fallback evidence for unresolved/review captures; it is no longer the primary image for a resolved Scryfall record.
 - Added Scryfall canonical-image E2E coverage and collector/footer parsing tests. Focused scanner tests passed: 3 files, 17 tests. Full unit suite passed: 39 files, 191 tests. Typecheck, lint, build, and diff check passed. Scanner E2E passed on Chromium and mobile Chromium with canonical Scryfall image assertion.
 - Physical camera/video testing remains unavailable. The supplied images establish the expected UDS printing; they do not constitute a live camera scan. Deployment for this follow-up fix is pending.
+
+## FODDER CANNON FIX DEPLOYMENT AND LIVE VERIFICATION
+- Commit `058c5cb7ff5f4aed125dc4636d4db44895a38a2b` was pushed to `origin/main`.
+- GitHub Actions succeeded: deploy run `35806800326`; Pages build/deployment run `35806799585`.
+- Live production smoke at `https://haroldh1995.github.io/Deck-Nexus/scan?fodder-cannon=058c5cb` used Chromium at `393x844`. The scanner route loaded the new production bundle with no page errors, body/document width remained `393px`, the camera permission surface was present, and `Start Batch` was absent from primary actions.
+- No physical camera scan was performed. The supplied physical and Scryfall screenshots were used as regression ground truth; exact live OCR and physical-device verification remain unavailable.
